@@ -9,7 +9,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Punkt | Status | Hinweis |
 |---|---|---|
 | Repo, Doku, Projektanweisung | getestet | Quelle der Wahrheit: dieses Repo |
-| GitHub Actions (Tests → Build → Branch `deploy` → Aufräumen) | umgesetzt | erster Lauf nach Push prüfen |
+| GitHub Actions (Tests → Build → Branch `deploy` → Aufräumen) | getestet | Lauf vom 18.10. grün; Branch `deploy` zeigt auf `sha-9bd23eda4fce` |
 | Portainer-Stack aus Branch `deploy`, Polling 5 Min | vorgesehen | einmalige Einrichtung durch Jan, siehe DEPLOYMENT.md |
 | GHCR-Paket öffentlich schalten | extern blockiert | einmaliger Klick durch Jan (Paket ist standardmäßig privat) |
 | Plesk-Subdomain, TLS, nginx-Proxy | vorgesehen | einmalig durch Jan |
@@ -68,6 +68,6 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 ## Offene Punkte
 
 1. Jan: einmalige Einrichtung nach DEPLOYMENT.md (Plesk, Portainer, GHCR-Paket öffentlich).
-2. Ersten Actions-Lauf kontrollieren (insb. Löschen alter Image-Versionen mit `GITHUB_TOKEN`).
+2. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
 3. Annahmen bestätigen (DECISIONS.md D-008 bis D-010): E2EE-Chat über eigenen Synapse, TURN auf demselben Server, Mail über Plesk.
 4. Sicherheit Server allgemein (nicht Kinder-spezifisch): Firewall aus, Portainer :9000 und weitere Dienste öffentlich erreichbar.
