@@ -1,0 +1,128 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import Icon from '$lib/components/Icon.svelte';
+	import Pennant from '$lib/components/Pennant.svelte';
+	let { children, data } = $props();
+
+	const items = $derived(
+		[
+			{ href: '/admin', label: 'Übersicht', icon: 'system', show: true },
+			{ href: '/admin/nutzer', label: 'Nutzer', icon: 'nutzer', show: data.may.users },
+			{ href: '/admin/rechte', label: 'Rollen und Rechte', icon: 'schild', show: data.may.rights },
+			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit }
+		].filter((i) => i.show)
+	);
+	const isActive = (href: string) => (href === '/admin' ? page.url.pathname === '/admin' : page.url.pathname.startsWith(href));
+</script>
+
+<div class="admin">
+	<aside>
+		<a class="brand" href="/"><Pennant size={26} /><span>Verwaltung</span></a>
+		<nav aria-label="Verwaltung">
+			{#each items as i}
+				<a href={i.href} aria-current={isActive(i.href) ? 'page' : undefined}><Icon name={i.icon} size={20} /><span>{i.label}</span></a>
+			{/each}
+		</nav>
+		<p class="who muted">{data.adminEmail}</p>
+		<a class="back" href="/"><Icon name="zurueck" size={18} />Zur Plattform</a>
+	</aside>
+	<main id="inhalt">
+		{@render children()}
+	</main>
+</div>
+
+<style>
+	.admin {
+		min-height: 100dvh;
+	}
+	aside {
+		background: var(--surface);
+		border-bottom: 1px solid var(--line);
+		padding: var(--sp-3) var(--sp-4);
+	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sp-2);
+		font-family: var(--font-display);
+		font-weight: 750;
+		color: var(--ink);
+		text-decoration: none;
+	}
+	nav {
+		display: flex;
+		gap: var(--sp-1);
+		overflow-x: auto;
+		margin-top: var(--sp-2);
+	}
+	nav a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sp-2);
+		white-space: nowrap;
+		min-height: 44px;
+		padding: 0 var(--sp-3);
+		border-radius: var(--radius-s);
+		color: var(--ink-2);
+		text-decoration: none;
+	}
+	nav a[aria-current='page'] {
+		color: var(--ink);
+		font-weight: 700;
+		background: var(--surface-2);
+		box-shadow: inset 0 -3px 0 var(--signal);
+	}
+	.who,
+	.back {
+		display: none;
+	}
+	main {
+		padding: var(--sp-5) var(--sp-4) var(--sp-7);
+		max-width: 72rem;
+	}
+	@media (min-width: 900px) {
+		.admin {
+			display: grid;
+			grid-template-columns: 250px 1fr;
+		}
+		aside {
+			position: sticky;
+			top: 0;
+			height: 100dvh;
+			border-bottom: 0;
+			border-right: 1px solid var(--line);
+			padding: var(--sp-5) var(--sp-3);
+			display: flex;
+			flex-direction: column;
+			gap: var(--sp-3);
+		}
+		.brand {
+			padding: 0 var(--sp-3);
+			font-size: var(--fs-l);
+		}
+		nav {
+			flex-direction: column;
+			overflow: visible;
+		}
+		nav a[aria-current='page'] {
+			box-shadow: inset 4px 0 0 var(--signal);
+		}
+		.who {
+			display: block;
+			margin: auto 0 0;
+			padding: 0 var(--sp-3);
+			font-size: var(--fs-xs);
+			word-break: break-all;
+		}
+		.back {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--sp-1);
+			padding: 0 var(--sp-3);
+			font-size: var(--fs-s);
+		}
+		main {
+			padding: var(--sp-6) var(--sp-7);
+		}
+	}
+</style>

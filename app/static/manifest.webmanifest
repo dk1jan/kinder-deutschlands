@@ -1,0 +1,11 @@
+{
+	"name": "Kinder Deutschlands",
+	"short_name": "Kinder DE",
+	"lang": "de",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#eef3f1",
+	"theme_color": "#16302c",
+	"icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

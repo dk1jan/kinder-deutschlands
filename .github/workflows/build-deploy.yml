@@ -1,0 +1,150 @@
+# Push auf main → prüfen → Image bauen → Branch „deploy“ aktualisieren → aufräumen.
+# Portainer beobachtet den Branch „deploy“ und aktualisiert den Stack automatisch.
+# GitHub-Speicher ist knapp: kein Build-Cache, keine Artefakte, alte Images und Läufe werden gelöscht.
+name: build-deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+concurrency:
+  group: build-deploy
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/dk1jan/kinder-deutschlands-web
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      db:
+        image: postgis/postgis:17-3.6-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: kdtest
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://postgres:test@127.0.0.1:5432/kdtest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: pg_dump 17 für den Backup-Test
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+      - run: npm ci --no-audit --no-fund
+      - name: Typprüfung
+        run: npm run check
+      - name: Unit- und Datenbanktests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: End-to-End-Rauchtest
+        run: node scripts/smoke-test.mjs
+
+  build:
+    needs: test
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Runner-Speicher freimachen (vor dem Build)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af >/dev/null || true
+          df -h /
+      - uses: actions/checkout@v5
+      - id: tag
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image bauen und hochladen (ohne Cache, ohne Zusatz-Manifeste)
+        uses: docker/build-push-action@v6
+        with:
+          context: app
+          push: true
+          provenance: false
+          sbom: false
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Runner-Speicher freimachen (nach dem Build)
+        if: always()
+        run: docker system prune -af >/dev/null || true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Branch „deploy“ mit neuem Image veröffentlichen
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          mkdir /tmp/deploy
+          sed "s#__WEB_IMAGE__#${IMAGE}:${TAG}#" deploy/docker-compose.yml > /tmp/deploy/docker-compose.yml
+          grep -q "${IMAGE}:${TAG}" /tmp/deploy/docker-compose.yml
+          cat > /tmp/deploy/README.md <<EOF
+          Automatisch erzeugt von GitHub Actions – nicht von Hand bearbeiten.
+          Image: ${IMAGE}:${TAG}
+          Commit: ${GITHUB_SHA}
+          EOF
+          cd /tmp/deploy
+          git init -q -b deploy
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "deploy ${TAG} [skip ci]"
+          # Ein einziger Commit, erzwungen: der Branch bleibt winzig
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" deploy
+
+  cleanup:
+    needs: deploy
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Alte Image-Versionen löschen (letzte 3 behalten)
+        continue-on-error: true
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: kinder-deutschlands-web
+          package-type: container
+          min-versions-to-keep: 3
+      - name: Alte Workflow-Läufe löschen (letzte 10 behalten) und Caches leeren
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh run list --limit 200 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId' \
+            | tail -n +11 | xargs -r -n1 gh run delete || true
+          gh cache delete --all || true

@@ -1,0 +1,107 @@
+# Kinder Deutschlands – Stack für Portainer
+# VORLAGE im Branch main. GitHub Actions setzt __WEB_IMAGE__ auf das frisch gebaute Image und
+# veröffentlicht das Ergebnis im Branch „deploy“. Portainer liest NUR den Branch „deploy“.
+# Geheimnisse kommen ausschließlich aus den Umgebungsvariablen des Portainer-Stacks:
+#   APP_URL, APP_SECRET, POSTGRES_PASSWORD  (Pflicht)
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM  (optional)
+
+name: kinder-deutschlands
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  web:
+    image: __WEB_IMAGE__
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_URL: ${APP_URL:?APP_URL fehlt}
+      ORIGIN: ${APP_URL}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET fehlt}
+      DATABASE_URL: postgres://kd:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt}@db:5432/kd
+      BACKUP_DIR: /backups
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: "1"
+      BODY_SIZE_LIMIT: 25M
+      ALLOW_INDEXING: ${ALLOW_INDEXING:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    ports:
+      # Nur lokal erreichbar – öffentlich ausschließlich über Plesk (nginx, TLS)
+      - "127.0.0.1:3120:3000"
+    volumes:
+      - backups:/backups
+    networks: [backend, frontend]
+    mem_limit: 1g
+    logging: *logging
+
+  db:
+    image: postgis/postgis:17-3.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kd
+      POSTGRES_USER: kd
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks: [backend]
+    shm_size: 256mb
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kd -d kd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  # Tägliche Sicherung (14 Tage). Schreibt last-backup.json für die Admin-Übersicht.
+  backup:
+    image: postgis/postgis:17-3.6-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Berlin
+    volumes:
+      - backups:/backups
+    networks: [backend]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "[backup] gestartet, erste Sicherung in 2 Minuten"
+        sleep 120
+        while true; do
+          ts=$$(date +%Y-%m-%dT%H-%M-%S)
+          f=/backups/daily-$$ts.dump
+          if pg_dump --format=custom --no-owner -h db -U kd -d kd -f "$$f"; then
+            size=$$(stat -c %s "$$f")
+            echo "{\"at\":\"$$(date -Iseconds)\",\"file\":\"daily-$$ts.dump\",\"ok\":true,\"size\":$$size}" > /backups/last-backup.json
+            find /backups -name 'daily-*.dump' -mtime +14 -delete
+            echo "[backup] ok: $$f ($$size Bytes)"
+          else
+            echo "{\"at\":\"$$(date -Iseconds)\",\"ok\":false}" > /backups/last-backup.json
+            echo "[backup] FEHLER"
+          fi
+          sleep 86400
+        done
+    logging: *logging
+
+volumes:
+  db:
+  backups:
+
+networks:
+  backend:
+    internal: true
+  frontend:
