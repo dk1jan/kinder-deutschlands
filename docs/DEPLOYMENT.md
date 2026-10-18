@@ -73,6 +73,13 @@ Kontolöschungen werden zusätzlich in `/backups/deletions.log` (Sicherungs-Volu
 Das Passwort liegt nur verschlüsselt in der Datenbank (Schlüssel aus `APP_SECRET`) und wird nie angezeigt. Wird `APP_SECRET` geändert, muss es neu eingegeben werden.
 Rückfall: Ist in der Verwaltung nichts gespeichert, gelten die Portainer-Variablen `SMTP_*` (siehe Tabelle unten). Nicht nötig, wenn die Verwaltung genutzt wird.
 
+## Karte und Datenabrufe (ab Abschnitt 2)
+Läuft von selbst. Nach dem ersten Ausrollen holt die App nacheinander: Regionen (VG250, Stadtteile), dann die Kartenkacheln (~1,5 GB in das Volume `tiles`, wenige Minuten), dann die Orte (Spielplätze, Toiletten …, je nach Overpass-Auslastung 5–30 Minuten). Stand sichtbar unter **Verwaltung → Daten und Orte**; dort auch „Jetzt abrufen“ und „Pausieren“.
+- Speicher: `tiles` ≈ 1,5 GB + beim Erneuern kurz dieselbe Menge zusätzlich (Prüfung: mindestens 3 GB frei).
+- Arbeitsspeicher: Web-Container 2 GB (Niedersachsen-Import).
+- Ausgehende Verbindungen des Web-Containers: overpass-api.de (+ Ausweichserver), sgx.geodatenzentrum.de, build.protomaps.com. Beim Kartenaufruf der Besucher: keine.
+- Nur zum Testen (nie in Produktion setzen): `SCHEDULER=off`, `OVERPASS_URL`, `VG250_URL`, `PROTOMAPS_BUILDS_URL`, `PROTOMAPS_BUILD_BASE`, `PMTILES_BIN`.
+
 ## Falsches Zertifikat / „Nicht sicher“
 Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):
 ```bash

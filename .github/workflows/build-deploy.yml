@@ -149,3 +149,6 @@ jobs:
           gh run list --limit 200 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId' \
             | tail -n +11 | xargs -r -n1 gh run delete || true
           gh cache delete --all || true
+          # Temporäre Branches (z. B. Testausschnitte aus Prüfläufen) wieder entfernen
+          gh api "repos/$GH_REPO/git/matching-refs/heads/tmp-" --jq '.[].ref' \
+            | sed 's#^refs/##' | xargs -r -I{} gh api -X DELETE "repos/$GH_REPO/git/refs/{}" || true

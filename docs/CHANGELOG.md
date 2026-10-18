@@ -2,6 +2,22 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-18 · Abschnitt 2: Familienkarte, Orte, Datenimport, Datenzentrale
+
+**Was**
+- Gemeinsames Ortsmodell (Spielplatz, Indoorspielplatz, Wickelmöglichkeit, Toilette, Stillmöglichkeit, Familiencafé, Ausflugsort, Schwimmbad) mit dreiwertigen Merkmalen (ja/nein/unbekannt), Herkunft je Quelle, Prüfzeitpunkten, Bestätigungsstatus.
+- Karte `/karte`: eigene Vektorkacheln (Protomaps-Ausschnitt Bremen + Niedersachsen, MapLibre, im Projektdesign hell/dunkel), Gruppierung, Filter-Chips nach Art und Ausstattung, Suche (Orte, Stadtteile, Gemeinden), Liste nach Entfernung, „Mein Standort“ (bleibt im Browser), Ortskarte unten, Desktop mit Seitenleiste. Liste funktioniert auch ohne JavaScript.
+- Ortsseite `/orte/…`: Ausstattung, Spielgeräte, Toilette in der Nähe, Öffnungszeiten, Quelle und Aktualität, ehrlich „Noch keine Erfahrungen“, Merken, Teilen, Hinweg, Fehler melden. Defekt/Sperrung sofort als unbestätigter Hinweis; Redaktion bestätigt oder markiert als amtlich (mit Quelle).
+- Ort vorschlagen `/orte/neu` mit Dublettenprüfung (80 m), sichtbar erst nach Freigabe. „Meine Orte“ im Profil.
+- Datenimport (M23): Quellenkatalog (8 Quellen), Zeitplan im Web-Container, Abgleich per Prüfsumme, Vorschau/Freigabe, Schutz vor Massenentfernung (> 15 % → Vorschau), Archivieren statt Löschen, redaktionell gesperrte Felder, Dublettenerkennung (30 m), Wiederholung mit wachsendem Abstand.
+- Quellen: OSM/Overpass (Spielplätze mit Spielgeräten, Toiletten, Wickeln, Indoor, Zoos/Bäder) für Bremen + Niedersachsen, BKG VG250 (Länder, Kreise, Gemeinden), OSM-Stadtteile Bremen/Bremerhaven, Protomaps-Kacheln (monatlich).
+- Datenzentrale `/admin/daten`: Quellenstatus, Jetzt abrufen, Pausieren, Rhythmus/Freigaberegeln/Gebiete, Abrufe mit Vorschau (Übernehmen/Verwerfen), Prüffälle (Vorschläge, Meldungen, Dubletten mit Zusammenführen), Ortspflege mit Sperren und Hinweisen. Öffentliche Quellenseite `/karte/quellen`.
+- Profil: Regionssuche statt Auswahlliste; „Familien entdecken“ schließt Unterregionen (Stadtteile) ein. Datenexport und Kontolöschung berücksichtigen Merkliste, Vorschläge, Meldungen.
+- Betrieb: Image enthält `pmtiles` (Prüfsumme geprüft) und Kartenschriften; Compose mit Volume `tiles`, 2 GB Arbeitsspeicher. CI räumt `tmp-*`-Branches auf; manueller Prüflauf `probe.yml` für Datenquellen.
+**Warum** Bauabschnitt 2 laut ROADMAP. Quellen am 18.10.2026 echt geprüft (Erreichbarkeit, Umfang, Lizenz), siehe D-020.
+**Module** M10, M11, M13, M23, M24, Querschnitt · **DB-Migration** ja – `0004_orte.sql` (Quellen, Abrufe, Orte, Herkunft, Dubletten, Merkliste, Meldungen, Hinweise, Rechte `data.view`/`data.import`)
+**Tests** svelte-check 0 Fehler, 89 Unit/DB-Tests (neu: OSM-Übersetzung inkl. echtem Ausschnitt Findorff, Overpass-Ausweichserver, Import/Vorschau/Sperren/Archiv/Dubletten/Zusammenführen/Meldungen/Vorschläge/Löschung), 105 E2E-Prüfungen mit Nachbau von Overpass/VG250/Protomaps (echte Ausschnitte), Bildschirmfotos mobil/desktop hell/dunkel mit echtem Kartenausschnitt Bremen, Build
+
 ## 2026-10-18 · Mailserver in der Verwaltung einstellen
 
 **Was** Neue Seite Verwaltung → Einstellungen: Mailserver, Port, Absender, Benutzername, Passwort, „Zertifikat nicht prüfen“. Speichern prüft sofort Verbindung und Anmeldung und meldet Fehler verständlich (Passwort falsch, Port falsch, Zertifikat …). Test-Mail-Knopf, „Gespeicherte Werte entfernen“. Passwort AES-256-GCM-verschlüsselt in `settings`, nie angezeigt, nie protokolliert. Portainer-Variablen `SMTP_*` nur noch Rückfall. Neues Recht `settings.manage` (Betreiber, Technikadministration). Änderungen im Protokoll (ohne Passwort).

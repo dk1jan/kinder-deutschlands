@@ -9,6 +9,7 @@
 			{ href: '/admin', label: 'Übersicht', icon: 'system', show: true },
 			{ href: '/admin/nutzer', label: 'Nutzer', icon: 'nutzer', show: data.may.users },
 			{ href: '/admin/rechte', label: 'Rollen und Rechte', icon: 'schild', show: data.may.rights },
+			{ href: '/admin/daten', label: 'Daten und Orte', icon: 'daten', show: data.may.data },
 			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit },
 			{ href: '/admin/einstellungen', label: 'Einstellungen', icon: 'einstellungen', show: data.may.settings }
 		].filter((i) => i.show)
@@ -80,6 +81,10 @@
 	main {
 		padding: var(--sp-5) var(--sp-4) var(--sp-7);
 		max-width: 72rem;
+	}
+	main :global(h2) {
+		font-size: var(--fs-l);
+		margin-top: var(--sp-6);
 	}
 	@media (min-width: 900px) {
 		.admin {

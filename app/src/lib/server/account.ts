@@ -30,6 +30,9 @@ export async function exportAccount(sql: Sql, userId: string) {
 	const sessions = await sql`select created_at, last_seen_at, expires_at, user_agent from sessions where user_id = ${userId}`;
 	const roles = await sql`select role_key, scope_type, scope_id, granted_at, expires_at, revoked_at from role_assignments where user_id = ${userId}`;
 	const log = await sql`select at, action from audit_log where actor_id = ${userId} order by at desc limit 500`;
+	const merkliste = await sql`select p.id, p.kind, p.name, f.created_at from place_favorites f join places p on p.id = f.place_id where f.user_id = ${userId}`;
+	const vorschlaege = await sql`select id, kind, name, status, created_at from places where created_by = ${userId}`;
+	const meldungen = await sql`select place_id, kind, message, status, created_at from place_reports where user_id = ${userId}`;
 	return {
 		erstellt: new Date().toISOString(),
 		hinweis: 'Export aller zu deinem Konto gespeicherten Daten bei Kinder Deutschlands.',
@@ -42,7 +45,10 @@ export async function exportAccount(sql: Sql, userId: string) {
 		passkeys,
 		sitzungen: sessions,
 		rollen: roles,
-		protokoll_eigene_vorgaenge: log
+		protokoll_eigene_vorgaenge: log,
+		orte_merkliste: merkliste,
+		orte_vorschlaege: vorschlaege,
+		orte_meldungen: meldungen
 	};
 }
 
@@ -67,6 +73,12 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from webauthn_credentials where user_id = ${userId}`;
 		await tx`delete from sessions where user_id = ${userId}`;
 		await tx`delete from email_tokens where user_id = ${userId}`;
+		await tx`delete from place_favorites where user_id = ${userId}`;
+		// Noch nicht freigegebene Vorschläge verschwinden, freigegebene Orte bleiben ohne Personenbezug
+		await tx`delete from places where created_by = ${userId} and status = 'pruefung'`;
+		await tx`update places set created_by = null where created_by = ${userId}`;
+		await tx`update place_reports set user_id = null, message = null where user_id = ${userId}`;
+		await tx`update place_notices set created_by = null where created_by = ${userId}`;
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',
 			totp_secret_enc = null, totp_enabled_at = null, display_name = null where id = ${userId}`;

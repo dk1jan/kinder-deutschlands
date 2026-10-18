@@ -6,6 +6,7 @@ import { isSetupComplete } from '$lib/server/setup';
 import { allowIndexing } from '$lib/server/config';
 import { reapplyDeletions } from '$lib/server/account';
 import { loadMailSettings, mailSettingsLoaded } from '$lib/server/mailsettings';
+import { startScheduler } from '$lib/server/import/jobs';
 
 // Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
 export const init: ServerInit = async () => {
@@ -19,6 +20,8 @@ export const init: ServerInit = async () => {
 	} catch (e) {
 		console.error('Löschliste konnte nicht angewendet werden:', (e as Error).message);
 	}
+	// Datenquellen nach Zeitplan abrufen (Regionen, Kartenkacheln, Orte)
+	startScheduler().catch((e) => console.error('Zeitplan konnte nicht starten:', (e as Error).message));
 };
 
 const THEMES = new Set(['system', 'light', 'dark']);
@@ -35,7 +38,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.session = null;
 
-	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/')) {
+	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/') && !path.startsWith('/kacheln/')) {
 		const sql = db();
 		if (!mailSettingsLoaded()) await loadMailSettings(sql).catch(() => {});
 		if (!setupDone) {

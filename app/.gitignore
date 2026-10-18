@@ -5,3 +5,5 @@ build/
 .env.*
 !.env.example
 *.log
+static/karte-assets/
+.data/

@@ -9,7 +9,7 @@ Internet ── Plesk nginx (TLS, kinder.jan-krueger.org) ── 127.0.0.1:3120 
                                                                      backup (täglich pg_dump, 14 Tage)
 ```
 
-Geplante Zusatzdienste (eigene Abschnitte): Valkey (Warteschlange, Abschnitt 2/5), Kachelserver/PMTiles (Abschnitt 2), Synapse + LiveKit/coturn (Abschnitt 4/7), optional n8n (intern).
+Kartenkacheln (PMTiles) liefert die App selbst aus (Volume `tiles`, D-021); Datenabrufe laufen als Zeitplan im Web-Container (D-023). Geplante Zusatzdienste: Valkey (Abschnitt 4/5), Synapse + LiveKit/coturn (Abschnitt 4/7), optional n8n (intern).
 
 ## Repo-Aufbau
 

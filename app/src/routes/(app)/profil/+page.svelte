@@ -47,6 +47,10 @@
 				<strong>Kontakte</strong>
 				<span>{m.counts.contacts} {m.counts.contacts === 1 ? 'Kontakt' : 'Kontakte'}{#if m.counts.requests}, <em>{m.counts.requests} neue {m.counts.requests === 1 ? 'Anfrage' : 'Anfragen'}</em>{/if}</span>
 			</a>
+			<a href="/profil/orte" class="tile">
+				<strong>Meine Orte</strong>
+				<span>Gemerkte Orte und eigene Vorschläge</span>
+			</a>
 			<a href="/profil/qr" class="tile">
 				<strong>QR-Codes und Wimpel</strong>
 				<span>Drucken, befristete Codes, alte Codes sperren</span>

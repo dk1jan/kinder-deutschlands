@@ -5,8 +5,9 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import postgres from 'postgres';
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync, chmodSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { createServer } from 'node:http';
 
 for (const ev of ['uncaughtException', 'unhandledRejection']) {
 	process.on(ev, (e) => {
@@ -27,8 +28,53 @@ const env = {
 	ORIGIN: BASE,
 	APP_SECRET: 'smoke-test-secret-'.padEnd(48, 'x'),
 	PORT: String(PORT),
-	BACKUP_DIR: '/tmp/kd-smoke-backups'
+	BACKUP_DIR: '/tmp/kd-smoke-backups',
+	// Abschnitt 2: Zeitplan aus, externe Dienste als lokaler Nachbau (keine Netzanfragen im Test)
+	SCHEDULER: 'off',
+	TILES_DIR: '/tmp/kd-smoke-tiles',
+	OVERPASS_URL: 'http://127.0.0.1:3998/overpass',
+	VG250_URL: 'http://127.0.0.1:3998/vg250',
+	PROTOMAPS_BUILDS_URL: 'http://127.0.0.1:3998/builds.json',
+	PROTOMAPS_BUILD_BASE: 'http://127.0.0.1:3998/build/',
+	PMTILES_BIN: '/tmp/kd-smoke-pmtiles'
 };
+
+// ---------- Nachbau externer Dienste mit echten Ausschnitten (tests/fixtures, © OpenStreetMap-Mitwirkende / © BKG) ----------
+const FX = new URL('../tests/fixtures/', import.meta.url).pathname;
+const fx = (f) => readFileSync(join(FX, f), 'utf8');
+let mockMode = 'voll';
+const mock = createServer((rq, rs) => {
+	let body = '';
+	rq.on('data', (c) => (body += c));
+	rq.on('end', () => {
+		const u = new URL(rq.url, 'http://x');
+		const send = (t, type = 'application/json') => { rs.writeHead(200, { 'content-type': type }); rs.end(t); };
+		if (u.pathname === '/overpass') {
+			const q = decodeURIComponent(new URLSearchParams(body).get('data') ?? '');
+			if (q.includes('"leisure"="playground"')) {
+				const d = JSON.parse(fx('osm-spielplatz.json'));
+				// „halb“: Hälfte der Spielplätze fehlt → Abruf muss als Vorschau warten
+				if (mockMode === 'halb') { let i = 0; d.elements = d.elements.filter((e) => e.tags?.leisure !== 'playground' || i++ % 2 === 0); }
+				return send(JSON.stringify(d));
+			}
+			if (q.includes('"amenity"="toilets"')) return send(fx('osm-toilette.json'));
+			if (q.includes('"admin_level"="10"')) return send(fx('osm-stadtteile.json'));
+			return send(JSON.stringify({ elements: [] }));
+		}
+		if (u.pathname === '/vg250') return send(fx(`${u.searchParams.get('typeNames').replace('vg250:', '')}.json`));
+		if (u.pathname === '/builds.json') return send(JSON.stringify([{ key: '20261017.pmtiles' }, { key: '20261018.pmtiles' }]));
+		rs.writeHead(404); rs.end();
+	});
+});
+await new Promise((r) => mock.listen(3998, '127.0.0.1', r));
+// Kachelprogramm-Nachbau: schreibt eine Testdatei (oder einen echten Ausschnitt, falls lokal vorhanden)
+writeFileSync('/tmp/kd-smoke-pmtiles', `#!/bin/sh
+out="$3"
+if [ -f /tmp/kd-bremen.pmtiles ]; then cp /tmp/kd-bremen.pmtiles "$out"; else head -c 300000 /dev/urandom > "$out"; fi
+`);
+chmodSync('/tmp/kd-smoke-pmtiles', 0o755);
+rmSync('/tmp/kd-smoke-tiles', { recursive: true, force: true });
+mkdirSync('/tmp/kd-smoke-tiles', { recursive: true });
 
 let failures = 0;
 function check(cond, label) {
@@ -331,6 +377,113 @@ try {
 	r = await B.req('/anmelden?/anmelden', { method: 'POST', form: { email: 'ben@example.org', password: newPw } });
 	check(r.status === 400, 'Gelöschtes Konto kann sich nicht anmelden');
 
+	// ---------- Abschnitt 2: Karte, Orte, Datenzentrale ----------
+	const sqlT = postgres(DB, { max: 1, onnotice: () => {} });
+	async function runAndWait(key) {
+		const before = (await sqlT`select coalesce(max(id), 0)::int as m from import_runs where source_key = ${key}`)[0].m;
+		const rr = await req('/admin/daten?/starten', { method: 'POST', form: { key } });
+		for (let i = 0; i < 120; i++) {
+			const [x] = await sqlT`select id, status, counts, message from import_runs where source_key = ${key} and id > ${before} order by id desc limit 1`;
+			if (x && x.status !== 'laeuft') return { http: rr.status, run: x };
+			await new Promise((res) => setTimeout(res, 250));
+		}
+		return { http: rr.status, run: null };
+	}
+	r = await req('/admin/daten');
+	check(r.status === 200 && r.body.includes('Verwaltungsgebiete (VG250)') && r.body.includes('Spielplätze'), 'Datenzentrale zeigt Quellenkatalog');
+	// Testausschnitt enthält nur das Land Bremen
+	await sqlT`update data_sources set config = jsonb_set(config, '{laender}', '["04"]') where key = 'bkg-vg250'`;
+	let res = await runAndWait('bkg-vg250');
+	check(res.run?.status === 'uebernommen' && res.run.counts.kreise === 2, `Regionen-Import VG250 (${res.run?.message ?? res.run?.status})`);
+	res = await runAndWait('osm-stadtteile-hb');
+	check(res.run?.status === 'uebernommen' && res.run.counts.stadtteile >= 20, `Stadtteile Bremen/Bremerhaven aus OSM (${res.run?.message ?? res.run?.status})`);
+	res = await runAndWait('osm-spielplaetze');
+	const nPlay = res.run?.counts?.neu ?? 0;
+	check(res.run?.status === 'uebernommen' && nPlay >= 10, `Spielplätze importiert (${nPlay} neu)`);
+	res = await runAndWait('osm-toiletten');
+	check(res.run?.status === 'uebernommen' && (res.run.counts.neu ?? 0) >= 3, `Toiletten importiert (${res.run?.counts?.neu ?? 0})`);
+	const [findorff] = await sqlT`select count(*)::int as n from places p join regions r on r.code = p.region_code where r.name = 'Findorff' and r.level = 'stadtteil'`;
+	check(findorff.n > 0, `Orte sind Stadtteilen zugeordnet (Findorff: ${findorff.n})`);
+	res = await runAndWait('osm-spielplaetze');
+	check(res.run?.status === 'uebernommen' && res.run.counts.neu === 0 && res.run.counts.unveraendert === nPlay, 'Zweiter Abruf erkennt: nichts geändert');
+	res = await runAndWait('protomaps-karte');
+	check(res.run?.status === 'uebernommen', `Kartenkacheln geladen (${res.run?.message ?? res.run?.status})`);
+	let t = await fetch(BASE + '/kacheln/basis.pmtiles', { headers: { range: 'bytes=0-99' } });
+	check(t.status === 206 && (await t.arrayBuffer()).byteLength === 100 && t.headers.get('content-range')?.startsWith('bytes 0-99/'), 'Kacheln mit HTTP-Range ausgeliefert');
+	t = await fetch(BASE + '/kacheln/anderes.pmtiles', { headers: { range: 'bytes=0-9' } });
+	check(t.status === 404, 'Nur die eine Kacheldatei ist abrufbar');
+
+	t = await fetch(BASE + '/api/orte?bbox=8.77,53.08,8.85,53.11');
+	const fc = await t.json();
+	check(t.status === 200 && fc.features.length > 0 && fc.features.every((f) => f.properties.id && f.properties.k), `Kartenpunkte als GeoJSON (${fc.features.length})`);
+	t = await fetch(BASE + '/api/orte?bbox=0,40,20,60');
+	check(t.status === 400, 'Zu großer Kartenausschnitt abgelehnt');
+	t = await fetch(BASE + '/api/orte?bbox=8.77,53.08,8.85,53.11&k=toilette');
+	const onlyToilets = await t.json();
+	check(onlyToilets.features.every((f) => f.properties.k === 'toilette'), 'Filter nach Art wirkt');
+	t = await fetch(BASE + '/api/orte/suche?q=Findorff');
+	const sr = await t.json();
+	check(sr.regions.some((x) => x.name === 'Findorff'), 'Suche findet Stadtteil');
+	t = await fetch(BASE + '/api/regionen?q=Find');
+	check((await t.json()).some((x) => x.name === 'Findorff'), 'Regionssuche fürs Profil');
+
+	const X2 = client();
+	r = await X2.req('/karte');
+	check(r.status === 200 && r.body.includes('Familienkarte') && r.body.includes('/orte/'), 'Karte öffentlich, mit Liste ohne JavaScript');
+	const pid = fc.features.find((f) => f.properties.k === 'spielplatz').properties.id;
+	r = await X2.req(`/orte/${pid}`);
+	check(r.status === 200 && r.body.includes('OpenStreetMap') && r.body.includes('Quelle und Aktualität') && r.body.includes('Noch keine Erfahrungen'), 'Ortsseite mit Quelle, Aktualität, ehrlich ohne Bewertungen');
+	r = await X2.req('/orte/00000000-0000-0000-0000-000000000000');
+	check(r.status === 404, 'Unbekannter Ort: 404');
+	r = await X2.req('/karte/quellen');
+	check(r.status === 200 && r.body.includes('Open Database License'), 'Quellenseite mit Lizenzen');
+	r = await X2.req(`/orte/${pid}?/merken`, { method: 'POST', form: {} });
+	check(r.status === 303 && r.location.startsWith('/anmelden'), 'Merken nur angemeldet');
+
+	r = await A.req(`/orte/${pid}?/merken`, { method: 'POST', form: {} });
+	r = await A.req('/profil/orte');
+	check(r.body.includes(`/orte/${pid}`), 'Ort gemerkt, in „Meine Orte“');
+	r = await A.req(`/orte/${pid}?/melden`, { method: 'POST', form: { kind: 'defekt', message: 'Rutsche abgesperrt' } });
+	check(r.status === 200, 'Meldung „defekt“ gesendet');
+	r = await X2.req(`/orte/${pid}`);
+	check(r.body.includes('unbestätigt') && !r.body.includes('Rutsche abgesperrt'), 'Defekt sofort als unbestätigter Hinweis sichtbar, Freitext nicht öffentlich');
+	r = await req('/admin/daten/pruefung');
+	check(r.body.includes('Rutsche abgesperrt'), 'Redaktion sieht die Meldung mit Text');
+	const [rep] = await sqlT`select id from place_reports where place_id = ${pid}`;
+	r = await req('/admin/daten/pruefung?/meldung', { method: 'POST', form: { id: rep.id, decision: 'erledigt', notice: 'amtlich', text: 'Gesperrt bis Reparatur', source_url: 'https://www.bremen.de/' } });
+	r = await X2.req(`/orte/${pid}`);
+	check(r.body.includes('Amtliche Meldung') && r.body.includes('Gesperrt bis Reparatur'), 'Redaktion bestätigt als amtliche Meldung');
+
+	const [one] = await sqlT`select ST_X(location) as lon, ST_Y(location) as lat from places where id = ${pid}`;
+	r = await A.req('/orte/neu', { method: 'POST', form: { kind: 'spielplatz', lon: String(one.lon + 0.0001), lat: String(one.lat), name: 'Smoke-Spielplatz' } });
+	check(r.status === 409 && r.body.includes('Gibt es den Ort schon?'), 'Vorschlag: Dublette in der Nähe wird angezeigt');
+	r = await A.req('/orte/neu', { method: 'POST', form: { kind: 'spielplatz', lon: String(one.lon + 0.0001), lat: String(one.lat), name: 'Smoke-Spielplatz', bestaetigt: 'ja', features: 'wasserspiel' } });
+	const sugg = r.location.replace('/orte/', '');
+	check(r.status === 303 && r.location.startsWith('/orte/'), 'Vorschlag gespeichert');
+	r = await X2.req(`/orte/${sugg}`);
+	check(r.status === 404, 'Vorschlag vor Freigabe nicht öffentlich');
+	r = await req('/admin/daten/pruefung?/vorschlag', { method: 'POST', form: { id: sugg, decision: 'ja' } });
+	r = await X2.req(`/orte/${sugg}`);
+	check(r.status === 200 && r.body.includes('Smoke-Spielplatz') && r.body.includes('Von Mitgliedern'), 'Nach Freigabe öffentlich, als Mitglieder-Eintrag gekennzeichnet');
+
+	r = await req(`/admin/daten/ort/${pid}?/speichern`, { method: 'POST', form: { kind: 'spielplatz', name: 'Redaktionsname', status: 'aktiv', confirmation: 'redaktion' } });
+	check(r.status === 200 && r.body.includes('gesperrt'), 'Redaktion ändert Namen – Feld gesperrt');
+	mockMode = 'halb';
+	res = await runAndWait('osm-spielplaetze');
+	check(res.run?.status === 'vorschau' && /entfernt/.test(res.run.message ?? ''), 'Viele verschwundene Einträge: Abruf wartet auf Freigabe');
+	r = await req(`/admin/daten/lauf/${res.run?.id}`);
+	check(r.status === 200 && r.body.includes('Nicht mehr in der Quelle'), 'Vorschau zeigt verschwundene Einträge');
+	r = await req(`/admin/daten/lauf/${res.run?.id}?/verwerfen`, { method: 'POST', form: {} });
+	const [{ arch }] = await sqlT`select count(*)::int as arch from places where status = 'archiviert'`;
+	check(arch === 0, 'Verworfen: nichts archiviert');
+	mockMode = 'voll';
+	res = await runAndWait('osm-spielplaetze');
+	const [named] = await sqlT`select name from places where id = ${pid}`;
+	check(named.name === 'Redaktionsname', 'Gesperrter Name bleibt nach erneutem Import');
+	r = await A.req('/admin/daten');
+	check(r.status === 403, 'Mitglied ohne Rolle: Datenzentrale gesperrt');
+	await sqlT.end();
+
 	// Passkey-Endpunkte: nur gleiche Herkunft, nur angemeldet
 	r = await X.req('/api/passkey/login/options', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' } });
 	check(r.status === 403, 'Passkey-API lehnt fremde Herkunft ab');
@@ -340,6 +493,7 @@ try {
 	check(r.status === 200 && r.body.includes('challenge'), 'Passkey-Anmeldung liefert Herausforderung');
 } finally {
 	server.kill();
+	mock.close();
 }
 
 if (failures) {

@@ -7,13 +7,14 @@
 	let { data } = $props();
 
 	type Theme = 'sea' | 'yellow' | 'sky' | 'red' | 'navy' | 'paper';
-	const modules: { art: 'karte' | 'treffen' | 'community' | 'radar' | 'markt' | 'nachrichten'; title: string; text: string; stage: string; theme: Theme }[] = [
+	const modules: { art: 'karte' | 'treffen' | 'community' | 'radar' | 'markt' | 'nachrichten'; title: string; text: string; stage: string; theme: Theme; href?: string }[] = $derived([
 		{
 			art: 'karte',
 			title: 'Die Familienkarte',
-			text: 'Spielplätze, Wickelräume, Familiencafés und Ausflugsziele. Jeder Ort mit Quelle und Stand, Erfahrungen nur von echten Eltern.',
-			stage: 'Bauabschnitt 2',
-			theme: 'sea'
+			text: 'Spielplätze, Wickelmöglichkeiten, Toiletten und Ausflugsziele. Jeder Ort mit Quelle und Stand, Erfahrungen nur von echten Eltern.',
+			stage: (data.counts.spielplatz ?? 0) > 0 ? `${(data.counts.spielplatz ?? 0).toLocaleString('de-DE')} Spielplätze` : 'Daten werden übernommen',
+			theme: 'sea',
+			href: '/karte'
 		},
 		{
 			art: 'treffen',
@@ -50,7 +51,7 @@
 			stage: 'Bauabschnitte 4 und 7',
 			theme: 'paper'
 		}
-	];
+	]);
 
 	const promises = [
 		{ title: 'Keine Telefonnummern, keine Adressen', text: 'Kontakt läuft über die Familien-ID. Was andere sehen, entscheidest du.' },
@@ -133,11 +134,11 @@
 	</div>
 	<ul class="cards" role="list">
 		{#each modules as m}
-			<li class="postcard {m.theme}">
+			<li class="postcard {m.theme}" class:live={!!m.href}>
 				<ModuleArt name={m.art} />
-				<h3>{m.title}</h3>
+				<h3>{#if m.href}<a href={m.href}>{m.title}</a>{:else}{m.title}{/if}</h3>
 				<p>{m.text}</p>
-				<span class="stage">In Arbeit, {m.stage}</span>
+				<span class="stage">{m.href ? `Jetzt da · ${m.stage}` : `In Arbeit, ${m.stage}`}</span>
 			</li>
 		{/each}
 	</ul>
@@ -416,6 +417,22 @@
 	.postcard p {
 		margin: 0;
 		line-height: 1.45;
+	}
+	.postcard.live {
+		position: relative;
+	}
+	.postcard.live h3 a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.postcard.live h3 a::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+	}
+	.postcard.live h3 a:focus-visible {
+		outline: 3px solid var(--focus);
+		outline-offset: 4px;
 	}
 	.stage {
 		margin-top: auto;

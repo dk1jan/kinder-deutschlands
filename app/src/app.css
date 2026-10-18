@@ -213,6 +213,10 @@ input[type='text'],
 input[type='email'],
 input[type='password'],
 input[type='datetime-local'],
+input[type='search'],
+input[type='url'],
+input[type='number'],
+input:not([type]),
 select,
 textarea {
 	font: inherit;

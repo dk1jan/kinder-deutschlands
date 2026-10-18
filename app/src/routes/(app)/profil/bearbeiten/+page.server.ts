@@ -12,7 +12,7 @@ export const load: PageServerLoad = async (event) => {
 	const sql = db();
 	await ensureProfile(sql, user.id);
 	const p = (await getProfile(sql, user.id))!;
-	const regions = await sql`select code, name, level from regions where level in ('land', 'kreis', 'gemeinde', 'stadtteil') order by code`;
+	const [region] = p.region_code ? await sql`select name from regions where code = ${p.region_code}` : [];
 	return {
 		profile: {
 			displayName: p.display_name ?? '',
@@ -23,9 +23,9 @@ export const load: PageServerLoad = async (event) => {
 			regionCode: p.region_code ?? '',
 			discoverable: p.discoverable,
 			preset: p.privacy_preset,
-			visibility: p.visibility
-		},
-		regions: regions.map((r) => ({ code: r.code as string, name: r.name as string, level: r.level as string }))
+			visibility: p.visibility,
+			regionName: (region?.name as string | undefined) ?? ''
+		}
 	};
 };
 

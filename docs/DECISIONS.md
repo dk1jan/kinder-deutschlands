@@ -58,3 +58,21 @@ Persönliche Daten werden gelöscht, der Konto-Datensatz bleibt anonymisiert fü
 
 ## D-019 · Betriebseinstellungen in der Verwaltung, Geheimnisse verschlüsselt (18.10.2026)
 Wunsch Jan: Einstellungen im Backend statt in Portainer. Einstellungen liegen in `settings` (in Sicherungen enthalten), Geheimnisse dort nur AES-256-GCM-verschlüsselt mit einem aus `APP_SECRET` abgeleiteten Schlüssel; Anzeige nur „gespeichert ja/nein“. Recht `settings.manage`, jede Änderung im Protokoll ohne Geheimwert. Portainer-Variablen bleiben Rückfall. Ausnahme bleiben Werte, ohne die die App nicht startet oder die die Verschlüsselung selbst tragen: `APP_URL`, `APP_SECRET`, Datenbank-Zugang – die bleiben in Portainer.
+
+## D-020 · Datenquellen der Karte (18.10.2026, ergänzt D-012)
+Am 18.10.2026 per CI-Prüflauf echt geprüft. Orte: OpenStreetMap über Overpass (ODbL; Bremen 816, Niedersachsen 14 746 Spielplätze, 278/3 076 Toiletten), mit drei Ausweichservern und wachsender Wartezeit, da der Hauptserver zeitweise überlastet ist. Regionen: BKG VG250 per WFS als GeoJSON (amtlich, dl-de/by-2-0, Länder/Kreise/Gemeinden für 03 und 04). Bremer Stadtteile: keine offene amtliche Geometrie als Dienst gefunden – Übergangsweise OSM `admin_level=10` (23 Bremen, 9 Bremerhaven), Quelle sichtbar gekennzeichnet; amtliche Quelle bleibt Prüfkandidat. Namensnennung an Karte, Ortsseite und `/karte/quellen`. Hinweis ODbL: Mischung mit Mitgliederdaten ist eine abgeleitete Datenbank – Mitgliederbeiträge bleiben getrennt erkennbar, Export auf Anfrage; rechtliche Bewertung durch Betreiber.
+
+## D-021 · Eigene Kartenkacheln statt Kartendienst (18.10.2026)
+Ausschnitt aus dem täglichen Protomaps-Build per `pmtiles extract` (nur benötigte Bereiche per HTTP-Range), Bremen + Niedersachsen bis Zoom 15 ≈ 1,5 GB (Zoom 14 ≈ 0,7 GB), monatlich erneuert. Auslieferung durch die App (`/kacheln/basis.pmtiles`, Range), Schriften/Symbole im Image. Kein Kartenaufruf erzeugt Anfragen an Dritte; keine API-Schlüssel, keine Kosten. Stil: Protomaps-Ebenen mit eigenen Farben der Wimpelkette, hell/dunkel nach Einstellung.
+
+## D-022 · Importregeln (18.10.2026)
+Jede Quelle: Abruf → Abgleich per Prüfsumme → neu/geändert/entfernt. Automatische Übernahme nur, wenn höchstens 15 % (einstellbar) des Bestands verschwinden würden, sonst Vorschau zur Freigabe. Verschwundenes wird archiviert, nie gelöscht; Wiederauftauchen reaktiviert. Redaktionell geänderte Felder (auch einzelne Merkmale) werden gesperrt und nie überschrieben. Dubletten (gleiche Art ≤ 30 m) werden nur vorgeschlagen; Zusammenführen ist eine Redaktionsentscheidung, danach pflegt nur die älteste Quelle die Angaben. Fehler: Wiederholung nach 1, 2, 4 … Stunden bis zum Regelrhythmus.
+
+## D-023 · Zeitplan im Web-Container, kein n8n/Valkey für Abschnitt 2 (18.10.2026)
+Ein Abruf gleichzeitig, abgesichert über eine Datenbanksperre; nach Neustart werden hängende Läufe beendet. Spart einen Dienst und hält alles in Portainer sichtbar. n8n bleibt optional für spätere Quellen (M23 erlaubt das ausdrücklich), Valkey kommt mit Abschnitt 4/5.
+
+## D-024 · Merkmale dreiwertig, Hinweise nach Herkunft (18.10.2026)
+Ausstattung ist ja / nein / unbekannt – fehlende Angabe wird nie als „nein“ gezeigt. Meldungen „defekt“/„gesperrt“ erscheinen sofort als „Hinweis eines Mitglieds – unbestätigt“ (30 Tage, ohne Freitext); die Redaktion bestätigt („Redaktion“) oder kennzeichnet „amtlich“ mit Quellenlink. Freitext von Meldungen sieht nur die Redaktion.
+
+## D-025 · Bewertungen und Fotos erst mit Moderation (18.10.2026)
+M11/M13 verlangen Fotos und Erfahrungen. Sie kommen mit Abschnitt 3 (Moderatoren-Cockpit, Meldungen, Bildprüfung), damit keine Kinderfotos oder Beleidigungen ungeprüft erscheinen. Bis dahin steht ehrlich „Noch keine Erfahrungen“.

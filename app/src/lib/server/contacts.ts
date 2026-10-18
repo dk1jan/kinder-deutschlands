@@ -103,7 +103,10 @@ export async function discover(sql: Sql, viewerId: string, regionCode: string | 
 		join users u on u.id = p.user_id and u.status = 'active' and u.email_verified_at is not null
 		left join regions r on r.code = p.region_code
 		where p.discoverable and p.user_id <> ${viewerId}
-		  and (${regionCode}::text is null or p.region_code = ${regionCode})
+		  and (${regionCode}::text is null or p.region_code in (
+		      with recursive sub as (select code from regions where code = ${regionCode}
+		        union all select r.code from regions r join sub on r.parent_code = sub.code)
+		      select code from sub))
 		  and not exists (select 1 from blocks b where (b.blocker = ${viewerId} and b.blocked = p.user_id) or (b.blocker = p.user_id and b.blocked = ${viewerId}))
 		order by p.updated_at desc limit 50`;
 }

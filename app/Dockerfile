@@ -4,12 +4,27 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
+# Kartenschriften und -symbole (Protomaps basemaps-assets, OFL/CC0) – fest auf einen Stand gepinnt, nur die genutzten Schriften
+ARG BASEMAPS_ASSETS=028c18f713baecad011301ff7a69acc39bcc2ae7
+RUN wget -qO /tmp/assets.tgz "https://codeload.github.com/protomaps/basemaps-assets/tar.gz/${BASEMAPS_ASSETS}" \
+	&& mkdir -p /tmp/assets static/karte-assets/fonts static/karte-assets/sprites \
+	&& tar xzf /tmp/assets.tgz -C /tmp/assets --strip-components=1 \
+	&& cp -r "/tmp/assets/fonts/Noto Sans Regular" "/tmp/assets/fonts/Noto Sans Medium" "/tmp/assets/fonts/Noto Sans Italic" /tmp/assets/fonts/OFL.txt static/karte-assets/fonts/ \
+	&& cp -r /tmp/assets/sprites/v4 static/karte-assets/sprites/ \
+	&& rm -rf /tmp/assets /tmp/assets.tgz
 RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine
 # pg_dump passend zur Datenbank (PostgreSQL 17) für die Sicherung vor Migrationen; tini für sauberes Beenden
-RUN apk add --no-cache postgresql17-client tini tzdata && mkdir /backups && chown node:node /backups
-ENV NODE_ENV=production PORT=3000 TZ=Europe/Berlin
+RUN apk add --no-cache postgresql17-client tini tzdata && mkdir -p /backups /data/tiles && chown node:node /backups /data/tiles
+# pmtiles (go-pmtiles, BSD-3) schneidet den Kartenausschnitt aus dem Protomaps-Build – Prüfsumme wird kontrolliert
+ARG PMTILES_VERSION=1.31.2
+RUN cd /tmp && f="go-pmtiles_${PMTILES_VERSION}_Linux_x86_64.tar.gz" \
+	&& wget -q "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/$f" \
+	&& wget -qO checksums.txt "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/checksums.txt" \
+	&& grep " $f\$" checksums.txt | sha256sum -c - \
+	&& tar xzf "$f" -C /usr/local/bin pmtiles && rm -f "$f" checksums.txt && pmtiles version
+ENV NODE_ENV=production PORT=3000 TZ=Europe/Berlin TILES_DIR=/data/tiles
 WORKDIR /app
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules

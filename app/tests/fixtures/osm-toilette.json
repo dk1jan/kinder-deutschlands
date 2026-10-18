@@ -1,0 +1,658 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-18T16:13:35Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 2769810718,
+  "lat": 53.0780050,
+  "lon": 8.8003219,
+  "tags": {
+    "access": "customers",
+    "amenity": "toilets",
+    "changing_table": "yes",
+    "check_date:opening_hours": "2025-09-11",
+    "indoor": "yes",
+    "level": "0",
+    "opening_hours": "Su-Th 09:00-01:00, Fr,Sa 09:00-02:00",
+    "operator": "Cafe & Bar Celona",
+    "toilets:wheelchair": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4608541911,
+  "lat": 53.0764790,
+  "lon": 8.7987359,
+  "tags": {
+    "amenity": "toilets",
+    "fee": "no",
+    "operator": "Neues Museum Weserburg",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 699745121,
+  "lat": 53.0759463,
+  "lon": 8.8026699,
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "changing_table": "yes",
+    "charge": "0.50 EUR",
+    "contact:website": "http://www.JCDecaux.de",
+    "fee": "yes",
+    "operator": "JCDecaux Bremen",
+    "unisex": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2752194412,
+  "lat": 53.0775054,
+  "lon": 8.8058447,
+  "tags": {
+    "access": "customers",
+    "amenity": "toilets",
+    "changing_table:description": "yes",
+    "check_date:opening_hours": "2024-01-05",
+    "indoor": "yes",
+    "level": "4",
+    "name": "Karstadt Kundentoilette",
+    "opening_hours": "Mo-Sa 09:30-20:00",
+    "supervised": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2752194413,
+  "lat": 53.0776406,
+  "lon": 8.8055156,
+  "tags": {
+    "access": "customers",
+    "amenity": "toilets",
+    "changing_table:description": "yes",
+    "changing_table:location": "room",
+    "indoor": "yes",
+    "level": "3",
+    "name": "Karstadt Kundentoilette",
+    "opening_hours": "Mo-Sa 09:30-20:00",
+    "supervised": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6428905740,
+  "lat": 53.0802083,
+  "lon": 8.8067684,
+  "tags": {
+    "access": "customers",
+    "addr:housenumber": "212",
+    "addr:street": "Am Wall",
+    "amenity": "toilets",
+    "changing_table": "no",
+    "check_date": "2026-04-27",
+    "fee": "no",
+    "toilets:disposal": "flush",
+    "toilets:handwashing": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9219677593,
+  "lat": 53.0787795,
+  "lon": 8.8042545,
+  "tags": {
+    "amenity": "toilets",
+    "changing_table": "no",
+    "fee": "no",
+    "note": "Container",
+    "opening_hours": "Mo-Su 09:00-21:00",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9227935084,
+  "lat": 53.0793378,
+  "lon": 8.8028276,
+  "tags": {
+    "access": "customers",
+    "amenity": "toilets",
+    "fee": "yes",
+    "payment:coins": "yes",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 12692649961,
+  "lat": 53.0818654,
+  "lon": 8.7965720,
+  "tags": {
+    "amenity": "toilets",
+    "fee": "yes",
+    "indoor": "yes",
+    "level": "1"
+  }
+},
+{
+  "type": "node",
+  "id": 12162277233,
+  "lat": 53.0869184,
+  "lon": 8.8023978,
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "fee": "no",
+    "toilets:position": "urinal"
+  }
+},
+{
+  "type": "node",
+  "id": 12043480810,
+  "lat": 53.0877320,
+  "lon": 8.7846413,
+  "tags": {
+    "amenity": "toilets",
+    "opening_hours": "24/7",
+    "operator": "Hoyer Autohof",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10931670774,
+  "lat": 53.0735035,
+  "lon": 8.8126307,
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "fee": "no",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6426780525,
+  "lat": 53.0708229,
+  "lon": 8.8332506,
+  "tags": {
+    "amenity": "toilets",
+    "check_date": "2026-04-26",
+    "opening_hours": "Mo-Fr 14:00-19:00; Sa 13:00-18:00; Su off"
+  }
+},
+{
+  "type": "node",
+  "id": 5682120275,
+  "lat": 53.0758880,
+  "lon": 8.8101925,
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "check_date": "2026-08-10",
+    "check_date:opening_hours": "2026-08-10",
+    "fee": "yes",
+    "female": "yes",
+    "male": "yes",
+    "opening_hours": "Tu-We 11:00-20:00; Th-Sa 11:00-22:00",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6425085435,
+  "lat": 53.0770965,
+  "lon": 8.8115957,
+  "tags": {
+    "amenity": "toilets",
+    "description": "Schlüssel in den Geschäften",
+    "level": "-1"
+  }
+},
+{
+  "type": "node",
+  "id": 6426780527,
+  "lat": 53.0761257,
+  "lon": 8.8099810,
+  "tags": {
+    "amenity": "toilets",
+    "fee": "yes",
+    "opening_hours": "Tu,We 11:00-20:00; Th-Sa 11:00-22:00",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11113370640,
+  "lat": 53.0831378,
+  "lon": 8.8119291,
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "changing_table": "no",
+    "fee": "no",
+    "male": "yes",
+    "portable": "yes",
+    "toilets:handwashing": "no",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 12101471227,
+  "lat": 53.0820506,
+  "lon": 8.8147292,
+  "tags": {
+    "amenity": "toilets",
+    "fee": "no",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1513986138,
+  "lat": 53.0932089,
+  "lon": 8.8111325,
+  "tags": {
+    "amenity": "toilets",
+    "check_date": "2024-03-11",
+    "fee": "no",
+    "name": "Toilette am Findorff-Markt",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 2344540299,
+  "lat": 53.0917633,
+  "lon": 8.8124086,
+  "tags": {
+    "amenity": "toilets",
+    "fee": "no",
+    "operator": "Port Piet",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2812165501,
+  "lat": 53.0961616,
+  "lon": 8.8099364,
+  "tags": {
+    "amenity": "toilets",
+    "check_date": "2026-03-13",
+    "fee": "no",
+    "indoor": "yes",
+    "level": "0",
+    "wheelchair": "yes",
+    "wheelchair:description": "Tür mit Euroschloß. Direkt rechts neben dem Hinterausgang des Einkaufszentrums."
+  }
+},
+{
+  "type": "node",
+  "id": 11300205255,
+  "lat": 53.0932710,
+  "lon": 8.8229210,
+  "tags": {
+    "amenity": "toilets",
+    "changing_table": "no",
+    "fee": "no",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 11300208956,
+  "lat": 53.0932802,
+  "lon": 8.8228931,
+  "tags": {
+    "amenity": "toilets",
+    "changing_table": "no",
+    "fee": "no",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 2192658768,
+  "lat": 53.0943273,
+  "lon": 8.8240302,
+  "tags": {
+    "amenity": "toilets",
+    "changing_table": "yes",
+    "check_date": "2024-03-28",
+    "fee": "no",
+    "name": "Rolli-WC von Emma am See",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 977972907,
+  "center": {
+    "lat": 53.0823465,
+    "lon": 8.7816751
+  },
+  "nodes": [
+    9049222592,
+    9049222593,
+    9049222595,
+    9049222594,
+    9049222592
+  ],
+  "tags": {
+    "amenity": "toilets",
+    "building": "container",
+    "building:levels": "1",
+    "check_date": "2023-03-12",
+    "female": "yes",
+    "male": "yes",
+    "roof:levels": "0",
+    "roof:shape": "flat",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 384079767,
+  "center": {
+    "lat": 53.0765074,
+    "lon": 8.8073781
+  },
+  "nodes": [
+    3873749671,
+    3778980768,
+    3873749669,
+    3873749670,
+    3873749672,
+    3873749671
+  ],
+  "tags": {
+    "access": "permissive",
+    "amenity": "toilets",
+    "fixme": "größe und lage",
+    "indoor": "room",
+    "level": "0"
+  }
+},
+{
+  "type": "way",
+  "id": 377314796,
+  "center": {
+    "lat": 53.0819541,
+    "lon": 8.8055814
+  },
+  "nodes": [
+    2381893566,
+    3806889319,
+    3806889315,
+    3806889314,
+    3806889312,
+    3806889311,
+    3806889310,
+    1339640914,
+    2381893564,
+    2381893566
+  ],
+  "tags": {
+    "access": "private",
+    "amenity": "toilets",
+    "changing_table": "no",
+    "check_date": "2024-09-01",
+    "indoor": "room",
+    "level": "0",
+    "operator": "Hackerspace Bremen",
+    "toilets:disposal": "flush"
+  }
+},
+{
+  "type": "way",
+  "id": 181873699,
+  "center": {
+    "lat": 53.0991044,
+    "lon": 8.7999583
+  },
+  "nodes": [
+    1922333456,
+    1922333444,
+    1922333458,
+    1922333467,
+    1922333456
+  ],
+  "tags": {
+    "amenity": "toilets",
+    "building": "toilets",
+    "fee": "no",
+    "unisex": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 375528242,
+  "center": {
+    "lat": 53.0750284,
+    "lon": 8.8092609
+  },
+  "nodes": [
+    3788897497,
+    3788897468,
+    3788897454,
+    3788897450,
+    3788897393,
+    3777480034,
+    3777480028,
+    3777480024,
+    3788893638,
+    3788893637,
+    3788893646,
+    3777480027,
+    3788897366,
+    3777480037,
+    3788897487,
+    3777480164,
+    3775799147,
+    3788897492,
+    3788897495,
+    3788897497
+  ],
+  "tags": {
+    "amenity": "toilets",
+    "indoor": "room",
+    "level": "0.5",
+    "male": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 375528250,
+  "center": {
+    "lat": 53.0750220,
+    "lon": 8.8089617
+  },
+  "nodes": [
+    3777480022,
+    3788893631,
+    3788893644,
+    3788893647,
+    3788893649,
+    3788893650,
+    3788893651,
+    3788897376,
+    3788897386,
+    3788897422,
+    3788897439,
+    3788897482,
+    3788897479,
+    3788897486,
+    3788897510,
+    3788897513,
+    3788897515,
+    3788897493,
+    3788897453,
+    3788897430,
+    3788897416,
+    3788897399,
+    3788897390,
+    3788893655,
+    3788893648,
+    3788893645,
+    3788893632,
+    3777480022
+  ],
+  "tags": {
+    "amenity": "toilets",
+    "female": "yes",
+    "indoor": "room",
+    "level": "0.5"
+  }
+},
+{
+  "type": "way",
+  "id": 375528278,
+  "center": {
+    "lat": 53.0749749,
+    "lon": 8.8089284
+  },
+  "nodes": [
+    3788897386,
+    3788897376,
+    3788893651,
+    3788893645,
+    3788893648,
+    3788893655,
+    3788897390,
+    3788897386
+  ],
+  "tags": {
+    "amenity": "toilets",
+    "female": "yes",
+    "indoor": "room",
+    "level": "-1"
+  }
+},
+{
+  "type": "way",
+  "id": 375528281,
+  "center": {
+    "lat": 53.0749685,
+    "lon": 8.8090526
+  },
+  "nodes": [
+    3788897382,
+    3788897378,
+    3788897360,
+    3788893653,
+    3788893649,
+    3788893647,
+    3788893642,
+    3788897379,
+    3788897382
+  ],
+  "tags": {
+    "amenity": "toilets",
+    "indoor": "room",
+    "level": "-1",
+    "male": "yes",
+    "toilets:wheelchair": "no",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 373545635,
+  "center": {
+    "lat": 53.0835818,
+    "lon": 8.8138649
+  },
+  "nodes": [
+    3589580013,
+    800197183,
+    3589580031,
+    3589580033,
+    3589580018,
+    3589580013
+  ],
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "brand": "SANIFAIR",
+    "changing_table": "yes",
+    "fee": "yes",
+    "indoor": "room",
+    "level": "0",
+    "opening_hours": "24/7",
+    "operator": "SANIFAIR GmbH",
+    "operator:wikidata": "Q104814416",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1267975971,
+  "center": {
+    "lat": 53.0825497,
+    "lon": 8.8119387
+  },
+  "nodes": [
+    11776282656,
+    11776282657,
+    11776282658,
+    11776282659,
+    11776282656
+  ],
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "building": "yes",
+    "changing_table": "no",
+    "fee": "no",
+    "opening_hours": "24/7",
+    "toilets:disposal": "flush",
+    "unisex": "yes",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 1267975972,
+  "center": {
+    "lat": 53.0823700,
+    "lon": 8.8132203
+  },
+  "nodes": [
+    11776282660,
+    11776282661,
+    11776282662,
+    11776282663,
+    11776282660
+  ],
+  "tags": {
+    "access": "yes",
+    "amenity": "toilets",
+    "building": "yes",
+    "changing_table": "no",
+    "check_date": "2025-12-20",
+    "fee": "no",
+    "portable": "no",
+    "toilets:disposal": "flush",
+    "toilets:handwashing": "yes",
+    "unisex": "yes",
+    "wheelchair": "no"
+  }
+}
+
+  ]
+}

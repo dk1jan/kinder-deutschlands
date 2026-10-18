@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Notice from '$lib/components/Notice.svelte';
+	import RegionPicker from '$lib/components/RegionPicker.svelte';
 	import { CHILD_AGES, FIELDS, LEVELS, PRESETS } from '$lib/visibility';
 	let { data, form } = $props();
 	// svelte-ignore state_referenced_locally
@@ -15,10 +16,6 @@
 		preset = p as typeof preset;
 		if (p !== 'individuell') vis = { ...PRESETS[p as 'offen' | 'zurueckhaltend'] };
 	}
-	const groupedRegions = $derived([
-		{ label: 'Bundesländer', items: data.regions.filter((r) => r.level === 'land') },
-		{ label: 'Städte und Kreise', items: data.regions.filter((r) => r.level !== 'land') }
-	]);
 </script>
 
 <svelte:head><title>Profil bearbeiten – Kinder Deutschlands</title></svelte:head>
@@ -72,15 +69,8 @@
 			<legend>Region</legend>
 			<div class="field">
 				<label for="region_code">Grobe Region</label>
-				<span class="hint">Nie die Adresse. Feinere Regionen (Stadtteile) kommen mit dem Regionen-Import.</span>
-				<select id="region_code" name="region_code">
-					<option value="">Keine Angabe</option>
-					{#each groupedRegions as g}
-						<optgroup label={g.label}>
-							{#each g.items as r}<option value={r.code} selected={r.code === data.profile.regionCode}>{r.name}</option>{/each}
-						</optgroup>
-					{/each}
-				</select>
+				<span class="hint">Nie die Adresse – Stadtteil oder Gemeinde reicht.</span>
+				<RegionPicker id="region_code" name="region_code" code={data.profile.regionCode} label={data.profile.regionName} />
 			</div>
 			<label class="check">
 				<input type="checkbox" name="discoverable" checked={data.profile.discoverable} />

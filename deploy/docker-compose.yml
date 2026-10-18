@@ -36,13 +36,17 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_INSECURE_TLS: ${SMTP_INSECURE_TLS:-false}
+      TILES_DIR: /data/tiles
+      # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
+      NODE_OPTIONS: --max-old-space-size=1536
     ports:
       # Nur lokal erreichbar – öffentlich ausschließlich über Plesk (nginx, TLS)
       - "127.0.0.1:3120:3000"
     volumes:
       - backups:/backups
+      - tiles:/data/tiles
     networks: [backend, frontend]
-    mem_limit: 1g
+    mem_limit: 2g
     logging: *logging
 
   db:
@@ -101,6 +105,7 @@ services:
 volumes:
   db:
   backups:
+  tiles:
 
 networks:
   backend:
