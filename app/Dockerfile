@@ -17,13 +17,14 @@ RUN npm run build && npm prune --omit=dev
 FROM node:24-alpine
 # pg_dump passend zur Datenbank (PostgreSQL 17) für die Sicherung vor Migrationen; tini für sauberes Beenden
 RUN apk add --no-cache postgresql17-client tini tzdata && mkdir -p /backups /data/tiles && chown node:node /backups /data/tiles
-# pmtiles (go-pmtiles, BSD-3) schneidet den Kartenausschnitt aus dem Protomaps-Build – Prüfsumme wird kontrolliert
+# pmtiles (go-pmtiles, BSD-3) schneidet den Kartenausschnitt aus dem Protomaps-Build.
+# Das Release hat keine Prüfsummendatei – die Prüfsumme des Archivs ist hier fest hinterlegt (geprüft 18.10.2026).
 ARG PMTILES_VERSION=1.31.2
+ARG PMTILES_SHA256=3ed7dbf4ec2e6dfe5e25b6f70d1ffc932729f93c86db353bf514dd71010a312f
 RUN cd /tmp && f="go-pmtiles_${PMTILES_VERSION}_Linux_x86_64.tar.gz" \
 	&& wget -q "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/$f" \
-	&& wget -qO checksums.txt "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/checksums.txt" \
-	&& grep " $f\$" checksums.txt | sha256sum -c - \
-	&& tar xzf "$f" -C /usr/local/bin pmtiles && rm -f "$f" checksums.txt && pmtiles version
+	&& echo "${PMTILES_SHA256}  $f" | sha256sum -c - \
+	&& tar xzf "$f" -C /usr/local/bin pmtiles && rm -f "$f" && pmtiles version
 ENV NODE_ENV=production PORT=3000 TZ=Europe/Berlin TILES_DIR=/data/tiles
 WORKDIR /app
 COPY --from=build /app/build ./build
