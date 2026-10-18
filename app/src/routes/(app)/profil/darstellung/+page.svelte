@@ -15,6 +15,8 @@
 
 <svelte:head><title>Darstellung – Kinder Deutschlands</title></svelte:head>
 
+<div class="container narrow page">
+
 <p><a href="/profil">Zurück zum Profil</a></p>
 <h1>Darstellung</h1>
 
@@ -40,6 +42,7 @@
 	</fieldset>
 	<button class="btn" type="submit">Speichern</button>
 </form>
+</div>
 
 <style>
 	fieldset {
@@ -67,7 +70,7 @@
 	}
 	.option:has(input:checked) {
 		border-color: var(--ink);
-		box-shadow: inset 4px 0 0 var(--signal);
+		box-shadow: inset 4px 0 0 var(--yellow);
 	}
 	.option input {
 		width: 1.25rem;

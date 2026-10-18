@@ -5,6 +5,8 @@
 
 <svelte:head><title>Anmelden – Kinder Deutschlands</title></svelte:head>
 
+<div class="container narrow page">
+
 <h1>Anmelden</h1>
 
 {#if form?.error}
@@ -25,6 +27,7 @@
 </form>
 
 <p class="muted note">Die Registrierung für Mitglieder öffnet mit Abschnitt 1 (Mitglieds-ID und QR-Kontakt).</p>
+</div>
 
 <style>
 	.auth {

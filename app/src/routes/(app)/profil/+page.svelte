@@ -4,6 +4,8 @@
 
 <svelte:head><title>Profil – Kinder Deutschlands</title></svelte:head>
 
+<div class="container narrow page">
+
 <h1>Profil</h1>
 
 {#if data.user}
@@ -31,8 +33,13 @@
 		<button class="btn secondary" type="submit">Abmelden</button>
 	</form>
 {/if}
+</div>
 
 <style>
+	.account h2 {
+		font-size: var(--fs-l);
+		font-stretch: 100%;
+	}
 	.account {
 		margin-bottom: var(--sp-5);
 		max-width: var(--measure);

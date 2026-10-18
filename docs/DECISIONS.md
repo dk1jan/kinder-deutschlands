@@ -35,5 +35,8 @@ Absender z. B. `noreply@` der späteren Domain. SMTP-Zugang nur als Portainer-Um
 ## D-011 · Designrichtung „Wimpel & Watt“ (18.10.2026)
 Kühles Nordsee-Grau-Grün, tiefes Seegrün als Schrift, Tonnengelb als einziger Signalakzent; Schriften Bricolage Grotesque (Überschriften) und Atkinson Hyperlegible Next (Text, gut lesbar), selbst gehostet. Markenzeichen: der Wimpel (Bezug zum Kinderwagenwimpel mit QR-Kontakt).
 
+## D-013 · Neue Gestaltung „Wimpelkette“ – ersetzt die Farbwelt aus D-011 (18.10.2026)
+Rückmeldung Jan: erste Fassung zu leer und blass. Neu: Tiefsee-Navy als Schrift und Nachtgrund, Wimpelfarben Tonnengelb, Leuchtturmrot (Roter Sand), Wattgrün, Himmelblau – in beiden Modi gleich wie bedrucktes Material. Startseite mit Wimpelkette (einzige inszenierte Bewegung, respektiert reduzierte Bewegung), Kinderwagen-Illustration, Familien-ID als Wimpel-Etikett mit echtem QR-Code, Modul-Postkarten mit ehrlichem Bauabschnitt, schematischer Karte der Startregion, „Was wir nicht machen“. Desktop: Kopfleiste statt Seitenleiste; mobil: Kopfleiste + Tab-Leiste. Schriften bleiben (Bricolage jetzt mit schmaler Laufweite für Überschriften). Alle Illustrationen sind eigenes SVG, keine fremden Bilder.
+
 ## D-012 · Regionen nach amtlichem Regionalschlüssel (18.10.2026)
 Schlüssel = ARS/AGS (Land 2-stellig, Kreis 5-stellig, Gemeinde 8/12-stellig), Wurzel `de`. Bremen-Stadt `04011` und Bremerhaven `04012` sind kreisfreie Städte im Land Bremen `04` – damit sind Land, Stadt und Bremerhaven klar getrennt (M05). Vollständiger Bestand und Geometrien nur aus amtlicher Quelle per Import, nicht von Hand.

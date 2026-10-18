@@ -7,6 +7,8 @@
 
 <svelte:head><title>Bestätigungscode – Kinder Deutschlands</title></svelte:head>
 
+<div class="container narrow page">
+
 <h1>Bestätigungscode</h1>
 <p>Gib den sechsstelligen Code aus deiner Authenticator-App ein.</p>
 
@@ -22,3 +24,5 @@
 	</div>
 	<button class="btn" type="submit">Bestätigen</button>
 </form>
+</div>
+

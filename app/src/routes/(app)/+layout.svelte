@@ -5,7 +5,7 @@
 
 	let { children, data } = $props();
 
-	// Fünf Hauptziele. Marktplatz, Veranstaltungen und Hilfe werden über „Entdecken“ erreicht (siehe DECISIONS.md).
+	// Fünf Hauptziele (DECISIONS D-007). Veranstaltungen, Marktplatz und Hilfe laufen über „Entdecken“.
 	const nav = [
 		{ href: '/', label: 'Entdecken', icon: 'entdecken' },
 		{ href: '/karte', label: 'Karte', icon: 'karte' },
@@ -22,44 +22,56 @@
 
 <a class="skip" href="#inhalt">Zum Inhalt springen</a>
 
-<div class="shell">
-	<nav class="nav" aria-label="Hauptnavigation">
-		<a class="brand" href="/">
-			<Pennant size={30} />
-			<span>Kinder Deutschlands</span>
+<header class="top">
+	<div class="bar">
+		<a class="brand" href="/" aria-label="Kinder Deutschlands – Startseite">
+			<Pennant size={34} />
+			<span class="word">Kinder<br />Deutschlands</span>
 		</a>
-		<ul>
+		<nav class="desk" aria-label="Hauptnavigation">
 			{#each nav as item}
-				<li>
-					<a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>
-						<span class="flag" aria-hidden="true"></span>
-						<Icon name={item.icon} />
-						<span class="label">{item.label}</span>
-					</a>
-				</li>
+				<a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>{item.label}</a>
 			{/each}
-		</ul>
-		{#if data.canAdmin}
-			<a class="admin-link" href="/admin">
-				<Icon name="schild" size={20} />
-				<span>Verwaltung</span>
-			</a>
-		{/if}
-	</nav>
+		</nav>
+		<div class="actions">
+			{#if data.canAdmin}
+				<a class="admin" href="/admin"><Icon name="schild" size={18} /><span>Verwaltung</span></a>
+			{/if}
+			{#if data.user}
+				<a class="btn small secondary" href="/profil">Mein Konto</a>
+			{:else}
+				<a class="btn small" href="/anmelden">Anmelden</a>
+			{/if}
+		</div>
+	</div>
+</header>
 
-	<main id="inhalt" tabindex="-1">
-		{@render children()}
-	</main>
-</div>
+<main id="inhalt" tabindex="-1">
+	{@render children()}
+</main>
+
+<nav class="tabs" aria-label="Hauptnavigation">
+	<ul>
+		{#each nav as item}
+			<li>
+				<a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>
+					<span class="pin" aria-hidden="true"></span>
+					<Icon name={item.icon} />
+					<span class="label">{item.label}</span>
+				</a>
+			</li>
+		{/each}
+	</ul>
+</nav>
 
 <style>
 	.skip {
 		position: absolute;
 		left: var(--sp-3);
 		top: -100px;
-		z-index: 20;
+		z-index: 50;
 		background: var(--ink);
-		color: var(--bg);
+		color: var(--paper);
 		padding: var(--sp-2) var(--sp-4);
 		border-radius: var(--radius-s);
 	}
@@ -67,24 +79,75 @@
 		top: var(--sp-3);
 	}
 
-	main {
-		padding: var(--sp-5) var(--sp-4) calc(var(--nav-h) + var(--sp-6) + env(safe-area-inset-bottom));
-		max-width: 52rem;
-		outline: none;
+	.top {
+		position: sticky;
+		top: 0;
+		z-index: 30;
+		background: color-mix(in srgb, var(--paper) 86%, transparent);
+		backdrop-filter: saturate(1.4) blur(14px);
+		-webkit-backdrop-filter: saturate(1.4) blur(14px);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+	}
+	.bar {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-4);
+		height: var(--header-h);
+		max-width: var(--wide);
+		margin: 0 auto;
+		padding: 0 var(--gutter);
+	}
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.word {
+		font-family: var(--font-display);
+		font-weight: 780;
+		font-stretch: 82%;
+		font-size: 1.05rem;
+		line-height: 0.95;
+		letter-spacing: -0.01em;
+	}
+	.desk {
+		display: none;
+	}
+	.actions {
+		margin-left: auto;
+		display: flex;
+		align-items: center;
+		gap: var(--sp-3);
+	}
+	.admin {
+		display: none;
+		align-items: center;
+		gap: var(--sp-1);
+		color: var(--ink-2);
+		font-size: var(--fs-s);
+		text-decoration: none;
+	}
+	.admin:hover {
+		color: var(--ink);
 	}
 
-	/* Mobil: Leiste unten, einhändig erreichbar */
-	.nav {
+	main {
+		outline: none;
+		padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+	}
+
+	/* Mobil: Leiste unten, einhändig */
+	.tabs {
 		position: fixed;
 		inset: auto 0 0 0;
-		z-index: 10;
-		background: var(--surface);
+		z-index: 30;
+		background: color-mix(in srgb, var(--surface) 92%, transparent);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
 		border-top: 1px solid var(--line);
 		padding-bottom: env(safe-area-inset-bottom);
-	}
-	.brand,
-	.admin-link {
-		display: none;
 	}
 	ul {
 		list-style: none;
@@ -94,108 +157,83 @@
 		grid-template-columns: repeat(5, 1fr);
 		height: var(--nav-h);
 	}
-	ul a {
+	.tabs a {
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 2px;
+		gap: 3px;
 		height: 100%;
 		color: var(--ink-2);
 		text-decoration: none;
-		font-size: var(--fs-xs);
+		font-size: 0.75rem;
 	}
-	ul a[aria-current='page'] {
+	.tabs a[aria-current='page'] {
 		color: var(--ink);
 		font-weight: 700;
 	}
-	/* Aktiver Bereich: kleiner Wimpel über dem Symbol (Form + Fettung, nicht nur Farbe) */
-	.flag {
+	/* Aktiver Bereich: Wimpel über dem Symbol (Form + Fettung, nicht nur Farbe) */
+	.pin {
 		position: absolute;
-		top: 6px;
-		left: calc(50% + 9px);
-		width: 0;
-		height: 0;
-		border-top: 5px solid transparent;
-		border-bottom: 5px solid transparent;
-		border-left: 11px solid var(--signal);
+		top: 0;
+		left: 50%;
+		width: 26px;
+		height: 14px;
+		margin-left: -13px;
+		background: var(--yellow);
+		clip-path: polygon(0 0, 100% 0, 50% 100%);
 		opacity: 0;
-		transform: translateX(-4px);
+		transform: translateY(-8px);
 		transition:
-			opacity 0.18s ease,
-			transform 0.18s ease;
+			transform 0.25s cubic-bezier(0.2, 1.4, 0.4, 1),
+			opacity 0.15s ease;
 	}
-	ul a[aria-current='page'] .flag {
+	.tabs a[aria-current='page'] .pin {
 		opacity: 1;
 		transform: none;
 	}
 
-	/* Desktop: linke Leiste */
-	@media (min-width: 900px) {
-		.shell {
-			display: grid;
-			grid-template-columns: 240px 1fr;
-			min-height: 100dvh;
-		}
-		.nav {
-			position: sticky;
-			top: 0;
-			height: 100dvh;
-			border-top: 0;
-			border-right: 1px solid var(--line);
-			padding: var(--sp-5) var(--sp-3);
+	@media (min-width: 960px) {
+		.desk {
 			display: flex;
-			flex-direction: column;
-			gap: var(--sp-5);
-		}
-		.brand {
-			display: flex;
-			align-items: center;
-			gap: var(--sp-2);
-			padding: 0 var(--sp-3);
-			color: var(--ink);
-			text-decoration: none;
-			font-family: var(--font-display);
-			font-weight: 750;
-			font-size: var(--fs-l);
-			line-height: 1.1;
-		}
-		ul {
-			display: flex;
-			flex-direction: column;
-			height: auto;
 			gap: var(--sp-1);
+			margin-left: var(--sp-6);
 		}
-		ul a {
-			flex-direction: row;
-			justify-content: flex-start;
-			gap: var(--sp-3);
-			height: var(--touch);
-			padding: 0 var(--sp-3);
-			border-radius: var(--radius-s);
-			font-size: var(--fs-m);
-		}
-		ul a:hover {
-			background: var(--surface-2);
-		}
-		.flag {
-			top: 50%;
-			left: auto;
-			right: var(--sp-3);
-			margin-top: -5px;
-		}
-		.admin-link {
-			display: flex;
-			align-items: center;
-			gap: var(--sp-2);
-			margin-top: auto;
+		.desk a {
+			position: relative;
 			padding: var(--sp-2) var(--sp-3);
 			color: var(--ink-2);
-			font-size: var(--fs-s);
+			text-decoration: none;
+			font-weight: 600;
+			border-radius: var(--radius-s);
+		}
+		.desk a:hover {
+			color: var(--ink);
+			background: var(--surface-2);
+		}
+		.desk a[aria-current='page'] {
+			color: var(--ink);
+		}
+		.desk a[aria-current='page']::after {
+			content: '';
+			position: absolute;
+			left: 50%;
+			bottom: -11px;
+			width: 22px;
+			height: 12px;
+			margin-left: -11px;
+			background: var(--yellow);
+			clip-path: polygon(0 0, 100% 0, 50% 100%);
+		}
+		.admin {
+			display: inline-flex;
+		}
+		.tabs {
+			display: none;
 		}
 		main {
-			padding: var(--sp-7) var(--sp-7) var(--sp-7);
+			padding-bottom: 0;
 		}
 	}
 </style>

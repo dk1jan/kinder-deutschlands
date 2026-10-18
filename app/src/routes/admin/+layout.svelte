@@ -70,7 +70,7 @@
 		color: var(--ink);
 		font-weight: 700;
 		background: var(--surface-2);
-		box-shadow: inset 0 -3px 0 var(--signal);
+		box-shadow: inset 0 -3px 0 var(--yellow);
 	}
 	.who,
 	.back {
@@ -105,7 +105,7 @@
 			overflow: visible;
 		}
 		nav a[aria-current='page'] {
-			box-shadow: inset 4px 0 0 var(--signal);
+			box-shadow: inset 4px 0 0 var(--yellow);
 		}
 		.who {
 			display: block;

@@ -27,8 +27,8 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Rechte Rolle × Geltungsbereich × Aktion, befristet, Entzug, Protokoll | getestet | zweite Freigabe kritischer Aktionen: vorgesehen |
 | Regionsmodell (AGS/ARS) | umgesetzt | Bestand: Bund, 16 Länder, Bremen-Stadt, Bremerhaven. Kreise/Gemeinden/Stadtteile + Geometrien per Import (M23): vorgesehen |
 | Audit-Protokoll (ohne private Inhalte, IP gehasht) | getestet | |
-| Designsystem, Hell/Dunkel/System ohne Aufblitzen | getestet | auch Admin, Setup, Fehlerseite |
-| Mobile Navigation (5 Ziele), Desktop-Leiste | umgesetzt | Screenshots geprüft; Screenreader-Test: vorgesehen |
+| Designsystem „Wimpelkette“, Hell/Dunkel/System ohne Aufblitzen | getestet | Startseite + Unterseiten neu gestaltet (D-013); Admin/Setup nutzen dieselben Tokens |
+| Mobile Tab-Leiste (5 Ziele), Desktop-Kopfleiste | umgesetzt | Screenshots geprüft; Screenreader-Test: vorgesehen |
 | Sicherheitsheader, CSP, CSRF, noindex | getestet | |
 | PWA | vorgesehen | Manifest vorhanden; Service Worker, Push, Installationshilfe iOS: Abschnitt 4/5 |
 | Mehrsprachigkeit / einfache Sprache | vorgesehen | Oberfläche Deutsch |
