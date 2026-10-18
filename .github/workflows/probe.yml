@@ -1,47 +1,34 @@
-# Einmalige Prüfung externer Datenquellen (nur Hinweise im Lauf, keine Artefakte, kein Cache).
+# Einmalig: echter Datenausschnitt für lokale Tests. Ergebnis kurz auf Branch tmp-fixtures (wird danach gelöscht). Keine Artefakte, kein Cache.
 name: probe
 on: workflow_dispatch
 permissions:
-  contents: read
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
-      - name: VG250 Filter
-        continue-on-error: true
+      - name: Daten holen
         run: |
-          set +e
+          set -e
+          mkdir out && cd out
+          op() { for i in 1 2 3 4 5; do for ep in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
+            if curl -sf -m 200 -A 'kinder-deutschlands-test/1.0' --data-urlencode "data=$1" "$ep" -o "$2" && head -c 1 "$2" | grep -q '{'; then return 0; fi; done; sleep $((i*20)); done; return 1; }
+          B='53.085,8.79,53.10,8.83'
+          op "[out:json][timeout:120];nwr[\"leisure\"=\"playground\"]($B);out geom qt;node[\"playground\"]($B);out qt;" spielplatz.json
+          op "[out:json][timeout:120];nwr[\"amenity\"=\"toilets\"](53.07,8.78,53.10,8.84);out center qt;" toilette.json
+          op '[out:json][timeout:300];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;rel["boundary"="administrative"]["admin_level"="10"](area.a);out geom;' stadtteile.json
           W='https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&srsName=EPSG:4326&outputFormat=application/json'
-          {
-          for sn in 03 04; do
-            for t in vg250_lan vg250_krs vg250_gem; do
-              curl -s -m 300 "$W&typeNames=vg250:$t&cql_filter=sn_l='$sn'%20AND%20gf=4" -o f.json
-              echo "== $t sn_l=$sn: $(stat -c %s f.json) Bytes: $(python3 -c "import json;d=json.load(open('f.json'));print(len(d['features']), 'Objekte; Beispiel', [(f['properties']['ars'],f['properties']['gen'],f['properties']['bez']) for f in d['features'][:3]])" 2>&1 | head -c 400)"
-              [ "$sn" = 04 ] && python3 -c "import json;d=json.load(open('f.json'));[print('  ',f['properties']['ars'],f['properties']['gen'],f['properties']['bez'],f['properties']['gf'],f['geometry']['type']) for f in d['features']]" 2>&1 | head -12
-            done
-          done
-          echo "== Fehlerantwort Beispiel"; head -c 600 f.json
-          curl -s -m 60 "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities&version=2.0.0" | grep -o '<ows:Title>[^<]*' | head -2
-          } > out6.txt 2>&1; cat out6.txt
-      - name: OSM Stadtteile Bremen
-        continue-on-error: true
+          for t in lan krs gem; do curl -sf -m 120 "$W&typeNames=vg250:vg250_$t&cql_filter=sn_l='04'%20AND%20gf=4" -o vg250_$t.json; done
+          latest=$(curl -s https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;print(json.load(sys.stdin)[-1]['key'])")
+          curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar xz pmtiles
+          ./pmtiles extract "https://build.protomaps.com/$latest" bremen.pmtiles --bbox=8.70,53.03,8.92,53.14 --maxzoom=14
+          rm pmtiles
+          ls -la
+      - name: Auf temporären Branch legen
         run: |
-          set +e
-          curl -s -m 200 -A 'kinder-deutschlands-probe/1.0' --data-urlencode 'data=[out:json][timeout:120];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;rel["boundary"="administrative"]["admin_level"="10"](area.a);out tags;' https://overpass-api.de/api/interpreter -o st.json
-          python3 -c "
-          import json;d=json.load(open('st.json'))
-          print(len(d['elements']))
-          for e in d['elements']: print(e['id'], json.dumps({k:v for k,v in e['tags'].items() if k in ('name','ref','admin_level','de:regionalschluessel','de:amtlicher_gemeindeschluessel','wikidata','border_type','is_in')}, ensure_ascii=False))
-          " > out7.txt 2>&1; cat out7.txt
-      - name: Hinweise
-        if: always()
-        run: |
-          python3 - <<'PY'
-          import glob
-          for f in sorted(glob.glob('out*.txt')):
-              t = open(f, errors='replace').read()
-              for i in range(0, min(len(t), 3400 * 9), 3400):
-                  c = t[i:i+3400].replace('%', '%25').replace('\r', '').replace('\n', '%0A')
-                  print(f'::notice title={f}#{i//3400}::{c}')
-          PY
+          cd out
+          git init -q && git checkout -q -b tmp-fixtures
+          git config user.name "probe" && git config user.email "probe@users.noreply.github.com"
+          git add . && git commit -qm "temporäre Testdaten"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tmp-fixtures
