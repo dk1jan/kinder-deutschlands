@@ -90,6 +90,37 @@
 	</details>
 </section>
 
+<section class="card" aria-labelledby="luftbild">
+	<header>
+		<h2 id="luftbild">Luftbild auf der Karte</h2>
+		<span class="tag ok">{data.aerial.provider === 'esri' ? 'Esri · ganz Deutschland' : 'LGLN · nur Niedersachsen'}</span>
+	</header>
+	<p class="muted">
+		Ohne Einstellung zeigt die Karte das offene Luftbild des Landes Niedersachsen (LGLN, CC BY 4.0). Für Bremen gibt es kein frei nutzbares Luftbild.
+		Mit einem kostenlosen Schlüssel der ArcGIS Location Platform (Esri, bis 2 Mio. Kacheln im Monat ohne Kosten laut Esri) gilt das Luftbild überall. Die Kacheln laufen über unseren Server, der Schlüssel bleibt verschlüsselt hier.
+	</p>
+	{#if form?.aerialOk}<Notice kind="ok">{form.aerialOk}</Notice>{/if}
+	{#if form?.aerialError}<Notice kind="error">{form.aerialError}</Notice>{/if}
+	<form method="POST" action="?/luftbild" class="grid" autocomplete="off">
+		<div class="field wide">
+			<label for="esri_key">Esri-API-Schlüssel {#if data.aerial.provider === 'esri'}<span class="muted">(gespeichert – neu eingeben zum Ersetzen)</span>{/if}</label>
+			<input id="esri_key" name="esri_key" type="password" autocomplete="off" placeholder={data.aerial.provider === 'esri' ? '••••••••' : 'AAPK…'} />
+		</div>
+		<div class="actions wide"><button class="btn" type="submit">Prüfen und speichern</button></div>
+	</form>
+	{#if data.aerial.provider === 'esri'}
+		<form method="POST" action="?/luftbild"><input type="hidden" name="remove" value="1" /><button class="btn danger small" type="submit">Schlüssel entfernen</button></form>
+	{/if}
+	<details>
+		<summary>Wie komme ich an den Schlüssel?</summary>
+		<ol>
+			<li>Auf <code>location.arcgis.com</code> ein kostenloses ArcGIS-Location-Platform-Konto anlegen.</li>
+			<li>Unter „Developer credentials“ einen API-Schlüssel erstellen, Berechtigung <strong>Basemaps</strong> aktivieren.</li>
+			<li>Schlüssel hier einfügen und speichern. Bedingungen und Freikontingent bitte bei Esri prüfen.</li>
+		</ol>
+	</details>
+</section>
+
 <style>
 	.card {
 		background: var(--surface);
@@ -98,6 +129,7 @@
 		max-width: 48rem;
 		display: grid;
 		gap: var(--sp-4);
+		margin-bottom: var(--sp-5);
 	}
 	header {
 		display: flex;

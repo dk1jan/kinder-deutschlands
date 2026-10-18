@@ -95,8 +95,23 @@ export function flavor(theme: MapTheme): Flavor {
 	return { ...base, ...(theme === 'dark' ? DARK : LIGHT) } as Flavor;
 }
 
-export function buildStyle(theme: MapTheme, origin: string, tiles: boolean): StyleSpecification {
+export type Basemap = 'karte' | 'luftbild';
+
+/** Luftbild: Vektorkarte darunter (für kleine Zoomstufen und Lücken), Luftbild ab Zoom 10 darüber, Beschriftung obenauf. */
+export function buildStyle(theme: MapTheme, origin: string, tiles: boolean, basemap: Basemap = 'karte', aerialAttribution = ''): StyleSpecification {
 	const f = flavor(theme);
+	if (basemap === 'luftbild') {
+		const base = buildStyle(theme, origin, tiles, 'karte');
+		const labels = tiles ? layers('protomaps', flavor('dark'), { labelsOnly: true, lang: 'de' }).map((l) => ({ ...l, id: `lb-${l.id}` })) : [];
+		return {
+			...base,
+			sources: {
+				...base.sources,
+				luftbild: { type: 'raster', tiles: [`${origin}/luftbild/{z}/{x}/{y}.jpg`], tileSize: 256, minzoom: 10, maxzoom: 19, attribution: aerialAttribution }
+			},
+			layers: [...base.layers, { id: 'luftbild', type: 'raster', source: 'luftbild', minzoom: 10, paint: { 'raster-fade-duration': 150 } }, ...labels]
+		} as StyleSpecification;
+	}
 	if (!tiles) {
 		return {
 			version: 8,

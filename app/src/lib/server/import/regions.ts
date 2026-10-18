@@ -3,6 +3,7 @@
 // - Stadtteile Bremen/Bremerhaven aus OpenStreetMap (ODbL), solange keine offene amtliche Geometrie angebunden ist (D-020)
 import type { Sql } from '../db';
 import { overpass, type FetchOptions } from './osm';
+import { fetchRetry } from './net';
 
 export const VG250_WFS = 'https://sgx.geodatenzentrum.de/wfs_vg250';
 
@@ -23,8 +24,12 @@ async function wfs(type: string, land: string, fetchImpl: typeof fetch, base = p
 		outputFormat: 'application/json',
 		cql_filter: `sn_l='${land}' AND gf=4`
 	}).toString();
-	const res = await fetchImpl(u, { signal: AbortSignal.timeout(10 * 60 * 1000), headers: { accept: 'application/json' } });
-	if (!res.ok) throw new Error(`VG250 ${type}: HTTP ${res.status}`);
+	let res: Response;
+	try {
+		res = await fetchRetry(u, { headers: { accept: 'application/json' }, timeoutMs: 10 * 60 * 1000 }, 3, Number(process.env.RETRY_WAIT_MS ?? 30000), fetchImpl);
+	} catch (e) {
+		throw new Error(`VG250 ${type}: ${(e as Error).message}`);
+	}
 	const text = await res.text();
 	if (!text.startsWith('{')) throw new Error(`VG250 ${type}: keine GeoJSON-Antwort (${text.slice(0, 160)})`);
 	const d = JSON.parse(text) as { features?: Vg250Feature[] };
@@ -105,6 +110,8 @@ export async function importOsmDistricts(sql: Sql, cfg: { iso?: string; admin_le
 	const els = (await overpass(q, o)) as unknown as OsmRel[];
 	const rels = els.filter((e) => e.type === 'relation' && e.tags?.name);
 	if (!rels.length) throw new Error('OSM: keine Stadtteile gefunden.');
+	const [{ n: parents }] = await sql`select count(*)::int as n from regions where level in ('kreis', 'gemeinde') and geom is not null and code like ${land + '%'}`;
+	if (!parents) throw new Error('Noch keine Stadt-/Kreisgrenzen vorhanden – zuerst „Verwaltungsgebiete (VG250)“ abrufen. Wird danach automatisch wiederholt.');
 	let n = 0;
 	let skipped = 0;
 	await sql.begin(async (tx) => {
@@ -134,5 +141,6 @@ export async function importOsmDistricts(sql: Sql, cfg: { iso?: string; admin_le
 			n++;
 		}
 	});
+	if (!n) throw new Error(`Kein Stadtteil zugeordnet (${skipped} übersprungen).`);
 	return { counts: { stadtteile: n, uebersprungen: skipped }, message: `${n} Stadtteile aus OpenStreetMap${skipped ? `, ${skipped} übersprungen (außerhalb des Landes oder ohne Grenze)` : ''}.` };
 }

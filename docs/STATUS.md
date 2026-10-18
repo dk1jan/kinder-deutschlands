@@ -35,6 +35,8 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Designsystem „Wimpelkette“, Hell/Dunkel/System ohne Aufblitzen | getestet | Startseite + Unterseiten neu gestaltet (D-013); Admin/Setup nutzen dieselben Tokens |
 | Mobile Tab-Leiste (5 Ziele), Desktop-Kopfleiste | umgesetzt | Screenshots geprüft; Screenreader-Test: vorgesehen |
 | Sicherheitsheader, CSP, CSRF, noindex | getestet | |
+| Luftbild (LGLN Niedersachsen, optional Esri) | getestet | mit Nachbau des WMS; Bremen nur mit Esri-Schlüssel |
+| Navigation an externe Apps | getestet | Google, Apple, Waze, OSM, geo: |
 | Kartenoberfläche hell/dunkel, mobil/desktop | getestet | Bildschirmfotos geprüft; Screenreader-Test: vorgesehen |
 | PWA | vorgesehen | Manifest vorhanden; Service Worker, Push, Installationshilfe iOS: Abschnitt 4/5 |
 | Mehrsprachigkeit / einfache Sprache | vorgesehen | Oberfläche Deutsch |

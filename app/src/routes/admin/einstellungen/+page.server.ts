@@ -5,10 +5,11 @@ import { db } from '$lib/server/db';
 import { audit } from '$lib/server/audit';
 import { clearMailSettings, MailSettingsError, mailSettingsView, saveMailSettings } from '$lib/server/mailsettings';
 import { describeMailError, mails, sendMail, verifyMailServer } from '$lib/server/mailer';
+import { aerialInfo, ESRI_TILES, saveEsriKey } from '$lib/server/aerial';
 
 export const load: PageServerLoad = async (event) => {
 	await requireAction(event, 'settings.manage');
-	return { mail: mailSettingsView() };
+	return { mail: mailSettingsView(), aerial: aerialInfo() };
 };
 
 export const actions: Actions = {
@@ -50,6 +51,25 @@ export const actions: Actions = {
 		}
 		await audit(db(), { actorId: user.id, action: 'mail.test' });
 		return { ok: `Test-E-Mail an ${user.email} verschickt. Bitte Posteingang und Spam-Ordner prüfen.` };
+	},
+	luftbild: async (event) => {
+		const user = await requireAction(event, 'settings.manage');
+		const f = await event.request.formData();
+		const sql = db();
+		if (f.get('remove') === '1') {
+			await saveEsriKey(sql, null);
+			await audit(sql, { actorId: user.id, action: 'settings.aerial.cleared' });
+			return { aerialOk: 'Esri-Schlüssel entfernt. Luftbild wieder nur für Niedersachsen (LGLN).' };
+		}
+		const key = String(f.get('esri_key') ?? '').trim();
+		if (!/^[A-Za-z0-9._-]{20,400}$/.test(key)) return fail(400, { aerialError: 'Das sieht nicht nach einem gültigen API-Schlüssel aus.' });
+		// Schlüssel mit einer Kachel über Bremen prüfen, bevor er gespeichert wird
+		const r = await fetch(`${ESRI_TILES}/14/8592/5332?token=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(15000) }).catch(() => null);
+		if (!r?.ok || !(r.headers.get('content-type') ?? '').startsWith('image/'))
+			return fail(400, { aerialError: `Esri lehnt den Schlüssel ab (${r ? 'HTTP ' + r.status : 'nicht erreichbar'}). Ist „Basemaps“ für den Schlüssel freigegeben?` });
+		await saveEsriKey(sql, key);
+		await audit(sql, { actorId: user.id, action: 'settings.aerial.updated' });
+		return { aerialOk: 'Gespeichert und geprüft. Das Luftbild deckt jetzt auch Bremen ab.' };
 	},
 	zuruecksetzen: async (event) => {
 		const user = await requireAction(event, 'settings.manage');

@@ -76,3 +76,9 @@ Ausstattung ist ja / nein / unbekannt – fehlende Angabe wird nie als „nein�
 
 ## D-025 · Bewertungen und Fotos erst mit Moderation (18.10.2026)
 M11/M13 verlangen Fotos und Erfahrungen. Sie kommen mit Abschnitt 3 (Moderatoren-Cockpit, Meldungen, Bildprüfung), damit keine Kinderfotos oder Beleidigungen ungeprüft erscheinen. Bis dahin steht ehrlich „Noch keine Erfahrungen“.
+
+## D-026 · Luftbild (18.10.2026)
+Geprüft: Niedersachsen LGLN DOP20 per WMS offen (CC BY 4.0, „LGLN (Jahr)“), deckt Bremen nicht ab. Bremen DOP (Landesamt GeoInformation) nur gegen Gebühr, BKG-DOP nur für Berechtigte. Daher: LGLN als Standard, optional Esri World Imagery mit Schlüssel des Betreibers. Beides läuft über unseren Server (Besucher-IP bleibt bei uns), LGLN-Kacheln werden zwischengespeichert, Esri-Kacheln nicht dauerhaft. Darstellung: Vektorkarte darunter, Luftbild ab Zoom 10, Beschriftung obenauf.
+
+## D-027 · Navigation über externe Apps (18.10.2026)
+Keine eigene Routenberechnung für Autos/ÖPNV. „Hinweg“ übergibt nur das Ziel an Google Maps, Apple Karten, Waze, OpenStreetMap oder eine beliebige Karten-App (geo:). Hinweis im Menü, dass dort die Regeln des Anbieters gelten.

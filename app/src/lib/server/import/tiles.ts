@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, rename, rm, stat, statfs } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Sql } from '../db';
+import { fetchRetry } from './net';
 
 // Überschreibbar nur für Tests (lokaler Nachbau der Dienste)
 export const BUILDS_URL = process.env.PROTOMAPS_BUILDS_URL || 'https://build-metadata.protomaps.dev/builds.json';
@@ -43,8 +44,9 @@ export function validBbox(b: string): boolean {
 
 /** Neuester verfügbarer Build-Name, z. B. „20261017.pmtiles“. */
 export async function latestBuild(fetchImpl: typeof fetch = fetch): Promise<string> {
-	const res = await fetchImpl(BUILDS_URL, { signal: AbortSignal.timeout(30000) });
-	if (!res.ok) throw new Error(`Build-Liste nicht abrufbar (HTTP ${res.status})`);
+	const res = await fetchRetry(BUILDS_URL, { timeoutMs: 30000 }, 3, 10000, fetchImpl).catch((e) => {
+		throw new Error(`Build-Liste nicht abrufbar (${(e as Error).message})`);
+	});
 	const list = (await res.json()) as { key?: string }[];
 	const keys = list.map((b) => b.key).filter((k): k is string => !!k && /^\d{8}\.pmtiles$/.test(k)).sort();
 	if (!keys.length) throw new Error('Build-Liste ist leer.');

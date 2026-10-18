@@ -2,6 +2,16 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-18 · Karte: Luftbild, Navigation, verständliche Abruffehler
+
+**Was**
+- Umschalter Karte/Luftbild (gemerkt je Gerät). Luftbild Niedersachsen: LGLN DOP20 (CC BY 4.0), über eigenen Server ausgeliefert und zwischengespeichert (max. 6 GB). Bremen: kein freies Luftbild – Hinweis auf der Karte; optional Esri World Imagery mit eigenem Schlüssel unter Verwaltung → Einstellungen (verschlüsselt, vor dem Speichern geprüft).
+- „Hinweg“ öffnet Auswahl: Google Maps, Apple Karten, Waze, OpenStreetMap, andere Karten-App (geo:). Übergeben wird nur das Ziel. Zuletzt gewählte App steht oben.
+- Abrufe: Netzwerkfehler mit Ursache (DNS, Zertifikat, Zeitüberschreitung …) statt „fetch failed“, 3 Wiederholungen. Stadtteile melden einen Fehler, solange Stadtgrenzen fehlen, und laufen nach erfolgreichem VG250-Abruf automatisch erneut.
+**Warum** Rückmeldung Jan: VG250 „fetch failed“ auf dem Server, Kartentyp-Umschalter und Übergabe an Navigations-Apps fehlten. VG250 aus Node 24 Alpine im CI erreichbar → Ursache liegt im Servernetz oder war vorübergehend; die neue Meldung zeigt sie.
+**Module** M10, M11, M23, M24 · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler, 92 Unit/DB-Tests (neu: Luftbildgebiet, Leerkachel, Zwischenspeicher, Navigationslinks), Rauchtest (neu: Luftbildkachel, Leerkachel, Esri-Schlüssel-Ablehnung), Bildschirmfotos
+
 ## 2026-10-18 · Abschnitt 2: Familienkarte, Orte, Datenimport, Datenzentrale
 
 **Was**

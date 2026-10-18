@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { replaceState } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
+	import NavChooser from '$lib/components/NavChooser.svelte';
 	import FamilyMap, { type MapFeature, type MapView } from '$lib/components/FamilyMap.svelte';
 	import { KINDS, KIND_FILTERS, FILTER_FEATURES, FEATURES, distanceM, distanceText, type Kind } from '$lib/places';
 
@@ -23,6 +24,27 @@
 	let q = $state('');
 	let results = $state<{ places: { id: string; kind: Kind; name: string; region: string | null; lon: number; lat: number }[]; regions: { code: string; name: string; level: string; bbox: [number, number, number, number] }[] } | null>(null);
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+	let basemap = $state<'karte' | 'luftbild'>('karte');
+	$effect(() => {
+		try {
+			const v = localStorage.getItem('kd_basemap');
+			if (v === 'luftbild') basemap = 'luftbild';
+		} catch {
+			/* egal */
+		}
+	});
+	function toggleBasemap() {
+		basemap = basemap === 'karte' ? 'luftbild' : 'karte';
+		try {
+			localStorage.setItem('kd_basemap', basemap);
+		} catch {
+			/* egal */
+		}
+	}
+	// Bremen hat kein frei nutzbares Luftbild – ehrlich sagen, solange kein Esri-Schlüssel hinterlegt ist
+	const inBremen = $derived(
+		(viewC[0] > 8.48 && viewC[0] < 8.99 && viewC[1] > 52.98 && viewC[1] < 53.23) || (viewC[0] > 8.47 && viewC[0] < 8.66 && viewC[1] > 53.46 && viewC[1] < 53.61)
+	);
 	let urlTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const ref = $derived<[number, number]>(me ?? viewC);
@@ -201,6 +223,8 @@
 			features={feats}
 			selected={selected?.id ?? null}
 			label="Familienkarte mit Spielplätzen und Familienorten"
+			{basemap}
+			aerialAttribution={data.aerial.attribution}
 			onSelect={(f) => (selected = f)}
 			onData={(f, s) => ((items = f), (dataState = s))}
 			{onView}
@@ -208,7 +232,13 @@
 		{#if !data.tiles}
 			<p class="banner"><Icon name="hinweis" size={18} />Kartenhintergrund wird gerade eingerichtet – Orte sind schon sichtbar.</p>
 		{/if}
+		{#if basemap === 'luftbild' && inBremen && !data.aerial.bremen}
+			<p class="banner"><Icon name="hinweis" size={18} />Für Bremen gibt es kein frei nutzbares Luftbild – hier siehst du die Karte.</p>
+		{/if}
 		<div class="fabs">
+			<button type="button" class="fab" onclick={toggleBasemap} aria-pressed={basemap === 'luftbild'} aria-label={basemap === 'luftbild' ? 'Zur Kartenansicht wechseln' : 'Zum Luftbild wechseln'}>
+				<Icon name="ebenen" /><span class="fab-t">{basemap === 'luftbild' ? 'Karte' : 'Luftbild'}</span>
+			</button>
 			<button type="button" class="fab" onclick={locate} aria-label="Meinen Standort zeigen" disabled={locating}><Icon name="standort" /></button>
 			<button type="button" class="fab list-toggle" onclick={() => (listOpen = !listOpen)} aria-expanded={listOpen}>
 				<Icon name={listOpen ? 'karte' : 'liste'} /><span>{listOpen ? 'Karte' : 'Liste'}</span>
@@ -227,7 +257,7 @@
 				{/if}
 				<div class="row">
 					<a class="btn" href="/orte/{selected.id}">Details</a>
-					<a class="btn secondary" href="geo:{selected.lat},{selected.lon}?q={selected.lat},{selected.lon}"><Icon name="route" size={18} />Hinweg</a>
+					<NavChooser lat={selected.lat} lon={selected.lon} name={selected.n} up />
 				</div>
 			</section>
 		{/if}
@@ -534,6 +564,12 @@
 		font: inherit;
 		font-weight: 700;
 		cursor: pointer;
+	}
+	.fab-t {
+		font-size: var(--fs-s);
+	}
+	.fab[aria-pressed='true'] {
+		box-shadow: var(--shadow), inset 0 0 0 2px var(--yellow);
 	}
 	.fab.list-toggle {
 		background: var(--navy);

@@ -4,6 +4,7 @@ import { tileState } from '$lib/server/import/tiles';
 import { placeCounts } from '$lib/server/places';
 import { displayName, type Kind } from '$lib/places';
 import { isUuid } from '$lib/server/contacts';
+import { aerialInfo } from '$lib/server/aerial';
 
 const BREMEN: [number, number] = [8.8017, 53.0793];
 
@@ -52,6 +53,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		order by p.location <-> ST_SetSRID(ST_MakePoint(${center[0]}, ${center[1]}), 4326) limit 30`;
 	return {
 		tiles: !!tiles?.present,
+		aerial: aerialInfo(),
 		counts,
 		total: Object.values(counts).reduce((a, b) => a + (b ?? 0), 0),
 		center,

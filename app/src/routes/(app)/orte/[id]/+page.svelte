@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import FamilyMap from '$lib/components/FamilyMap.svelte';
+	import NavChooser from '$lib/components/NavChooser.svelte';
 	import { KINDS, CONFIRMATION, REPORT_KINDS, FEATURE_GROUPS, featuresFor, ageText, distanceText, type FeatureGroup } from '$lib/places';
 
 	let { data, form } = $props();
@@ -75,7 +76,7 @@
 			{:else}
 				<a class="act" href="/anmelden?weiter=/orte/{p.id}"><Icon name="stern" size={20} /><span>Merken</span></a>
 			{/if}
-			<a class="act" href="geo:{p.lat},{p.lon}?q={p.lat},{p.lon}"><Icon name="route" size={20} /><span>Hinweg</span></a>
+			<NavChooser lat={p.lat} lon={p.lon} name={p.name} variant="tile" />
 			<button class="act" type="button" onclick={share}><Icon name="extern" size={20} /><span>Teilen</span></button>
 			<a class="act" href="#melden"><Icon name="flagge" size={20} /><span>Melden</span></a>
 		</div>

@@ -36,7 +36,9 @@ const env = {
 	VG250_URL: 'http://127.0.0.1:3998/vg250',
 	PROTOMAPS_BUILDS_URL: 'http://127.0.0.1:3998/builds.json',
 	PROTOMAPS_BUILD_BASE: 'http://127.0.0.1:3998/build/',
-	PMTILES_BIN: '/tmp/kd-smoke-pmtiles'
+	PMTILES_BIN: '/tmp/kd-smoke-pmtiles',
+	LGLN_WMS_URL: 'http://127.0.0.1:3998/lgln',
+	RETRY_WAIT_MS: '50'
 };
 
 // ---------- Nachbau externer Dienste mit echten Ausschnitten (tests/fixtures, © OpenStreetMap-Mitwirkende / © BKG) ----------
@@ -62,6 +64,7 @@ const mock = createServer((rq, rs) => {
 			return send(JSON.stringify({ elements: [] }));
 		}
 		if (u.pathname === '/vg250') return send(fx(`${u.searchParams.get('typeNames').replace('vg250:', '')}.json`));
+		if (u.pathname === '/lgln') { rs.writeHead(200, { 'content-type': 'image/jpeg' }); return rs.end(Buffer.alloc(4000, 7)); }
 		if (u.pathname === '/builds.json') return send(JSON.stringify([{ key: '20261017.pmtiles' }, { key: '20261018.pmtiles' }]));
 		rs.writeHead(404); rs.end();
 	});
@@ -412,6 +415,15 @@ try {
 	check(t.status === 206 && (await t.arrayBuffer()).byteLength === 100 && t.headers.get('content-range')?.startsWith('bytes 0-99/'), 'Kacheln mit HTTP-Range ausgeliefert');
 	t = await fetch(BASE + '/kacheln/anderes.pmtiles', { headers: { range: 'bytes=0-9' } });
 	check(t.status === 404, 'Nur die eine Kacheldatei ist abrufbar');
+
+	t = await fetch(BASE + '/luftbild/14/8592/5331.jpg');
+	check(t.status === 200 && t.headers.get('content-type') === 'image/jpeg' && (await t.arrayBuffer()).byteLength === 4000, 'Luftbildkachel über eigenen Server');
+	t = await fetch(BASE + '/luftbild/14/0/0.jpg');
+	check(t.status === 200 && t.headers.get('content-type') === 'image/png', 'Außerhalb des Gebiets: durchsichtige Kachel');
+	r = await req('/admin/einstellungen');
+	check(r.body.includes('Luftbild auf der Karte') && r.body.includes('LGLN'), 'Einstellungen: Luftbild-Anbieter sichtbar');
+	r = await req('/admin/einstellungen?/luftbild', { method: 'POST', form: { esri_key: 'kurz' } });
+	check(r.status === 400, 'Ungültiger Esri-Schlüssel abgelehnt');
 
 	t = await fetch(BASE + '/api/orte?bbox=8.77,53.08,8.85,53.11');
 	const fc = await t.json();

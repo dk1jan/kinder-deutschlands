@@ -19,7 +19,7 @@
 	import { onMount } from 'svelte';
 	import type { Map as MlMap, GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { buildStyle, currentTheme, ATTRIBUTION_PLACES, type MapTheme } from '$lib/map/style';
+	import { buildStyle, currentTheme, ATTRIBUTION_PLACES, type MapTheme, type Basemap } from '$lib/map/style';
 	import { addMarkerImages } from '$lib/map/markers';
 
 	interface Props {
@@ -32,6 +32,8 @@
 		selected?: string | null;
 		points?: { lon: number; lat: number; kind: string }[];
 		label?: string;
+		basemap?: Basemap;
+		aerialAttribution?: string;
 		onSelect?: (f: MapFeature | null) => void;
 		onData?: (f: MapFeature[], state: 'ok' | 'zoom' | 'error' | 'truncated') => void;
 		onView?: (v: MapView) => void;
@@ -47,6 +49,8 @@
 		selected = null,
 		points = [],
 		label = 'Karte',
+		basemap = 'karte',
+		aerialAttribution = '',
 		onSelect,
 		onData,
 		onView,
@@ -195,6 +199,16 @@
 		return map ? view() : null;
 	}
 
+	// Kartenart gewechselt → Stil neu setzen (Orte werden danach wieder eingeblendet)
+	let currentBasemap: Basemap = 'karte';
+	$effect(() => {
+		const b = basemap;
+		if (!map || b === currentBasemap) return;
+		currentBasemap = b;
+		ready = false;
+		map.setStyle(buildStyle(theme, location.origin, tiles, b, aerialAttribution), { diff: false });
+	});
+
 	// Filter geändert → neu laden
 	$effect(() => {
 		void filters.join(',');
@@ -230,7 +244,7 @@
 				theme = currentTheme();
 				const m = new maplibregl.Map({
 					container: el,
-					style: buildStyle(theme, location.origin, tiles),
+					style: buildStyle(theme, location.origin, tiles, basemap, aerialAttribution),
 					center,
 					zoom,
 					minZoom: 5,
@@ -303,6 +317,7 @@
 					}
 				}
 				map = m;
+				currentBasemap = basemap;
 
 				// Modus folgt der Einstellung (System oder Auswahl im Profil)
 				const restyle = () => {
@@ -310,7 +325,7 @@
 					if (t === theme || !map) return;
 					theme = t;
 					ready = false;
-					map.setStyle(buildStyle(theme, location.origin, tiles), { diff: false });
+					map.setStyle(buildStyle(theme, location.origin, tiles, currentBasemap, aerialAttribution), { diff: false });
 				};
 				mq = matchMedia('(prefers-color-scheme: dark)');
 				mq.addEventListener('change', restyle);

@@ -7,9 +7,11 @@ import { allowIndexing } from '$lib/server/config';
 import { reapplyDeletions } from '$lib/server/account';
 import { loadMailSettings, mailSettingsLoaded } from '$lib/server/mailsettings';
 import { startScheduler } from '$lib/server/import/jobs';
+import { loadAerial } from '$lib/server/aerial';
 
 // Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
 export const init: ServerInit = async () => {
+	await loadAerial(db()).catch(() => {});
 	try {
 		await loadMailSettings(db());
 	} catch (e) {
@@ -38,7 +40,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.session = null;
 
-	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/') && !path.startsWith('/kacheln/')) {
+	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/') && !path.startsWith('/kacheln/') && !path.startsWith('/luftbild/')) {
 		const sql = db();
 		if (!mailSettingsLoaded()) await loadMailSettings(sql).catch(() => {});
 		if (!setupDone) {

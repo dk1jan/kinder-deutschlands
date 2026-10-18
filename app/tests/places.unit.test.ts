@@ -174,3 +174,41 @@ describe('Echter OSM-Ausschnitt Bremen-Findorff (tests/fixtures)', async () => {
 		expect(recs.every((r) => r.kind === 'toilette')).toBe(true);
 	});
 });
+
+describe('Luftbild und Navigation', async () => {
+	const { tileInArea, tileBbox3857, aerialTile } = await import('../src/lib/server/aerial');
+	const { navUrl } = await import('../src/lib/components/NavChooser.svelte');
+	it('nur Kacheln in Bremen/Niedersachsen und Zoom 10–19', () => {
+		expect(tileInArea(14, 8592, 5331)).toBe(true); // Bremen
+		expect(tileInArea(14, 0, 0)).toBe(false);
+		expect(tileInArea(9, 268, 166)).toBe(false);
+		expect(tileInArea(20, 1, 1)).toBe(false);
+		expect(tileInArea(14, -1, 5)).toBe(false);
+		const b = tileBbox3857(0, 0, 0);
+		expect(Math.round(b[0])).toBe(-20037508);
+	});
+	it('leere LGLN-Kachel (außerhalb Niedersachsens) gilt als „kein Luftbild“, echte wird gespeichert', async () => {
+		process.env.TILES_DIR = '/tmp/kd-aerial-test';
+		const { rmSync } = await import('node:fs');
+		rmSync('/tmp/kd-aerial-test', { recursive: true, force: true });
+		let calls = 0;
+		const f = (async () => {
+			calls++;
+			return new Response(new Uint8Array(calls === 1 ? 600 : 5000), { headers: { 'content-type': 'image/jpeg' } });
+		}) as unknown as typeof fetch;
+		expect(await aerialTile(15, 17184, 10663, f)).toBeNull();
+		expect(await aerialTile(15, 17184, 10663, f)).toBeNull(); // aus dem Speicher, kein neuer Abruf
+		expect(calls).toBe(1);
+		const t = await aerialTile(15, 17200, 10700, f);
+		expect(t?.cache).toBe('neu');
+		expect((await aerialTile(15, 17200, 10700, f))?.cache).toBe('speicher');
+		expect(await aerialTile(15, 1, 1, f)).toBeNull();
+	});
+	it('Navigation: Ziel-Links für Google, Apple, Waze, OSM, andere App', () => {
+		expect(navUrl('google', 53.08, 8.8, 'X')).toBe('https://www.google.com/maps/dir/?api=1&destination=53.080000,8.800000');
+		expect(navUrl('apple', 53.08, 8.8, 'Spielplatz A&B')).toBe('https://maps.apple.com/?daddr=53.080000,8.800000&q=Spielplatz%20A%26B');
+		expect(navUrl('waze', 53.08, 8.8, 'X')).toBe('https://waze.com/ul?ll=53.080000,8.800000&navigate=yes');
+		expect(navUrl('geo', 53.08, 8.8, 'X')).toBe('geo:53.080000,8.800000?q=53.080000,8.800000(X)');
+		expect(navUrl('osm', 53.08, 8.8, 'X')).toContain('openstreetmap.org/directions?route=%3B53.080000%2C8.800000');
+	});
+});

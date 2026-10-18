@@ -77,7 +77,9 @@ Rückfall: Ist in der Verwaltung nichts gespeichert, gelten die Portainer-Variab
 Läuft von selbst. Nach dem ersten Ausrollen holt die App nacheinander: Regionen (VG250, Stadtteile), dann die Kartenkacheln (~1,5 GB in das Volume `tiles`, wenige Minuten), dann die Orte (Spielplätze, Toiletten …, je nach Overpass-Auslastung 5–30 Minuten). Stand sichtbar unter **Verwaltung → Daten und Orte**; dort auch „Jetzt abrufen“ und „Pausieren“.
 - Speicher: `tiles` ≈ 1,5 GB + beim Erneuern kurz dieselbe Menge zusätzlich (Prüfung: mindestens 3 GB frei).
 - Arbeitsspeicher: Web-Container 2 GB (Niedersachsen-Import).
-- Ausgehende Verbindungen des Web-Containers: overpass-api.de (+ Ausweichserver), sgx.geodatenzentrum.de, build.protomaps.com. Beim Kartenaufruf der Besucher: keine.
+- Ausgehende Verbindungen des Web-Containers: overpass-api.de (+ Ausweichserver), sgx.geodatenzentrum.de, build.protomaps.com, opendata.lgln.niedersachsen.de (Luftbild), optional ibasemaps-api.arcgis.com. Beim Kartenaufruf der Besucher: keine direkten Anfragen an Dritte.
+- Luftbild Bremen: Verwaltung → Einstellungen → Esri-API-Schlüssel (optional).
+- Abruffehler prüfen: Meldung in Verwaltung → Daten und Orte. Netz testen: `docker exec kinder-deutschlands-web-1 wget -qO- "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities" | head -c 200`
 - Nur zum Testen (nie in Produktion setzen): `SCHEDULER=off`, `OVERPASS_URL`, `VG250_URL`, `PROTOMAPS_BUILDS_URL`, `PROTOMAPS_BUILD_BASE`, `PMTILES_BIN`.
 
 ## Falsches Zertifikat / „Nicht sicher“

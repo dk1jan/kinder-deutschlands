@@ -2,6 +2,7 @@
 // Daten © OpenStreetMap-Mitwirkende, Lizenz ODbL 1.0 – Namensnennung an Karte und Detailseite.
 import { CHANGING_LOCATIONS, SURFACES, type Features, type Kind } from '$lib/places';
 import type { ImportRecord } from './types';
+import { netError } from './net';
 
 export const OVERPASS_DEFAULT = [
 	'https://overpass-api.de/api/interpreter',
@@ -297,7 +298,7 @@ export async function overpass(query: string, o: FetchOptions): Promise<OsmEleme
 				}
 				return data.elements;
 			} catch (e) {
-				last = `${new URL(ep).host}: ${(e as Error).message}`;
+				last = netError(e, new URL(ep).host);
 			}
 		}
 		if (attempt < retries - 1) await new Promise((r) => setTimeout(r, wait(attempt)));
