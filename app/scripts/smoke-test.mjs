@@ -201,6 +201,16 @@ try {
 	check(r.status === 403, 'Formular von fremder Herkunft wird blockiert (CSRF)');
 
 	// ---------- Abschnitt 1: Mitglieder ----------
+	r = await req('/admin/einstellungen');
+	check(r.status === 200 && r.body.includes('Mailserver (SMTP)'), 'Admin: Einstellungsseite E-Mail-Versand');
+	r = await req('/admin/einstellungen?/speichern', { method: 'POST', form: { host: '127.0.0.1', port: '2', user: 'noreply@example.org', password: 'Smoke-Geheimnis-42', from: 'noreply@example.org' } });
+	check(r.status === 200 && r.body.includes('Gespeichert') && r.body.includes('nicht'), 'Admin: Mailserver gespeichert, Verbindungsfehler wird verständlich gemeldet');
+	r = await req('/admin/einstellungen');
+	check(r.body.includes('hier gespeichert') && !r.body.includes('Smoke-Geheimnis-42'), 'Admin: gespeicherter Mailserver aktiv, Passwort nie im HTML');
+	r = await req('/admin/einstellungen?/speichern', { method: 'POST', form: { host: 'kein host', port: '587', from: 'x' } });
+	check(r.status === 400, 'Admin: ungültige Mail-Einstellungen abgelehnt');
+	r = await req('/admin/einstellungen?/zuruecksetzen', { method: 'POST', form: {} });
+	check(r.status === 200, 'Admin: gespeicherte Mail-Einstellungen entfernt');
 	r = await req('/admin?/testmail', { method: 'POST', form: {} });
 	check(r.status === 200 && lastMailTo('admin@example.org')?.subject.includes('Test'), 'Admin: Test-E-Mail wird verschickt');
 

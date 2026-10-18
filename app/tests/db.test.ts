@@ -123,16 +123,14 @@ d('Datenbank: Migration, Einrichtung, Rechte, Sitzungen', () => {
 
 	it('Neue Migration: vorher wird gesichert', async () => {
 		await sql`delete from schema_migrations where version = (select max(version) from schema_migrations)`;
-		// Migration ist nicht idempotent – deshalb nur prüfen, dass VOR dem Einspielen gesichert wird und der Fehler sauber abbricht
-		let failed = false;
+		// Je nach Migration läuft sie erneut durch oder bricht ab – in beiden Fällen muss VORHER gesichert werden
 		try {
 			migrate();
 		} catch {
-			failed = true;
+			/* nicht idempotente Migration: sauberer Abbruch, Transaktion zurückgerollt */
 		}
-		expect(failed).toBe(true);
 		expect(readdirSync(backupDir).some((f) => f.startsWith('pre-migrate-'))).toBe(true);
-		// Daten unverändert (Transaktion zurückgerollt)
+		// Daten unverändert
 		const [{ n }] = await sql`select count(*)::int as n from users`;
 		expect(n).toBe(2);
 	});

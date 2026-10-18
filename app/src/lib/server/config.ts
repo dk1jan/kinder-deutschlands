@@ -24,10 +24,6 @@ export function key(purpose: string): Buffer {
 	return k;
 }
 
-export function smtpConfigured(): boolean {
-	return !!(env.SMTP_HOST && env.SMTP_FROM);
-}
-
 export function gitSha(): string {
 	return env.GIT_SHA || 'lokal';
 }

@@ -25,9 +25,10 @@
 	{#if form?.mailOk}<Notice kind="ok">{form.mailOk}</Notice>{/if}
 	{#if form?.mailError}<Notice kind="error">{form.mailError}</Notice>{/if}
 	{#if data.mailOpen}
-		<form method="POST" action="?/testmail"><button class="btn secondary" type="submit">Test-E-Mail an mich senden</button></form>
+		<div class="mailrow"><form method="POST" action="?/testmail"><button class="btn secondary" type="submit">Test-E-Mail an mich senden</button></form><a class="btn secondary" href="/admin/einstellungen">Mail-Einstellungen</a></div>
 	{:else}
-		<p class="muted">Nicht eingerichtet. SMTP-Zugang in Portainer eintragen (siehe DEPLOYMENT.md). Bis dahin sind Registrierung und Passwort-Zurücksetzen geschlossen.</p>
+		<p class="muted">Nicht eingerichtet. Bis dahin sind Registrierung und Passwort-Zurücksetzen geschlossen.</p>
+		<a class="btn" href="/admin/einstellungen">Mailserver eintragen</a>
 	{/if}
 </section>
 
@@ -70,6 +71,11 @@
 	}
 	.mail {
 		margin-bottom: var(--sp-6);
+	}
+	.mailrow {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sp-2);
 	}
 	.st {
 		font-weight: 700;

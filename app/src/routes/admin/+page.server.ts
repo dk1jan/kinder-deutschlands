@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { mailConfigured, mails, sendMail } from '$lib/server/mailer';
+import { describeMailError, mailConfigured, mails, sendMail } from '$lib/server/mailer';
 import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { requireAction } from '$lib/server/guard';
@@ -30,7 +30,7 @@ export const actions: Actions = {
 		try {
 			await sendMail(mails.test(user.email));
 		} catch (e) {
-			return fail(500, { mailError: `Versand fehlgeschlagen: ${e instanceof Error ? e.message : 'unbekannter Fehler'}` });
+			return fail(500, { mailError: `Versand fehlgeschlagen: ${describeMailError(e)}` });
 		}
 		await audit(db(), { actorId: user.id, action: 'mail.test' });
 		return { mailOk: `Test-E-Mail an ${user.email} verschickt. Bitte Posteingang und Spam-Ordner prüfen.` };

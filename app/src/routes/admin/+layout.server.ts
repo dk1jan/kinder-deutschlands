@@ -6,10 +6,11 @@ import { userCan } from '$lib/server/roles';
 export const load: LayoutServerLoad = async (event) => {
 	const user = await requireAction(event, 'admin.access');
 	const sql = db();
-	const [users, rights, audit] = await Promise.all([
+	const [users, rights, audit, settings] = await Promise.all([
 		userCan(sql, user.id, 'users.view'),
 		userCan(sql, user.id, 'roles.assign'),
-		userCan(sql, user.id, 'audit.view')
+		userCan(sql, user.id, 'audit.view'),
+		userCan(sql, user.id, 'settings.manage')
 	]);
-	return { adminEmail: user.email, may: { users, rights, audit } };
+	return { adminEmail: user.email, may: { users, rights, audit, settings } };
 };

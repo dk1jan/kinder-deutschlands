@@ -67,17 +67,11 @@ docker start kinder-deutschlands-web-1
 Kontolöschungen werden zusätzlich in `/backups/deletions.log` (Sicherungs-Volume, nicht in der DB) vermerkt. Beim Start wendet die App diese Liste automatisch erneut an – nach einer Wiederherstellung sind gelöschte Konten also sofort wieder gelöscht (Log-Zeile „Löschliste: … erneut gelöscht“). Nichts von Hand nötig.
 
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
-1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort (Passwort-Generator).
-2. Portainer → Stack `kinder-deutschlands` → Environment variables ergänzen (je genau ein `=`):
-   - `SMTP_HOST` = `jan-krueger.org`
-   - `SMTP_PORT` = `587`
-   - `SMTP_USER` = `noreply@jan-krueger.org`
-   - `SMTP_PASSWORD` = Passwort aus Schritt 1
-   - `SMTP_FROM` = `noreply@jan-krueger.org`
-   → **Pull and redeploy**.
-3. Verwaltung → Übersicht → **Test-E-Mail an mich senden**. Kommt sie an, ist die Registrierung offen.
-Nur falls der Test mit Zertifikatsfehler scheitert: zusätzlich `SMTP_INSECURE_TLS=true` (Verbindung bleibt verschlüsselt, Zertifikat wird nicht geprüft).
-Hinweis: Damit Mails nicht im Spam landen, sollten SPF/DKIM/DMARC für die Absenderdomain gesetzt sein (Plesk → Mail-Einstellungen → DKIM aktivieren).
+1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.
+2. Plattform → **Verwaltung → Einstellungen** → E-Mail-Versand: Mailserver `jan-krueger.org`, Port `587`, Absender und Benutzername `noreply@jan-krueger.org`, Passwort → **Speichern und Verbindung prüfen**.
+3. **Test-E-Mail an mich senden**. Landet sie im Spam: Plesk → Mail-Einstellungen → DKIM aktivieren (SPF/DMARC prüfen).
+Das Passwort liegt nur verschlüsselt in der Datenbank (Schlüssel aus `APP_SECRET`) und wird nie angezeigt. Wird `APP_SECRET` geändert, muss es neu eingegeben werden.
+Rückfall: Ist in der Verwaltung nichts gespeichert, gelten die Portainer-Variablen `SMTP_*` (siehe Tabelle unten). Nicht nötig, wenn die Verwaltung genutzt wird.
 
 ## Falsches Zertifikat / „Nicht sicher“
 Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):
@@ -106,7 +100,7 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 | `APP_SECRET` | ja | ≥ 32 Zeichen, nie ändern |
 | `POSTGRES_PASSWORD` | ja | Datenbankpasswort |
 | `ALLOW_INDEXING` | nein | `true` erst beim echten Start |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | für Registrierung | Plesk-Mailserver, siehe „E-Mail-Versand einrichten“ |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | nein | nur Rückfall – normal in Verwaltung → Einstellungen |
 | `SMTP_INSECURE_TLS` | nein | nur bei Zertifikatsfehler des Mailservers |
 
 ## Domainwechsel später

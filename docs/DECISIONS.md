@@ -29,7 +29,7 @@ Eigene Synapse-Instanz nur für Kinder Deutschlands (nicht die vorhandene auf de
 ## D-009 · TURN auf demselben Server – ANNAHME (18.10.2026)
 UDP 10000 und 40000–40100 sind bereits belegt (Jitsi, MiroTalk). TURN bekommt einen eigenen freien Bereich, Festlegung in Abschnitt 7.
 
-## D-010 · E-Mail über den Plesk-Mailserver – ANNAHME (18.10.2026)
+## D-010 · E-Mail über den Plesk-Mailserver – ANNAHME (18.10.2026, Einstellort geändert durch D-019)
 Absender z. B. `noreply@` der späteren Domain. SMTP-Zugang nur als Portainer-Umgebungsvariable.
 
 ## D-011 · Designrichtung „Wimpel & Watt“ (18.10.2026)
@@ -55,3 +55,6 @@ Ein Passkey (WebAuthn, Nutzerprüfung verlangt) vereint Besitz und Biometrie/PIN
 
 ## D-018 · Kontolöschung anonymisiert, Löschliste außerhalb der DB (18.10.2026)
 Persönliche Daten werden gelöscht, der Konto-Datensatz bleibt anonymisiert für Protokoll-Verweise. Jede Löschung wird zusätzlich in `/backups/deletions.log` vermerkt; die App wendet diese Liste beim Start erneut an. So kehren gelöschte Konten auch nach Wiederherstellung einer älteren Sicherung nicht zurück.
+
+## D-019 · Betriebseinstellungen in der Verwaltung, Geheimnisse verschlüsselt (18.10.2026)
+Wunsch Jan: Einstellungen im Backend statt in Portainer. Einstellungen liegen in `settings` (in Sicherungen enthalten), Geheimnisse dort nur AES-256-GCM-verschlüsselt mit einem aus `APP_SECRET` abgeleiteten Schlüssel; Anzeige nur „gespeichert ja/nein“. Recht `settings.manage`, jede Änderung im Protokoll ohne Geheimwert. Portainer-Variablen bleiben Rückfall. Ausnahme bleiben Werte, ohne die die App nicht startet oder die die Verschlüsselung selbst tragen: `APP_URL`, `APP_SECRET`, Datenbank-Zugang – die bleiben in Portainer.

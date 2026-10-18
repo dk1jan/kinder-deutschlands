@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 18.10.2026 · Bauabschnitt 1 (Mitglieder) fertig, Mailversand wartet auf SMTP-Zugang · Version siehe Admin → Übersicht
+Stand: 18.10.2026 · Bauabschnitt 1 (Mitglieder) fertig, Mailserver wird in der Verwaltung eingetragen · Version siehe Admin → Übersicht
 
 Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig geprüft) · **getestet** (automatische Tests bestanden) · **extern blockiert**
 
@@ -35,7 +35,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Sicherheitsheader, CSP, CSRF, noindex | getestet | |
 | PWA | vorgesehen | Manifest vorhanden; Service Worker, Push, Installationshilfe iOS: Abschnitt 4/5 |
 | Mehrsprachigkeit / einfache Sprache | vorgesehen | Oberfläche Deutsch |
-| E-Mail-Versand (SMTP) | extern blockiert | Code getestet (Testpostfach); wartet auf SMTP-Zugang in Portainer, siehe DEPLOYMENT „E-Mail-Versand einrichten“ |
+| E-Mail-Versand (SMTP) | getestet | Einstellung in Verwaltung → Einstellungen (Passwort verschlüsselt, Verbindungsprüfung, Test-Mail); Rückfall Portainer-Variablen. Echter Versand: wartet auf Eintrag durch Jan |
 | Datenschutzerklärung, Impressum | vorgesehen | Inhalte brauchen rechtliche Prüfung durch Betreiber |
 
 ## Module
@@ -66,11 +66,11 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | M21 Geburtstage, Einladungen | vorgesehen | 6 |
 | M22 Verifizierte Einrichtungen | vorgesehen | 5 |
 | M23 Datenversorgung | vorgesehen | 2 (erster Import) |
-| M24 Admin/Moderation/Redaktion | umgesetzt (Basis) | Übersicht, Nutzer, Rechte, Protokoll getestet; Moderation/Datenzentrale ab 2–3 |
+| M24 Admin/Moderation/Redaktion | umgesetzt (Basis) | Übersicht, Nutzer, Rechte, Protokoll, Einstellungen (E-Mail) getestet; Moderation/Datenzentrale ab 2–3 |
 
 ## Offene Punkte
 
-1. **Jan:** SMTP-Werte in Portainer eintragen (DEPLOYMENT „E-Mail-Versand einrichten“), dann Verwaltung → Test-E-Mail. Bis dahin ist die Registrierung geschlossen.
+1. **Jan:** Mailserver in Verwaltung → Einstellungen eintragen, dann Test-E-Mail. Bis dahin ist die Registrierung geschlossen.
 2. Als Nächstes Abschnitt 2 (Karte & Orte).
 3. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
 4. Annahmen bestätigen (DECISIONS.md D-008 bis D-010): E2EE-Chat über eigenen Synapse, TURN auf demselben Server, Mail über Plesk.

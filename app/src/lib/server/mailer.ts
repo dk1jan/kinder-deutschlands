@@ -3,32 +3,69 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { appUrl } from './config';
+import { mailConfig, mailSettingsVersion, type MailConfig } from './mailsettings';
 
 // E-Mail-Versand. In Produktion ausschließlich SMTP (Plesk-Mailserver).
 // Für automatische Tests (nie in Produktion): MAIL_OUTBOX_DIR schreibt Mails als JSON-Dateien.
 
 let transporter: Transporter | null = null;
+let transporterVersion = -1;
 
 function outboxDir(): string | null {
 	return env.NODE_ENV !== 'production' && env.MAIL_OUTBOX_DIR ? env.MAIL_OUTBOX_DIR : null;
 }
 
 export function mailConfigured(): boolean {
-	return !!outboxDir() || !!(env.SMTP_HOST && env.SMTP_FROM);
+	return !!outboxDir() || !!mailConfig();
 }
 
-function transport(): Transporter {
-	if (!transporter) {
-		const port = Number(env.SMTP_PORT || 587);
-		transporter = nodemailer.createTransport({
-			host: env.SMTP_HOST,
-			port,
-			secure: port === 465,
-			auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } : undefined,
-			tls: env.SMTP_INSECURE_TLS === 'true' ? { rejectUnauthorized: false } : undefined
-		});
+function createTransport(c: MailConfig): Transporter {
+	return nodemailer.createTransport({
+		host: c.host,
+		port: c.port,
+		secure: c.port === 465,
+		auth: c.user ? { user: c.user, pass: c.password } : undefined,
+		tls: c.insecureTls ? { rejectUnauthorized: false } : undefined,
+		connectionTimeout: 15000,
+		greetingTimeout: 15000,
+		socketTimeout: 30000
+	});
+}
+
+function transport(c: MailConfig): Transporter {
+	if (!transporter || transporterVersion !== mailSettingsVersion()) {
+		transporter?.close();
+		transporter = createTransport(c);
+		transporterVersion = mailSettingsVersion();
 	}
 	return transporter;
+}
+
+/** Verbindung und Anmeldung am Mailserver prüfen, ohne eine Mail zu senden. Gibt die Fehlermeldung zurück oder null. */
+export async function verifyMailServer(): Promise<string | null> {
+	const c = mailConfig();
+	if (!c) return 'Kein Mailserver eingetragen.';
+	const t = createTransport(c);
+	try {
+		await t.verify();
+		return null;
+	} catch (e) {
+		return describeMailError(e);
+	} finally {
+		t.close();
+	}
+}
+
+/** Verständliche Fehlermeldung, ohne Zugangsdaten. */
+export function describeMailError(e: unknown): string {
+	const err = e as { code?: string; responseCode?: number; message?: string };
+	if (err.code === 'EAUTH' || err.responseCode === 535) return 'Anmeldung am Mailserver abgelehnt – Benutzername oder Passwort prüfen.';
+	if (err.code === 'ECONNREFUSED') return 'Mailserver nicht erreichbar (Verbindung abgelehnt) – Servername und Port prüfen.';
+	if (err.code === 'ENOTFOUND' || err.code === 'EDNS') return 'Servername nicht gefunden – Schreibweise prüfen.';
+	if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKET' && /timeout/i.test(err.message ?? '')) return 'Zeitüberschreitung – Port prüfen (587 oder 465) oder Firewall.';
+	if (/certificate|self.signed|CERT_/i.test(err.message ?? '')) return 'Zertifikat des Mailservers wird nicht akzeptiert – Zertifikat in Plesk prüfen oder „Zertifikat nicht prüfen“ aktivieren.';
+	if (/wrong version number/i.test(err.message ?? '')) return 'Verschlüsselung passt nicht zum Port – bei 587 STARTTLS, bei 465 SSL.';
+	return (err.message ?? 'unbekannter Fehler').slice(0, 300);
 }
 
 export interface Mail {
@@ -59,9 +96,10 @@ export async function sendMail(m: Mail): Promise<void> {
 		await writeFile(file, JSON.stringify(m));
 		return;
 	}
-	if (!env.SMTP_HOST || !env.SMTP_FROM) throw new Error('E-Mail-Versand ist nicht eingerichtet.');
-	await transport().sendMail({
-		from: `Kinder Deutschlands <${env.SMTP_FROM}>`,
+	const c = mailConfig();
+	if (!c) throw new Error('E-Mail-Versand ist nicht eingerichtet.');
+	await transport(c).sendMail({
+		from: `Kinder Deutschlands <${c.from}>`,
 		to: m.to,
 		subject: m.subject,
 		text: m.text,

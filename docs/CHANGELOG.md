@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-18 · Mailserver in der Verwaltung einstellen
+
+**Was** Neue Seite Verwaltung → Einstellungen: Mailserver, Port, Absender, Benutzername, Passwort, „Zertifikat nicht prüfen“. Speichern prüft sofort Verbindung und Anmeldung und meldet Fehler verständlich (Passwort falsch, Port falsch, Zertifikat …). Test-Mail-Knopf, „Gespeicherte Werte entfernen“. Passwort AES-256-GCM-verschlüsselt in `settings`, nie angezeigt, nie protokolliert. Portainer-Variablen `SMTP_*` nur noch Rückfall. Neues Recht `settings.manage` (Betreiber, Technikadministration). Änderungen im Protokoll (ohne Passwort).
+**Warum** Wunsch Jan: Einstellungen im Backend statt in Portainer.
+**Module** M24, Querschnitt · **DB-Migration** ja – `0003_einstellungen.sql` (Recht `settings.manage` für tech_admin)
+**Tests** svelte-check 0 Fehler, 55 Unit/DB-Tests (neu: Verschlüsselung, Vorrang/Rückfall, Validierung, Recht), 70 E2E-Prüfungen (neu: Einstellungsseite, Speichern mit Verbindungsfehler, Passwort nie im HTML, Ablehnung, Entfernen), Build
+
 ## 2026-10-18 · Abschnitt 1: Mitglieder, Familien-ID, QR, Kontakte, Passkeys
 
 **Was**

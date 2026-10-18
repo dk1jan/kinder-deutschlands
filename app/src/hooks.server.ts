@@ -5,9 +5,15 @@ import { SESSION_COOKIE, validateSession, purgeExpiredSessions } from '$lib/serv
 import { isSetupComplete } from '$lib/server/setup';
 import { allowIndexing } from '$lib/server/config';
 import { reapplyDeletions } from '$lib/server/account';
+import { loadMailSettings, mailSettingsLoaded } from '$lib/server/mailsettings';
 
 // Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
 export const init: ServerInit = async () => {
+	try {
+		await loadMailSettings(db());
+	} catch (e) {
+		console.error('Mail-Einstellungen konnten nicht geladen werden:', (e as Error).message);
+	}
 	try {
 		await reapplyDeletions(db());
 	} catch (e) {
@@ -31,6 +37,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/')) {
 		const sql = db();
+		if (!mailSettingsLoaded()) await loadMailSettings(sql).catch(() => {});
 		if (!setupDone) {
 			setupDone = await isSetupComplete(sql);
 			if (!setupDone && !OPEN_BEFORE_SETUP.some((r) => r.test(path))) {
