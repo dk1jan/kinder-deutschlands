@@ -10,9 +10,9 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 |---|---|---|
 | Repo, Doku, Projektanweisung | getestet | Quelle der Wahrheit: dieses Repo |
 | GitHub Actions (Tests → Build → Branch `deploy` → Aufräumen) | getestet | Lauf vom 18.10. grün; Branch `deploy` zeigt auf `sha-9bd23eda4fce` |
-| Portainer-Stack aus Branch `deploy`, Polling 5 Min | vorgesehen | einmalige Einrichtung durch Jan, siehe DEPLOYMENT.md |
-| GHCR-Paket öffentlich schalten | extern blockiert | einmaliger Klick durch Jan (Paket ist standardmäßig privat) |
-| Plesk-Subdomain, TLS, nginx-Proxy | vorgesehen | einmalig durch Jan |
+| Portainer-Stack aus Branch `deploy`, Polling 5 Min | umgesetzt | Stack läuft; DB-Volume muss nach Passwortwechsel neu angelegt werden |
+| GHCR-Paket öffentlich | getestet | Server zieht das Image ohne Anmeldung |
+| Plesk-Domain `kinder.public-power.de`, TLS, Docker-Proxyregel | umgesetzt | TLS-Zertifikat prüfen |
 | Tägliche Sicherung (Container `backup`, 14 Tage) | umgesetzt | erst auf dem Server prüfbar |
 | Sicherung vor jeder Migration | getestet | Integrationstest |
 | Notfall-Update `update.sh` (Portainer-API) | umgesetzt | nicht getestet (Portainer-API hier nicht verfügbar) |

@@ -22,16 +22,25 @@ if (!url) {
 const sql = postgres(url, { max: 1, onnotice: () => {} });
 
 async function waitForDb() {
+	let last = '';
 	for (let i = 1; i <= 30; i++) {
 		try {
 			await sql`select 1`;
 			return;
 		} catch (e) {
-			console.log(`[migrate] Warte auf Datenbank (${i}/30) …`);
+			// 28P01 = falsches Passwort, 28000 = Zugang verweigert, 3D000 = Datenbank fehlt: Warten hilft nicht
+			if (['28P01', '28000', '3D000'].includes(e.code)) {
+				throw new Error(
+					`Anmeldung an der Datenbank abgelehnt (${e.code}). Meist: POSTGRES_PASSWORD wurde geändert, ` +
+						'nachdem das Datenbank-Volume schon angelegt war. Lösung siehe docs/DEPLOYMENT.md „Datenbank lehnt Passwort ab“.'
+				);
+			}
+			last = e.code || e.message;
+			console.log(`[migrate] Warte auf Datenbank (${i}/30) … (${last})`);
 			await new Promise((r) => setTimeout(r, 2000));
 		}
 	}
-	throw new Error('Datenbank nicht erreichbar.');
+	throw new Error(`Datenbank nicht erreichbar (${last}).`);
 }
 
 function runPgDump(file) {
