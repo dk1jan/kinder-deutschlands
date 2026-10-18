@@ -82,3 +82,21 @@ Geprüft: Niedersachsen LGLN DOP20 per WMS offen (CC BY 4.0, „LGLN (Jahr)“),
 
 ## D-027 · Navigation über externe Apps (18.10.2026)
 Keine eigene Routenberechnung für Autos/ÖPNV. „Hinweg“ übergibt nur das Ziel an Google Maps, Apple Karten, Waze, OpenStreetMap oder eine beliebige Karten-App (geo:). Hinweis im Menü, dass dort die Regeln des Anbieters gelten.
+
+## D-028 · Community nur für Mitglieder (18.10.2026)
+Beiträge, Antworten und Gruppen sind nur angemeldet lesbar. Öffentlich bleiben Karte, Orte mit Bewertungen und als „öffentlich“ markierte Wissenseinträge. Kein Indexieren durch Suchmaschinen.
+
+## D-029 · Automatische Markierung ist nie ein Urteil (18.10.2026)
+Einfache Regeln markieren Telefonnummern, E-Mail, IBAN, Drohungen (zurückgehalten bis zur Prüfung) sowie Beleidigung, Betrug, Kurzlinks, Spam (nur markiert). Entscheiden tut immer ein Mensch mit Begründung; Betroffene erhalten sie und können einmal Einspruch einlegen. Sperren nur durch den Betreiber.
+
+## D-030 · Pseudonyme in geschützten Gruppen (18.10.2026)
+Pseudonym je Gruppe, eindeutig in der Gruppe. Auch die Gruppenmoderation sieht nicht Profil oder Familien-ID; nur der Betreiber kann über die Datenbank zuordnen (für Sperren/Behördenanfragen). Aufnahmeantworten werden nach der Entscheidung gelöscht. Globale Moderation ist ohne ausdrückliche Gruppenzuweisung nicht zuständig. Keine absolute Sicherheit gegen eingeschleuste Personen – das steht so in der Gruppe.
+
+## D-031 · Linkkarten und Einbettungen (18.10.2026)
+Der Server holt Titel/Bild einer Seite einmalig (nur öffentliche Adressen, Standardports, max. 3 Weiterleitungen, je geprüft, 1 MB). Fremde Player laden erst nach Klick (YouTube über youtube-nocookie, Vimeo); andere Plattformen nur als Karte mit Link. Keine Downloads fremder Videos.
+
+## D-032 · Bilder (18.10.2026)
+Alle hochgeladenen Bilder werden mit sharp neu kodiert (WebP, max. 2000 px), Metadaten inkl. GPS entfernt, Originale nicht gespeichert. Auslieferung nur nach Zugriffsprüfung (Gruppe/Beitragsstatus). Ortsfotos erscheinen erst nach Freigabe, Hochladende bestätigen „keine Personen erkennbar“.
+
+## D-033 · Wissen nur mit Zustimmung (18.10.2026)
+Aus einem Beitrag entsteht ein Wissenseintrag nur als Entwurf; veröffentlicht wird erst nach Zustimmung der Autorin/des Autors. Beiträge aus Gruppen werden nie übernommen. Veröffentlichung braucht mindestens eine Quelle, das Prüfdatum wird angezeigt.

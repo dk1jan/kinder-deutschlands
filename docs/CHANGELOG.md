@@ -2,6 +2,25 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-18 · Abschnitt 3: Community, Gruppen, Moderation, Wissen, Ortsbewertungen
+
+**Was**
+- Community `/community` (nur für Mitglieder; Gäste sehen einen Hinweis): Beiträge nach Thema (9 Themen, u. a. Erziehung, Kinderarzt, Betreuung, Alleinerziehende, Produkte, lokale Hilfe) und/oder Region. Persönlicher Feed „Für dich“ aus Abos (Regionen schließen Stadtteile ein, Themen, Gruppen), dazu Neu, Gelöst & Tipps, Lesezeichen, Volltextsuche, Schlagworte.
+- Beitragsarten Frage, Beitrag, Tipp, Link, Umfrage. Antworten, „hilfreich“, Lösung markieren, Lesezeichen, Bearbeiten/Löschen, Bilder (bis 4), Kennzeichnungen (z. B. Werbung/Erfahrung).
+- Editor mit Werkzeugleiste und Vorschau, sichere Formatierung (kein HTML). Teilen aus dem Handy-Menü (PWA share_target) öffnet „Beitrag schreiben“ mit Link.
+- Linkkarten (M07): Titel/Beschreibung/Bild serverseitig geholt, gegen interne Adressen geschützt (DNS-Prüfung, feste IP, Weiterleitungen geprüft). YouTube (nocookie) und Vimeo erst nach Klick; Instagram/TikTok/Facebook als Karte mit Herkunft; ehrlicher Fallback, wenn nichts lesbar ist.
+- Gruppen (M04): offen, mit Beitrittsanfrage, geschützt. Geschützt: Aufnahmefragen, Pseudonym je Gruppe; Nichtmitglieder sehen weder Beiträge noch Mitgliederzahl/-liste; die Gruppenmoderation sieht Pseudonym und Antworten, nicht Profil oder Familien-ID. Antworten werden nach der Entscheidung gelöscht. Globale Moderation ist für geschützte Gruppen nicht automatisch zuständig.
+- Moderation (M24) `/admin/moderation`: Warteschlange mit Vorschau, Priorität, Filter, Kennzahlen; Fall übernehmen, Notiz, Entscheidung mit Pflichtbegründung (freigeben, kennzeichnen, ausblenden, entfernen, wiederherstellen, schließen, archivieren, anheften, verschieben, verwarnen, zeitweise einschränken, sperren nur Betreiber, eskalieren). Betroffene erhalten die Begründung als Mitteilung und können einmal Einspruch einlegen. Zuständigkeit nach Region (inkl. Unterregionen), Thema oder Gruppe.
+- Automatische Vormarkierung: Telefonnummern, E-Mail, IBAN, Drohungen → zurückgehalten bis zur Prüfung; Beleidigung, Betrug, Kurzlinks, Spam → nur markiert. Nie endgültig.
+- Wissen (M19) `/community/wissen`, Pflege unter `/admin/wissen`: geprüfte Einträge mit Quellen und Prüfdatum, öffentlich oder nur Mitglieder. Übernahme aus einem Beitrag nur aus offenen Bereichen und erst nach Zustimmung der Autorin/des Autors.
+- Orte (M11/M13): Sternebewertung mit Text (eine je Person, änderbar), Ortsfotos erst nach Freigabe durch Moderation, Melden von Bewertungen/Fotos.
+- Mitteilungen `/profil/mitteilungen` mit Zähler im Kopf.
+- Bilder werden neu kodiert (WebP), Metadaten inkl. GPS entfernt, nur nach Zugriffsprüfung ausgeliefert. Volume `media`, tägliche Sicherung als Archiv (letzte 3).
+- Kontolöschung entfernt Beiträge/Antworten (Text), Bewertungen, Mitgliedschaften, Abos, Mitteilungen und Bilder; Datenexport enthält die Community-Daten.
+**Warum** Bauabschnitt 3 laut ROADMAP (M03, M04, M07, M19, M24); Bewertungen/Fotos nach D-025 erst mit Moderation.
+**Module** M03, M04, M07, M11, M13, M19, M24, Querschnitt · **DB-Migration** ja – `0005_community.sql` (Themen, Gruppen, Mitgliedschaften, Beiträge, Antworten, Umfragen, Lesezeichen, Abos, Medien, Ortsbewertungen, Moderationsfälle, Einschränkungen, Mitteilungen, Wissen, neue Rechte)
+**Tests** svelte-check 0 Fehler, 119 Unit/DB-Tests (neu: Formatierung/XSS, Vormarkierung, SSRF-Schutz, Anbieter-Erkennung; DB: Feed/Abos mit Unterregionen, Zurückhalten + Freigabe, regionale Zuständigkeit, Antworten/Lösung/Mitteilung, Umfrage, geschützte Gruppe mit Pseudonym und Zuständigkeit, Entfernen/Einspruch/Wiederherstellen, Einschränkung, Wissen mit Zustimmung, Ortsfoto ohne Metadaten, Kontolöschung), 129 E2E-Prüfungen (neu: Beitrag, Zurückhalten, Antwort, Suche, Meldung → Moderation → Mitteilung, Gruppenantrag mit Pseudonym, Ortsbewertung, Rechte), Bildschirmfotos mobil/desktop hell/dunkel, Build
+
 ## 2026-10-18 · Karte: Luftbild, Navigation, verständliche Abruffehler
 
 **Was**

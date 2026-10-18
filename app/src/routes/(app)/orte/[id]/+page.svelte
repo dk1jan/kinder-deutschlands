@@ -4,6 +4,7 @@
 	import Notice from '$lib/components/Notice.svelte';
 	import FamilyMap from '$lib/components/FamilyMap.svelte';
 	import NavChooser from '$lib/components/NavChooser.svelte';
+	import ReportBox from '$lib/components/community/ReportBox.svelte';
 	import { KINDS, CONFIRMATION, REPORT_KINDS, FEATURE_GROUPS, featuresFor, ageText, distanceText, type FeatureGroup } from '$lib/places';
 
 	let { data, form } = $props();
@@ -142,8 +143,7 @@
 				{#if p.website}<div><dt>Webseite</dt><dd><a href={p.website} rel="noopener nofollow" target="_blank">{new URL(p.website).host}</a></dd></div>{/if}
 				<div><dt>Gemerkt</dt><dd>{p.favoriteCount === 0 ? 'noch von niemandem' : p.favoriteCount < 5 ? 'von wenigen Mitgliedern' : `von ${p.favoriteCount} Mitgliedern`}</dd></div>
 			</dl>
-			<h3>Erfahrungen</h3>
-			<p class="muted">Noch keine Erfahrungen. Bewertungen und Fotos von Eltern kommen mit der Community (Bauabschnitt 3) – mit Moderation.</p>
+			<p><a href="/community/neu?ort={p.id}&art=frage">Frage zu diesem Ort in der Community stellen</a></p>
 		</section>
 
 		<section class="card src" aria-labelledby="quelle">
@@ -166,6 +166,57 @@
 			{#if data.editor}<p><a class="btn small secondary" href="/admin/daten/ort/{p.id}">In der Datenzentrale bearbeiten</a></p>{/if}
 		</section>
 	</div>
+
+
+	<section class="card exp" id="erfahrungen" aria-labelledby="erf-h">
+		<h2 id="erf-h">Erfahrungen von Eltern</h2>
+		{#if data.exp.count}
+			<p class="avg"><span class="stars" aria-hidden="true">{'★'.repeat(Math.round(data.exp.avg ?? 0))}{'☆'.repeat(5 - Math.round(data.exp.avg ?? 0))}</span>
+				<strong>{data.exp.avg?.toLocaleString('de-DE')}</strong> von 5 · {data.exp.count} {data.exp.count === 1 ? 'Bewertung' : 'Bewertungen'}</p>
+		{:else}
+			<p class="muted">Noch keine Erfahrungen. Warst du schon hier? Teile, wie es war.</p>
+		{/if}
+		<p class="muted small">Bewertungen sind persönliche Eindrücke von Mitgliedern – keine Sicherheitsprüfung.</p>
+		{#if data.exp.photos.length}
+			<div class="photos">{#each data.exp.photos as ph}<figure><img src="/medien/{ph.id}" alt={ph.alt ?? 'Foto vom Ort'} loading="lazy" width={ph.width} height={ph.height} />
+				{#if data.member}<ReportBox action="?/bewertungMelden" type="media" id={ph.id} label="Foto melden" />{/if}</figure>{/each}</div>
+		{/if}
+		{#each data.exp.reviews as r}
+			<blockquote class="rv"><span class="stars" aria-label="{r.stars} von 5 Sternen">{'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}</span>
+				<p>{r.body}</p><footer>Mitglied{r.region ? ` aus ${r.region}` : ''} · {fmt(r.at)}{r.own ? ' · deine Bewertung' : ''}</footer>
+				{#if data.member && !r.own}<ReportBox action="?/bewertungMelden" type="review" id={r.id} />{/if}
+			</blockquote>
+		{/each}
+		{#if form && 'expError' in form && form.expError}<Notice kind="error">{form.expError}</Notice>{/if}
+		{#if form && 'held' in form && form.held}<Notice kind="info">{form.held}</Notice>{/if}
+		{#if form && 'photo' in form}<Notice kind="ok">Danke! Dein Foto erscheint nach kurzer Prüfung.</Notice>{/if}
+		{#if form && 'expReported' in form}<Notice kind="ok">Danke, die Moderation schaut es sich an.</Notice>{/if}
+		{#if data.member}
+			<details class="give" open={!!form && 'expError' in form}>
+				<summary>{data.exp.mine ? 'Deine Bewertung ändern' : 'Bewerten'}</summary>
+				<form method="POST" action="?/bewerten" class="rform">
+					<fieldset class="starpick"><legend>Sterne</legend>
+						{#each [5, 4, 3, 2, 1] as n}<input type="radio" id="s{n}" name="stars" value={n} checked={data.exp.mine?.stars === n} required /><label for="s{n}" title="{n} Sterne">★</label>{/each}
+					</fieldset>
+					<textarea name="body" rows="3" maxlength="2000" placeholder="Was war gut, was nicht? (optional) – bitte keine Namen oder Fotos von Kindern">{data.exp.mine?.body ?? ''}</textarea>
+					<div class="row"><button class="btn small">Speichern</button></div>
+				</form>
+				{#if data.exp.mine}<form method="POST" action="?/bewertungLoeschen"><button class="btn small secondary">Meine Bewertung löschen</button></form>{/if}
+			</details>
+			<details class="give">
+				<summary>Foto hinzufügen{data.exp.pendingPhotos ? ` (${data.exp.pendingPhotos} in Prüfung)` : ''}</summary>
+				<form method="POST" action="?/foto" enctype="multipart/form-data" class="rform">
+					<input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/avif" required />
+					<input name="alt" maxlength="200" placeholder="Kurze Beschreibung (z. B. „Kletterturm mit Rutsche“)" aria-label="Beschreibung" />
+					<label class="check"><input type="checkbox" name="ok" required /><span>Auf dem Foto sind keine Kinder oder anderen Personen erkennbar.</span></label>
+					<p class="muted small">Standort- und Kameradaten werden entfernt. Fotos werden vor der Veröffentlichung geprüft.</p>
+					<button class="btn small">Hochladen</button>
+				</form>
+			</details>
+		{:else}
+			<p><a href="/anmelden?weiter=/orte/{p.id}%23erfahrungen">Anmelden</a>, um zu bewerten oder Fotos zu teilen.</p>
+		{/if}
+	</section>
 
 	<section class="card report" id="melden" aria-labelledby="melden-h">
 		<h2 id="melden-h">Etwas stimmt nicht?</h2>
@@ -427,6 +478,107 @@
 	.radio:has(input:checked) {
 		border-color: var(--ink);
 		background: var(--surface-2);
+	}
+	.avg {
+		display: flex;
+		gap: var(--sp-2);
+		align-items: center;
+		flex-wrap: wrap;
+		font-size: var(--fs-m);
+		margin: 0;
+	}
+	.stars {
+		color: #e0a400;
+		letter-spacing: 2px;
+	}
+	.photos {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+		gap: var(--sp-2);
+		margin: var(--sp-3) 0;
+	}
+	.photos figure {
+		margin: 0;
+		display: grid;
+		gap: 4px;
+	}
+	.photos img {
+		width: 100%;
+		height: auto;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+		border-radius: var(--radius-s);
+	}
+	.rv {
+		margin: var(--sp-3) 0;
+		padding: var(--sp-3) var(--sp-4);
+		background: var(--surface-2);
+		border-radius: var(--radius-s);
+	}
+	.rv p {
+		margin: var(--sp-1) 0;
+	}
+	.rv footer {
+		font-size: var(--fs-xs);
+		color: var(--ink-2);
+	}
+	.give {
+		margin-top: var(--sp-3);
+	}
+	.give summary {
+		font-weight: 700;
+		cursor: pointer;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+	}
+	.rform {
+		display: grid;
+		gap: var(--sp-2);
+		max-width: 32rem;
+		margin-top: var(--sp-2);
+	}
+	.starpick {
+		border: 0;
+		padding: 0;
+		margin: 0;
+		display: inline-flex;
+		flex-direction: row-reverse;
+		justify-content: flex-end;
+		gap: 2px;
+	}
+	.starpick legend {
+		width: 100%;
+		font-weight: 650;
+		margin-bottom: 4px;
+	}
+	.starpick input {
+		position: absolute;
+		opacity: 0;
+	}
+	.starpick label {
+		font-size: 2rem;
+		line-height: 1;
+		color: var(--line);
+		cursor: pointer;
+		padding: 2px;
+	}
+	.starpick input:checked ~ label,
+	.starpick label:hover,
+	.starpick label:hover ~ label {
+		color: #e0a400;
+	}
+	.starpick input:focus-visible + label {
+		outline: 3px solid var(--focus);
+	}
+	.check {
+		display: flex;
+		gap: var(--sp-2);
+		align-items: center;
+	}
+	.row {
+		display: flex;
+		gap: var(--sp-2);
 	}
 	@media (min-width: 900px) {
 		.cols {

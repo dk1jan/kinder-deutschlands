@@ -66,6 +66,13 @@ docker start kinder-deutschlands-web-1
 ```
 Kontolöschungen werden zusätzlich in `/backups/deletions.log` (Sicherungs-Volume, nicht in der DB) vermerkt. Beim Start wendet die App diese Liste automatisch erneut an – nach einer Wiederherstellung sind gelöschte Konten also sofort wieder gelöscht (Log-Zeile „Löschliste: … erneut gelöscht“). Nichts von Hand nötig.
 
+## Bilder (Volume `media`)
+Hochgeladene Bilder liegen im Volume `media` (`/data/media` im Web-Container). Der Container `backup` packt sie täglich nach `/backups/media-*.tar.gz` (letzte 3 bleiben). Wiederherstellen:
+```bash
+F=$(ls -t /var/lib/docker/volumes/kinder-deutschlands_backups/_data/media-*.tar.gz | head -1)
+docker run --rm -v kinder-deutschlands_media:/m -v "$F":/b.tgz:ro alpine sh -c 'tar -xzf /b.tgz -C /m'
+```
+
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.
 2. Plattform → **Verwaltung → Einstellungen** → E-Mail-Versand: Mailserver `jan-krueger.org`, Port `587`, Absender und Benutzername `noreply@jan-krueger.org`, Passwort → **Speichern und Verbindung prüfen**.

@@ -37,6 +37,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_INSECURE_TLS: ${SMTP_INSECURE_TLS:-false}
       TILES_DIR: /data/tiles
+      MEDIA_DIR: /data/media
       # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
       NODE_OPTIONS: --max-old-space-size=1536
     ports:
@@ -45,6 +46,7 @@ services:
     volumes:
       - backups:/backups
       - tiles:/data/tiles
+      - media:/data/media
     networks: [backend, frontend]
     mem_limit: 2g
     logging: *logging
@@ -80,6 +82,7 @@ services:
       TZ: Europe/Berlin
     volumes:
       - backups:/backups
+      - media:/media:ro
     networks: [backend]
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -94,6 +97,10 @@ services:
             echo "{\"at\":\"$$(date -Iseconds)\",\"file\":\"daily-$$ts.dump\",\"ok\":true,\"size\":$$size}" > /backups/last-backup.json
             find /backups -name 'daily-*.dump' -mtime +14 -delete
             echo "[backup] ok: $$f ($$size Bytes)"
+            # Hochgeladene Bilder (Community, Ortsfotos): letzte 3 Stände
+            if [ -n "$$(ls -A /media 2>/dev/null)" ]; then
+              tar -czf "/backups/media-$$ts.tar.gz" -C /media . && ls -1t /backups/media-*.tar.gz | tail -n +4 | xargs -r rm -f
+            fi
           else
             echo "{\"at\":\"$$(date -Iseconds)\",\"ok\":false}" > /backups/last-backup.json
             echo "[backup] FEHLER"
@@ -106,6 +113,7 @@ volumes:
   db:
   backups:
   tiles:
+  media:
 
 networks:
   backend:

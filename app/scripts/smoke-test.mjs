@@ -494,6 +494,59 @@ try {
 	check(named.name === 'Redaktionsname', 'Gesperrter Name bleibt nach erneutem Import');
 	r = await A.req('/admin/daten');
 	check(r.status === 403, 'Mitglied ohne Rolle: Datenzentrale gesperrt');
+	// ---------- Abschnitt 3: Community, Gruppen, Moderation, Bewertungen ----------
+	r = await X2.req('/community');
+	check(r.status === 200 && !r.body.includes('Spielgruppe in Findorff'), 'Community ohne Anmeldung: nur Hinweis, keine Inhalte');
+	r = await A.req('/community/neu', { method: 'POST', form: { kind: 'frage', title: 'Welche Spielgruppe in Findorff?', body: 'Wir suchen etwas für **Einjährige**.', topic: 'betreuung', region_code: '04011', tags: 'spielgruppe' } });
+	const postPath = r.location;
+	check(r.status === 303 && /^\/community\/b\/[0-9a-f-]{36}$/.test(postPath), `Mitglied schreibt Frage (${r.status} ${r.location})`);
+	const postId = postPath.split('/').pop();
+	r = await X2.req(postPath);
+	check(!r.body.includes('Einjährige'), 'Beitrag für Gäste nicht lesbar');
+	r = await A.req(postPath);
+	check(r.status === 200 && r.body.includes('<strong>Einjährige</strong>'), 'Beitrag mit Formatierung sichtbar');
+	r = await A.req('/community/neu', { method: 'POST', form: { kind: 'beitrag', title: 'Ruft mich gerne an', body: 'Meine Nummer: 0151 23456789', topic: 'lokale-hilfe' } });
+	check(r.status === 303 && r.location.includes('pruefung=1'), 'Telefonnummer im Beitrag → zurückgehalten zur Prüfung');
+
+	const C = client();
+	const pwC = 'Cem fragt viel nach Kitas 3';
+	await C.req('/registrieren', { method: 'POST', form: { email: 'cem@example.org', password: pwC, password2: pwC, adult: 'on' } });
+	const vC = /bestaetigen\?t=(\S+)/.exec(lastMailTo('cem@example.org')?.text ?? '')?.[1];
+	await C.req('/registrieren/bestaetigen', { method: 'POST', form: { t: vC ?? '' } });
+	r = await C.req(`${postPath}?/antworten`, { method: 'POST', form: { body: 'Die Krabbelgruppe im Bürgerhaus ist toll.' } });
+	check(r.status === 200 && (await A.req(postPath)).body.includes('Krabbelgruppe im Bürgerhaus'), 'Antwort geschrieben und sichtbar');
+	r = await C.req('/community?ansicht=neu&q=Spielgruppe');
+	check(r.body.includes('Welche Spielgruppe in Findorff?'), 'Suche findet den Beitrag');
+	r = await C.req(`${postPath}?/melden`, { method: 'POST', form: { type: 'post', id: postId, reason: 'falsch', message: 'Test-Meldung' } });
+	check(r.status === 200, 'Beitrag gemeldet');
+	r = await req('/admin/moderation');
+	check(r.status === 200 && r.body.includes('Welche Spielgruppe') && r.body.includes('Ruft mich gerne an'), 'Moderation: Meldung und zurückgehaltener Beitrag in der Warteschlange');
+	const [held] = await sqlT`select c.id from mod_cases c join posts p on p.id::text = c.target_id::text where p.title = 'Ruft mich gerne an' and c.status <> 'erledigt'`;
+	r = await req(`/admin/moderation/${held?.id}?/entscheiden`, { method: 'POST', form: { action: 'entfernen', reason: '' } });
+	check(r.status === 400, 'Entscheidung ohne Begründung abgelehnt');
+	r = await req(`/admin/moderation/${held?.id}?/entscheiden`, { method: 'POST', form: { action: 'entfernen', reason: 'Keine Telefonnummern öffentlich – bitte Familien-ID nutzen' } });
+	check(r.status === 200 || r.status === 303, `Moderation entscheidet mit Begründung (${r.status})`);
+	r = await A.req('/profil/mitteilungen');
+	check(r.body.includes('Familien-ID nutzen'), 'Autorin erhält Begründung als Mitteilung');
+
+	r = await req('/admin/gruppen');
+	check(r.status === 200, 'Admin: Gruppenverwaltung');
+	r = await C.req('/community/gruppen');
+	check(r.status === 200, 'Gruppenübersicht');
+	const [{ id: gid }] = await sqlT`insert into community_groups (slug, name, description, kind, created_by) values ('smoke-geschuetzt', 'Smoke geschützt', 'Geschützte Testgruppe', 'geschuetzt', (select id from users where email = 'admin@example.org')) returning id`;
+	r = await C.req('/community/g/smoke-geschuetzt?/beitreten', { method: 'POST', form: { pseudonym: 'Eule' } });
+	check(r.status === 200, `Aufnahmeantrag mit Pseudonym (${r.status})`);
+	const [gm] = await sqlT`select status, pseudonym from group_members where group_id = ${gid}`;
+	check(gm?.status === 'angefragt' && gm.pseudonym === 'Eule', 'Mitgliedschaft wartet auf Freigabe');
+
+	r = await C.req(`/orte/${pid}?/bewerten`, { method: 'POST', form: { stars: '4', body: 'Viel Schatten, sauberer Sand.' } });
+	check(r.status === 200, `Ort bewertet (${r.status})`);
+	r = await X2.req(`/orte/${pid}`);
+	check(r.body.includes('Viel Schatten') && !r.body.includes('cem@example.org'), 'Bewertung öffentlich am Ort, ohne Kontaktdaten');
+	r = await C.req('/community/wissen');
+	check(r.status === 200, 'Wissensbereich erreichbar');
+	r = await C.req('/admin/moderation');
+	check(r.status === 403, 'Mitglied ohne Rolle: Moderation gesperrt');
 	await sqlT.end();
 
 	// Passkey-Endpunkte: nur gleiche Herkunft, nur angemeldet

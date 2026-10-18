@@ -10,6 +10,10 @@ import { cleanText } from '$lib/server/validate';
 import { audit } from '$lib/server/audit';
 import { REPORT_KINDS } from '$lib/places';
 import { tileState } from '$lib/server/import/tiles';
+import { addPlacePhoto, deleteReview, placeExperiences, saveReview } from '$lib/server/community/reviews';
+import { PostError } from '$lib/server/community/posts';
+import { MediaError } from '$lib/server/community/media';
+import { report } from '$lib/server/community/moderation';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!isUuid(params.id)) error(404, 'Diesen Ort gibt es nicht.');
@@ -23,11 +27,60 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 	const editor = viewer ? await userCan(sql, viewer, 'data.edit') : false;
 	if (p.status !== 'aktiv' && !editor && !(p.status === 'pruefung' && p.createdBy === viewer)) error(404, 'Diesen Ort gibt es nicht (mehr).');
-	const tiles = await tileState(sql);
-	return { place: { ...p, createdBy: undefined }, editor, member: !!viewer, mine: !!viewer && p.createdBy === viewer, tiles: !!tiles?.present };
+	const [tiles, exp] = await Promise.all([tileState(sql), placeExperiences(sql, p.id, viewer)]);
+	return { place: { ...p, createdBy: undefined }, editor, member: !!viewer, mine: !!viewer && p.createdBy === viewer, tiles: !!tiles?.present, exp };
 };
 
+async function guarded<T>(fn: () => Promise<T>) {
+	try {
+		return await fn();
+	} catch (e) {
+		if (e instanceof PostError || e instanceof MediaError) return fail(400, { expError: e.message });
+		throw e;
+	}
+}
+
 export const actions: Actions = {
+	bewerten: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		const f = await event.request.formData();
+		return guarded(async () => {
+			const held = await saveReview(db(), user.id, event.params.id, Number(f.get('stars')), cleanText(f.get('body'), 2000));
+			return { reviewed: true, held };
+		});
+	},
+	bewertungLoeschen: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		await deleteReview(db(), user.id, event.params.id);
+		return { reviewDeleted: true };
+	},
+	foto: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		const f = await event.request.formData();
+		const file = f.get('photo');
+		if (!(file instanceof File) || !file.size) return fail(400, { expError: 'Bitte ein Foto auswählen.' });
+		if (f.get('ok') !== 'on') return fail(400, { expError: 'Bitte bestätigen, dass keine Personen erkennbar sind.' });
+		return guarded(async () => {
+			await addPlacePhoto(db(), user.id, event.params.id, Buffer.from(await file.arrayBuffer()), cleanText(f.get('alt'), 200));
+			return { photo: true };
+		});
+	},
+	bewertungMelden: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		const f = await event.request.formData();
+		if (!rateLimit(`melden:${user.id}`, 30, 24 * 3600 * 1000)) return fail(429, { expError: 'Heute schon viele Meldungen.' });
+		return guarded(async () => {
+			const t = String(f.get('type'));
+			const id = String(f.get('id') ?? '');
+			if (!isUuid(id)) throw new PostError('Ungültig.');
+			await report(db(), user.id, t === 'media' ? 'media' : 'review', id, String(f.get('reason') ?? ''), cleanText(f.get('message'), 500));
+			return { expReported: true };
+		});
+	},
 	merken: async (event) => {
 		const user = requireMember(event);
 		if (!isUuid(event.params.id)) error(404);

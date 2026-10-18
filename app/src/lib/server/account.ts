@@ -33,6 +33,13 @@ export async function exportAccount(sql: Sql, userId: string) {
 	const merkliste = await sql`select p.id, p.kind, p.name, f.created_at from place_favorites f join places p on p.id = f.place_id where f.user_id = ${userId}`;
 	const vorschlaege = await sql`select id, kind, name, status, created_at from places where created_by = ${userId}`;
 	const meldungen = await sql`select place_id, kind, message, status, created_at from place_reports where user_id = ${userId}`;
+	const beitraege = await sql`select id, kind, title, body, topic_key, region_code, status, created_at from posts where author_id = ${userId}`;
+	const antworten = await sql`select post_id, body, status, created_at from comments where author_id = ${userId}`;
+	const gruppen = await sql`select g.name, m.status, m.pseudonym, m.created_at from group_members m join community_groups g on g.id = m.group_id where m.user_id = ${userId}`;
+	const abos = await sql`select kind, key, created_at from subscriptions where user_id = ${userId}`;
+	const bewertungen = await sql`select place_id, stars, body, status, updated_at from place_reviews where user_id = ${userId}`;
+	const einschraenkungen = await sql`select kind, reason, until, created_at, lifted_at from user_restrictions where user_id = ${userId}`;
+	const mitteilungen = await sql`select kind, text, created_at, read_at from notifications where user_id = ${userId} order by created_at desc limit 500`;
 	return {
 		erstellt: new Date().toISOString(),
 		hinweis: 'Export aller zu deinem Konto gespeicherten Daten bei Kinder Deutschlands.',
@@ -48,7 +55,14 @@ export async function exportAccount(sql: Sql, userId: string) {
 		protokoll_eigene_vorgaenge: log,
 		orte_merkliste: merkliste,
 		orte_vorschlaege: vorschlaege,
-		orte_meldungen: meldungen
+		orte_meldungen: meldungen,
+		community_beitraege: beitraege,
+		community_antworten: antworten,
+		community_gruppen: gruppen,
+		community_abos: abos,
+		orte_bewertungen: bewertungen,
+		moderation_einschraenkungen: einschraenkungen,
+		mitteilungen
 	};
 }
 
@@ -58,6 +72,7 @@ export async function exportAccount(sql: Sql, userId: string) {
  * Die Löschung wird im Löschprotokoll vermerkt, damit sie nach einer Wiederherstellung erneut angewendet werden kann.
  */
 export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: boolean } = {}) {
+	let mediaIds: string[] = [];
 	await sql.begin(async (tx) => {
 		const [{ n }] = await tx`select count(*)::int as n from role_assignments
 			where user_id = ${userId} and role_key = 'superadmin' and revoked_at is null`;
@@ -79,12 +94,26 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`update places set created_by = null where created_by = ${userId}`;
 		await tx`update place_reports set user_id = null, message = null where user_id = ${userId}`;
 		await tx`update place_notices set created_by = null where created_by = ${userId}`;
+		// Community: eigene Texte verschwinden, Antworten anderer bleiben stehen; Bilder werden gelöscht
+		await tx`update posts set title = '[gelöscht]', body = '', link_card = null, link_url = null, status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;
+		await tx`update comments set body = '', status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;
+		await tx`delete from place_reviews where user_id = ${userId}`;
+		await tx`delete from group_members where user_id = ${userId}`;
+		await tx`delete from subscriptions where user_id = ${userId}`;
+		await tx`delete from bookmarks where user_id = ${userId}`;
+		await tx`delete from poll_votes where user_id = ${userId}`;
+		await tx`delete from helpful_marks where user_id = ${userId}`;
+		await tx`delete from notifications where user_id = ${userId}`;
+		await tx`update mod_cases set reporter_id = null, message = null where reporter_id = ${userId} and status = 'erledigt'`;
+		mediaIds = (await tx`update media set status = 'entfernt' where owner_id = ${userId} returning id`).map((r) => r.id as string);
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',
 			totp_secret_enc = null, totp_enabled_at = null, display_name = null where id = ${userId}`;
 		await tx`insert into deletion_log (user_id) values (${userId})`;
 		await audit(tx as unknown as Sql, { actorId: userId, action: opts.fromLog ? 'account.deletion_reapplied' : 'account.deleted', targetType: 'user', targetId: userId });
 	});
+	const { deleteImageFile } = await import('./community/media');
+	for (const id of mediaIds) await deleteImageFile(id).catch(() => {});
 	const f = deletionFile();
 	if (f && !opts.fromLog) {
 		try {

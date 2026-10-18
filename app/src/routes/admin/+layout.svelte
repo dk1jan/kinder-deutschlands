@@ -9,6 +9,9 @@
 			{ href: '/admin', label: 'Übersicht', icon: 'system', show: true },
 			{ href: '/admin/nutzer', label: 'Nutzer', icon: 'nutzer', show: data.may.users },
 			{ href: '/admin/rechte', label: 'Rollen und Rechte', icon: 'schild', show: data.may.rights },
+			{ href: '/admin/moderation', label: 'Moderation', icon: 'flagge', show: data.may.moderation },
+			{ href: '/admin/gruppen', label: 'Gruppen', icon: 'community', show: data.may.groups },
+			{ href: '/admin/wissen', label: 'Wissen', icon: 'protokoll', show: data.may.knowledge },
 			{ href: '/admin/daten', label: 'Daten und Orte', icon: 'daten', show: data.may.data },
 			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit },
 			{ href: '/admin/einstellungen', label: 'Einstellungen', icon: 'einstellungen', show: data.may.settings }

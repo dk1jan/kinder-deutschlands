@@ -17,6 +17,8 @@ const config = {
 				'img-src': ['self', 'data:', 'blob:'],
 				'font-src': ['self'],
 				'connect-src': ['self'],
+				// Videos nur nach Klick und nur über datenschutzfreundliche Player-Adressen (M07)
+				'frame-src': ['https://www.youtube-nocookie.com', 'https://player.vimeo.com'],
 				'frame-ancestors': ['none'],
 				'form-action': ['self'],
 				'base-uri': ['self'],

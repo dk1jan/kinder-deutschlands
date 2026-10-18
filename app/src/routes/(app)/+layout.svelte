@@ -38,6 +38,9 @@
 				<a class="admin" href="/admin"><Icon name="schild" size={18} /><span>Verwaltung</span></a>
 			{/if}
 			{#if data.user}
+				<a class="bell" href="/profil/mitteilungen" aria-label={data.unread ? `${data.unread} neue Mitteilungen` : 'Mitteilungen'}>
+					<Icon name="hinweis" size={22} />{#if data.unread}<span class="dot">{data.unread > 9 ? '9+' : data.unread}</span>{/if}
+				</a>
 				<a class="btn small secondary" href="/profil">Mein Konto</a>
 			{:else}
 				<a class="btn small" href="/anmelden">Anmelden</a>
@@ -114,6 +117,33 @@
 	}
 	.desk {
 		display: none;
+	}
+	.bell {
+		position: relative;
+		display: inline-grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		border-radius: 50%;
+		color: var(--ink);
+	}
+	.bell:hover {
+		background: var(--surface-2);
+	}
+	.bell .dot {
+		position: absolute;
+		top: 4px;
+		right: 2px;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 4px;
+		border-radius: 999px;
+		background: var(--red);
+		color: #fff;
+		font-size: 11px;
+		font-weight: 800;
+		display: grid;
+		place-items: center;
 	}
 	.actions {
 		margin-left: auto;

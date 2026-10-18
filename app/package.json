@@ -24,7 +24,8 @@
     "nodemailer": "7.0.13",
     "pmtiles": "4.5.0",
     "postgres": "3.4.9",
-    "qrcode": "1.5.4"
+    "qrcode": "1.5.4",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "5.5.7",
