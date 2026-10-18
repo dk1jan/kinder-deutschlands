@@ -66,6 +66,14 @@ docker start kinder-deutschlands-web-1
 ```
 Hinweis: Eine Wiederherstellung macht spätere Löschungen (z. B. Kontolöschungen) rückgängig. Ab Abschnitt 1 wird ein Löschprotokoll geführt, das nach einer Wiederherstellung erneut angewendet wird.
 
+## Falsches Zertifikat / „Nicht sicher“
+Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):
+```bash
+plesk bin site --remove kinder.jan-krueger.org
+plesk bin subdomain --create kinder -domain jan-krueger.org -www-root /httpdocs/kinder
+```
+Danach Let's Encrypt ausstellen, 301 auf HTTPS, Docker-Proxyregel `kinder-deutschlands-web-1:3000`.
+
 ## Datenbank lehnt Passwort ab
 Log zeigt `Anmeldung an der Datenbank abgelehnt (28P01)`: Das DB-Volume wurde mit einem anderen `POSTGRES_PASSWORD` angelegt. Solange noch keine Daten existieren:
 ```bash

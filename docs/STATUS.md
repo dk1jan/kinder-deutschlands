@@ -12,7 +12,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | GitHub Actions (Tests → Build → Branch `deploy` → Aufräumen) | getestet | Lauf vom 18.10. grün; Branch `deploy` zeigt auf `sha-9bd23eda4fce` |
 | Portainer-Stack aus Branch `deploy`, Polling 5 Min | umgesetzt | Stack läuft; DB-Volume muss nach Passwortwechsel neu angelegt werden |
 | GHCR-Paket öffentlich | getestet | Server zieht das Image ohne Anmeldung |
-| Plesk-Subdomain `kinder.jan-krueger.org`, TLS, Docker-Proxyregel | vorgesehen | Jan legt Subdomain an (bisher nur `kinder.public-power.de` vorhanden) |
+| Plesk-Subdomain `kinder.jan-krueger.org`, TLS, Docker-Proxyregel | getestet | Zertifikat korrekt, HTTPS 200 (18.10.) |
 | Tägliche Sicherung (Container `backup`, 14 Tage) | umgesetzt | erst auf dem Server prüfbar |
 | Sicherung vor jeder Migration | getestet | Integrationstest |
 | Notfall-Update `update.sh` (Portainer-API) | umgesetzt | nicht getestet (Portainer-API hier nicht verfügbar) |
@@ -67,7 +67,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 
 ## Offene Punkte
 
-1. Jan: einmalige Einrichtung nach DEPLOYMENT.md (Plesk, Portainer, GHCR-Paket öffentlich).
+1. Betrieb läuft: Stack, HTTPS, Erst-Admin eingerichtet. Als Nächstes Abschnitt 1 (M01).
 2. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
 3. Annahmen bestätigen (DECISIONS.md D-008 bis D-010): E2EE-Chat über eigenen Synapse, TURN auf demselben Server, Mail über Plesk.
 4. Sicherheit Server allgemein (nicht Kinder-spezifisch): Firewall aus, Portainer :9000 und weitere Dienste öffentlich erreichbar.
