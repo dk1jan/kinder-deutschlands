@@ -6,6 +6,14 @@ import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import postgres from 'postgres';
 
+for (const ev of ['uncaughtException', 'unhandledRejection']) {
+	process.on(ev, (e) => {
+		console.error(e);
+		if (process.env.GITHUB_ACTIONS) console.log(`::error title=Rauchtest abgebrochen::${String(e?.stack ?? e).replace(/\n/g, '%0A')}`);
+		process.exit(1);
+	});
+}
+
 const DB = process.env.TEST_DATABASE_URL;
 if (!DB) throw new Error('TEST_DATABASE_URL fehlt');
 const PORT = 3999;
@@ -23,7 +31,11 @@ const env = {
 let failures = 0;
 function check(cond, label) {
 	console.log(`${cond ? 'OK  ' : 'FEHL'}  ${label}`);
-	if (!cond) failures++;
+	if (!cond) {
+		failures++;
+		// In GitHub Actions als Anmerkung sichtbar
+		if (process.env.GITHUB_ACTIONS) console.log(`::error title=Rauchtest::${label}`);
+	}
 }
 
 function b32decode(s) {
@@ -84,7 +96,7 @@ const server = spawn('node', ['build'], { env, stdio: ['ignore', 'pipe', 'pipe']
 let serverLog = '';
 server.stdout.on('data', (d) => (serverLog += d));
 server.stderr.on('data', (d) => (serverLog += d));
-for (let i = 0; i < 50; i++) {
+for (let i = 0; i < 150; i++) {
 	try { if ((await fetch(BASE + '/healthz')).ok) break; } catch {}
 	await new Promise((r) => setTimeout(r, 200));
 }
@@ -112,7 +124,8 @@ try {
 	check(r.status === 400 && r.body.includes('mindestens'), 'Zu kurzes Passwort und falscher Code werden abgelehnt');
 
 	const pw = 'ein sehr gutes Passwort 2026';
-	r = await req('/setup?/konto', { method: 'POST', form: { email: 'Admin@Example.org', password: pw, password2: pw, code: totp(secret) } });
+	const setupCode = totp(secret);
+	r = await req('/setup?/konto', { method: 'POST', form: { email: 'Admin@Example.org', password: pw, password2: pw, code: setupCode } });
 	check(r.status === 303 && r.location.startsWith('/admin') && jar.has('kd_session'), 'Erst-Admin angelegt und angemeldet');
 
 	r = await req('/admin');
@@ -139,7 +152,7 @@ try {
 	r = await req('/admin');
 	check(r.status === 303 && r.location.startsWith('/anmelden/code'), 'Vor dem zweiten Faktor kein Adminzugang');
 
-	r = await req('/anmelden/code?/verify&weiter=%2Fadmin', { method: 'POST', form: { code: totp(secret) } });
+	r = await req('/anmelden/code?/verify&weiter=%2Fadmin', { method: 'POST', form: { code: setupCode } });
 	check(r.status === 400, 'Bereits verwendeter Code wird abgelehnt (Replay-Schutz)');
 
 	r = await req('/anmelden/code?/verify&weiter=%2Fadmin', { method: 'POST', form: { code: totp(secret, 1) } });
@@ -169,6 +182,7 @@ try {
 
 if (failures) {
 	console.log(`\n${failures} Prüfung(en) fehlgeschlagen.\n--- Serverlog ---\n${serverLog}`);
+	if (process.env.GITHUB_ACTIONS) console.log(`::error title=Serverlog::${serverLog.slice(-1500).replace(/\n/g, '%0A')}`);
 	process.exit(1);
 }
 console.log('\nAlle Rauchtests bestanden.');
