@@ -3,6 +3,7 @@
 	import Pram from '$lib/components/art/Pram.svelte';
 	import RegionMap from '$lib/components/art/RegionMap.svelte';
 	import ModuleArt from '$lib/components/art/ModuleArt.svelte';
+	import Notice from '$lib/components/Notice.svelte';
 	let { data } = $props();
 
 	type Theme = 'sea' | 'yellow' | 'sky' | 'red' | 'navy' | 'paper';
@@ -45,7 +46,7 @@
 		{
 			art: 'nachrichten',
 			title: 'Schreiben und anrufen',
-			text: 'Nachrichten, Gruppen-Chats und Anrufe direkt in der Plattform, Ende-zu-Ende-verschlüsselt.',
+			text: 'Kontaktanfragen über die Familien-ID gehen schon. Nachrichten, Gruppen-Chats und Anrufe folgen, Ende-zu-Ende-verschlüsselt.',
 			stage: 'Bauabschnitte 4 und 7',
 			theme: 'paper'
 		}
@@ -74,9 +75,18 @@
 				Kinder Deutschlands verbindet Familien in deiner Gegend. Mit einer eigenen Familien-ID statt Telefonnummer, einer
 				Karte voller Spielplätze und Familienorte und Gruppen, die geschützt bleiben.
 			</p>
+			{#if data.deleted}<Notice kind="ok" title="Konto gelöscht">Deine Daten wurden entfernt. Danke, dass du dabei warst.</Notice>{/if}
 			<div class="cta">
-				<a class="btn signal" href="#familien-id">So funktioniert die Familien-ID</a>
-				{#if !data.user}<a class="btn secondary" href="/anmelden">Anmelden</a>{/if}
+				{#if data.user}
+					<a class="btn signal" href="/profil">Meine Familien-ID</a>
+					<a class="btn secondary" href="/nachrichten">Kontakte</a>
+				{:else if data.mailOpen}
+					<a class="btn signal" href="/registrieren">Konto anlegen</a>
+					<a class="btn secondary" href="/anmelden">Anmelden</a>
+				{:else}
+					<a class="btn signal" href="#familien-id">So funktioniert die Familien-ID</a>
+					<a class="btn secondary" href="/anmelden">Anmelden</a>
+				{/if}
 			</div>
 		</div>
 		<div class="visual">
@@ -109,7 +119,7 @@
 				<span class="code" aria-label="Beispiel-ID K 7 M, 4 Q X, 2 H D">K7M 4QX 2HD</span>
 				<div class="qr">{@html data.qr}</div>
 			</div>
-			<figcaption>Beispiel. Der echte QR-Code oben führt auf diese Seite. Das endgültige ID-Format kommt mit Bauabschnitt 1.</figcaption>
+			<figcaption>Beispiel. Echte Familien-IDs haben genau dieses Format, der QR-Code oben führt auf diese Seite.</figcaption>
 		</figure>
 	</div>
 </section>
@@ -173,11 +183,13 @@
 <section class="final" aria-labelledby="los-titel">
 	<div class="container final-inner">
 		<div>
-			<h2 id="los-titel">Mitmachen, sobald es losgeht.</h2>
-			<p>Die Registrierung öffnet mit dem nächsten Bauabschnitt. Wer schon einen Zugang hat, meldet sich hier an.</p>
+			<h2 id="los-titel">{data.mailOpen ? 'Mach mit.' : 'Mitmachen, sobald es losgeht.'}</h2>
+			<p>{data.mailOpen ? 'Konto anlegen, Familien-ID bekommen, Wimpel drucken. Karte und Gruppen folgen Schritt für Schritt.' : 'Die Registrierung öffnet, sobald der E-Mail-Versand eingerichtet ist. Wer schon einen Zugang hat, meldet sich hier an.'}</p>
 		</div>
 		{#if data.user}
 			<a class="btn" href="/profil">Zu meinem Konto</a>
+		{:else if data.mailOpen}
+			<a class="btn" href="/registrieren">Konto anlegen</a>
 		{:else}
 			<a class="btn" href="/anmelden">Anmelden</a>
 		{/if}

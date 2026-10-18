@@ -1,11 +1,12 @@
 import QRCode from 'qrcode';
 import type { PageServerLoad } from './$types';
 import { appUrl } from '$lib/server/config';
+import { mailConfigured } from '$lib/server/mailer';
 
 // Echter QR-Code (führt auf diese Plattform) für die Beispiel-Familien-ID auf der Startseite.
 let cached: string | null = null;
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
 	if (!cached) {
 		cached = await QRCode.toString(appUrl() + '/', {
 			type: 'svg',
@@ -14,5 +15,5 @@ export const load: PageServerLoad = async () => {
 			color: { dark: '#0f2238', light: '#00000000' }
 		});
 	}
-	return { qr: cached };
+	return { qr: cached, mailOpen: mailConfigured(), deleted: url.searchParams.has('geloescht') };
 };

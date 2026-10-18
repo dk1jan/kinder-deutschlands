@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 18.10.2026 · Bauabschnitt 0 (Fundament) · Version siehe Admin → Übersicht
+Stand: 18.10.2026 · Bauabschnitt 1 (Mitglieder) fertig, Mailversand wartet auf SMTP-Zugang · Version siehe Admin → Übersicht
 
 Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig geprüft) · **getestet** (automatische Tests bestanden) · **extern blockiert**
 
@@ -22,8 +22,11 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Bereich | Status | Hinweis |
 |---|---|---|
 | Installation: Einmal-Token, Vorabprüfung, Erst-Admin mit 2FA, Sperre | getestet | inkl. gleichzeitiger Versuche |
-| Anmeldung Passwort + TOTP, Replay-Schutz, Rate-Limit | getestet | Passkeys: vorgesehen (Abschnitt 1) |
-| Sitzungen (gehasht, gleitend, Abmelden) | getestet | Geräteverwaltung: vorgesehen |
+| Anmeldung Passwort + TOTP, Replay-Schutz, Rate-Limit | getestet | |
+| Passkeys (Registrieren, Anmelden ohne Passwort, Entfernen) | getestet | lokal mit virtuellem Authenticator (`scripts/passkey-check.py`), nicht in CI |
+| Registrierung, E-Mail-Bestätigung, Passwort zurücksetzen | getestet | keine Preisgabe vorhandener Adressen (D-016); echter Versand erst mit SMTP |
+| Sitzungen (gehasht, gleitend, Abmelden) | getestet | Geräteliste und Sitzungen beenden: umgesetzt (noch ohne eigenen automatischen Test) |
+| Datenexport, Kontolöschung, Löschliste nach Wiederherstellung | getestet | DB-Tests + E2E (Löschung); D-018 |
 | Rechte Rolle × Geltungsbereich × Aktion, befristet, Entzug, Protokoll | getestet | zweite Freigabe kritischer Aktionen: vorgesehen |
 | Regionsmodell (AGS/ARS) | umgesetzt | Bestand: Bund, 16 Länder, Bremen-Stadt, Bremerhaven. Kreise/Gemeinden/Stadtteile + Geometrien per Import (M23): vorgesehen |
 | Audit-Protokoll (ohne private Inhalte, IP gehasht) | getestet | |
@@ -32,14 +35,14 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Sicherheitsheader, CSP, CSRF, noindex | getestet | |
 | PWA | vorgesehen | Manifest vorhanden; Service Worker, Push, Installationshilfe iOS: Abschnitt 4/5 |
 | Mehrsprachigkeit / einfache Sprache | vorgesehen | Oberfläche Deutsch |
-| E-Mail-Versand (SMTP) | vorgesehen | Plesk-Mailserver, ab Abschnitt 1 |
+| E-Mail-Versand (SMTP) | extern blockiert | Code getestet (Testpostfach); wartet auf SMTP-Zugang in Portainer, siehe DEPLOYMENT „E-Mail-Versand einrichten“ |
 | Datenschutzerklärung, Impressum | vorgesehen | Inhalte brauchen rechtliche Prüfung durch Betreiber |
 
 ## Module
 
 | Modul | Status | Abschnitt |
 |---|---|---|
-| M01 Mitglieder-ID, Profile, QR | vorgesehen | 1 |
+| M01 Mitglieder-ID, Profile, QR | getestet | Familien-ID, Profil + Sichtbarkeit, Vorschau „So sehen andere mich“, QR dauerhaft/befristet/widerrufbar, Druckvorlage, Kontaktanfragen, Kontakte, Blockieren, Entdecken nach Region. Freigabestufe „Gruppen“ kommt mit M04 (Abschnitt 3) |
 | M02 Kommunikation (Text/Medien) | vorgesehen | 4 |
 | M02 Audio/Video | vorgesehen | 7 |
 | M03 Regionale Community | vorgesehen | 3 |
@@ -67,7 +70,8 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 
 ## Offene Punkte
 
-1. Betrieb läuft: Stack, HTTPS, Erst-Admin eingerichtet. Als Nächstes Abschnitt 1 (M01).
-2. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
-3. Annahmen bestätigen (DECISIONS.md D-008 bis D-010): E2EE-Chat über eigenen Synapse, TURN auf demselben Server, Mail über Plesk.
-4. Sicherheit Server allgemein (nicht Kinder-spezifisch): Firewall aus, Portainer :9000 und weitere Dienste öffentlich erreichbar.
+1. **Jan:** SMTP-Werte in Portainer eintragen (DEPLOYMENT „E-Mail-Versand einrichten“), dann Verwaltung → Test-E-Mail. Bis dahin ist die Registrierung geschlossen.
+2. Als Nächstes Abschnitt 2 (Karte & Orte).
+3. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
+4. Annahmen bestätigen (DECISIONS.md D-008 bis D-010): E2EE-Chat über eigenen Synapse, TURN auf demselben Server, Mail über Plesk.
+5. Sicherheit Server allgemein (nicht Kinder-spezifisch): Firewall aus, Portainer :9000 und weitere Dienste öffentlich erreichbar.

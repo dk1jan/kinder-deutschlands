@@ -40,3 +40,18 @@ Rückmeldung Jan: erste Fassung zu leer und blass. Neu: Tiefsee-Navy als Schrift
 
 ## D-012 · Regionen nach amtlichem Regionalschlüssel (18.10.2026)
 Schlüssel = ARS/AGS (Land 2-stellig, Kreis 5-stellig, Gemeinde 8/12-stellig), Wurzel `de`. Bremen-Stadt `04011` und Bremerhaven `04012` sind kreisfreie Städte im Land Bremen `04` – damit sind Land, Stadt und Bremerhaven klar getrennt (M05). Vollständiger Bestand und Geometrien nur aus amtlicher Quelle per Import, nicht von Hand.
+
+## D-014 · Familien-ID: 8 Zufallszeichen + Prüfzeichen (18.10.2026)
+Crockford-Base32 (ohne I, L, O, U), angezeigt als `XXX-XXX-XXX`. 32⁸ ≈ 10¹² Möglichkeiten, nicht fortlaufend, Prüfzeichen fängt Tippfehler ab. Eingabe tolerant (Groß/klein, Leerzeichen, O→0, I/L→1). Durchprobieren: Ratenbegrenzung pro Konto und IP. Die ID ist unabhängig von interner Konto-ID und QR-Token.
+
+## D-015 · Sichtbarkeit je Feld, Beziehung extern < Mitglied < Kontakt < selbst (18.10.2026)
+Jedes Profilfeld hat eine Stufe alle/Mitglieder/Kontakte/niemand. Vorgabe „zurückhaltend“: Externe sehen nur die ID, Mitglieder den Namen, Kontakte den Rest; Altersgruppen der Kinder nie öffentlich. Blockierte sehen gar nichts. Die Stufe „Gruppen“ folgt mit M04.
+
+## D-016 · E-Mail-Bestätigung Pflicht, keine Adress-Preisgabe (18.10.2026)
+Ohne bestätigte Adresse keine Anmeldung, keine Auffindbarkeit. Registrierung und „Passwort vergessen“ antworten immer gleich; ist die Adresse schon registriert, bekommt deren Inhaber eine Hinweis-Mail. Token einmalig, zweckgebunden, gehasht gespeichert. Ohne SMTP bleibt die Registrierung geschlossen.
+
+## D-017 · Passkey gilt als zweiter Faktor (18.10.2026)
+Ein Passkey (WebAuthn, Nutzerprüfung verlangt) vereint Besitz und Biometrie/PIN; eine Passkey-Anmeldung braucht daher keinen TOTP-Code und erfüllt die 2FA-Pflicht für die Verwaltung.
+
+## D-018 · Kontolöschung anonymisiert, Löschliste außerhalb der DB (18.10.2026)
+Persönliche Daten werden gelöscht, der Konto-Datensatz bleibt anonymisiert für Protokoll-Verweise. Jede Löschung wird zusätzlich in `/backups/deletions.log` vermerkt; die App wendet diese Liste beim Start erneut an. So kehren gelöschte Konten auch nach Wiederherstellung einer älteren Sicherung nicht zurück.

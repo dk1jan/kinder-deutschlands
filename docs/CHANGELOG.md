@@ -2,6 +2,22 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-18 · Abschnitt 1: Mitglieder, Familien-ID, QR, Kontakte, Passkeys
+
+**Was**
+- Registrierung mit E-Mail-Bestätigung (24 h), erneutes Senden, Passwort vergessen/neu (1 h); Antworten verraten nie, ob eine Adresse existiert.
+- Familien-ID je Mitglied (9 Zeichen, zufällig, mit Prüfzeichen, tolerant bei O/0, I/L/1); Suche nach ID mit Ratenbegrenzung.
+- Profil (Name, kann helfen, sucht, Interessen, Altersgruppen der Kinder, Region, auffindbar) mit Sichtbarkeit je Feld (alle/Mitglieder/Kontakte/niemand) und Vorgaben zurückhaltend/offen; Vorschau „So sehen andere mich“.
+- QR: dauerhafter Code (ersetzbar), befristete Begegnungscodes (1 h–7 Tage, widerrufbar), Druckvorlage für den Wimpel; QR-Landeseite ohne Cache.
+- Kontaktanfragen (annehmen/ablehnen/zurückziehen, gegenseitige Anfrage verbindet direkt, 30/Tag), Kontakte entfernen, Blockieren in beide Richtungen, Entdecken nach Region.
+- Sicherheit: Passkeys (anmelden ohne Passwort, zählt als 2FA), 2FA ein/aus, Sitzungen/Geräte beenden, Passwort ändern.
+- Konto: Datenexport (JSON), Löschung (letzter Betreiber geschützt); Löschliste im Sicherungs-Volume wird beim Start automatisch erneut angewendet.
+- Verwaltung: Test-E-Mail-Knopf, Familien-ID/Bestätigt/Anmeldeschutz in der Nutzerliste, Kennzahlen unbestätigt/Kontakte.
+- Compose: neue Variable `SMTP_INSECURE_TLS` (optional).
+**Warum** Bauabschnitt 1 laut ROADMAP/REQUIREMENTS. **Module** M01, M24, Querschnitt
+**DB-Migration** ja – `0002_mitglieder.sql` (Profile, E-Mail-Token, QR-Token, Anfragen, Kontakte, Blockierungen, Passkeys, Löschprotokoll; bestehende aktive Konten gelten als bestätigt)
+**Tests** svelte-check 0 Fehler, 48 Unit/DB-Tests, 64 E2E-Prüfungen (Rauchtest inkl. Mail-Testpostfach), Passkey-Prüfung lokal mit virtuellem Authenticator 3/3, Build
+
 ## 2026-10-18 · Betrieb: HTTPS auf kinder.jan-krueger.org
 
 **Was** Defekte Plesk-Subdomain (kein nginx-Block, daher Zertifikat von public-power.de) neu angelegt; Diagnose und Lösung in DEPLOYMENT.md.

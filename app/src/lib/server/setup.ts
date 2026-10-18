@@ -38,7 +38,7 @@ export async function completeSetup(sql: Sql, a: FirstAdmin): Promise<string> {
 		if (row?.value?.completed_at) throw new SetupLockedError();
 		const [user] = await tx`
 			insert into users (email, password_hash, totp_secret_enc, totp_enabled_at, totp_last_step, email_verified_at)
-			values (${a.email}, ${a.passwordHash}, ${a.totpSecretEnc}, now(), ${a.totpStep}, null)
+			values (${a.email}, ${a.passwordHash}, ${a.totpSecretEnc}, now(), ${a.totpStep}, now())
 			returning id`;
 		await tx`insert into role_assignments (user_id, role_key, scope_type, scope_id, granted_by, note)
 			values (${user.id}, 'superadmin', 'global', null, null, 'Einrichtung')`;

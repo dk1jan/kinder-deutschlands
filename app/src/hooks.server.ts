@@ -1,9 +1,19 @@
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { SESSION_COOKIE, validateSession, purgeExpiredSessions } from '$lib/server/session';
 import { isSetupComplete } from '$lib/server/setup';
 import { allowIndexing } from '$lib/server/config';
+import { reapplyDeletions } from '$lib/server/account';
+
+// Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
+export const init: ServerInit = async () => {
+	try {
+		await reapplyDeletions(db());
+	} catch (e) {
+		console.error('Löschliste konnte nicht angewendet werden:', (e as Error).message);
+	}
+};
 
 const THEMES = new Set(['system', 'light', 'dark']);
 let setupDone = false;

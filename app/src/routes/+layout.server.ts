@@ -10,7 +10,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	}
 	return {
 		theme: locals.theme,
-		user: u ? { email: u.email, displayName: u.display_name, mfaVerified: !!locals.session?.mfaVerified } : null,
+		user: u ? { mfaVerified: !!locals.session?.mfaVerified } : null,
 		canAdmin
 	};
 };

@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
 import type { Sql } from './db';
-import { appUrl, isHttps, key, smtpConfigured, gitSha } from './config';
+import { appUrl, isHttps, key, gitSha } from './config';
+import { mailConfigured } from './mailer';
 
 export type CheckState = 'ok' | 'warn' | 'error';
 export interface Check {
@@ -41,8 +42,8 @@ export async function systemChecks(sql: Sql): Promise<Check[]> {
 	}
 	checks.push({
 		label: 'E-Mail-Versand',
-		state: smtpConfigured() ? 'ok' : 'warn',
-		detail: smtpConfigured() ? 'Konfiguriert' : 'Noch nicht eingerichtet (optional, wird ab Abschnitt 1 gebraucht)'
+		state: mailConfigured() ? 'ok' : 'warn',
+		detail: mailConfigured() ? 'Konfiguriert' : 'Nicht eingerichtet – Registrierung und Passwort-Zurücksetzen sind deaktiviert'
 	});
 	checks.push({ label: 'Version', state: 'ok', detail: gitSha() });
 	return checks;

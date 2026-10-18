@@ -35,6 +35,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_INSECURE_TLS: ${SMTP_INSECURE_TLS:-false}
     ports:
       # Nur lokal erreichbar – öffentlich ausschließlich über Plesk (nginx, TLS)
       - "127.0.0.1:3120:3000"

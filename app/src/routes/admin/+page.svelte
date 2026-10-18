@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Notice from '$lib/components/Notice.svelte';
-	let { data } = $props();
+	let { data, form } = $props();
 	const stateWord = { ok: 'In Ordnung', warn: 'Hinweis', error: 'Fehler' };
 </script>
 
@@ -16,7 +16,19 @@
 	<div><span class="n">{data.counts.users}</span><span class="l">aktive Konten</span></div>
 	<div><span class="n">{data.counts.sessions}</span><span class="l">gültige Sitzungen</span></div>
 	<div><span class="n">{data.counts.failed24}</span><span class="l">fehlgeschlagene Anmeldungen (24 h)</span></div>
-	<div><span class="n">{data.counts.regions}</span><span class="l">Regionen im Bestand</span></div>
+	<div><span class="n">{data.counts.unverified}</span><span class="l">Konten ohne E-Mail-Bestätigung</span></div>
+	<div><span class="n">{data.counts.contacts}</span><span class="l">bestätigte Kontakte</span></div>
+</section>
+
+<section class="mail" aria-labelledby="mailtest">
+	<h2 id="mailtest">E-Mail-Versand</h2>
+	{#if form?.mailOk}<Notice kind="ok">{form.mailOk}</Notice>{/if}
+	{#if form?.mailError}<Notice kind="error">{form.mailError}</Notice>{/if}
+	{#if data.mailOpen}
+		<form method="POST" action="?/testmail"><button class="btn secondary" type="submit">Test-E-Mail an mich senden</button></form>
+	{:else}
+		<p class="muted">Nicht eingerichtet. SMTP-Zugang in Portainer eintragen (siehe DEPLOYMENT.md). Bis dahin sind Registrierung und Passwort-Zurücksetzen geschlossen.</p>
+	{/if}
 </section>
 
 <section aria-labelledby="zustand">
@@ -55,6 +67,9 @@
 	.l {
 		color: var(--ink-2);
 		font-size: var(--fs-s);
+	}
+	.mail {
+		margin-bottom: var(--sp-6);
 	}
 	.st {
 		font-weight: 700;

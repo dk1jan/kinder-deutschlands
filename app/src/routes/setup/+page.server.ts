@@ -11,6 +11,8 @@ import { hashPassword, passwordProblem, PASSWORD_MIN } from '$lib/server/passwor
 import { createSession } from '$lib/server/session';
 import { setSessionCookie } from '$lib/server/auth';
 import { rateLimit } from '$lib/server/ratelimit';
+import { ensureProfile } from '$lib/server/profiles';
+import { ensurePermanentQr } from '$lib/server/qr';
 
 const COOKIE = 'kd_setup';
 const TTL_MS = 30 * 60_000;
@@ -101,6 +103,8 @@ export const actions: Actions = {
 			if (e instanceof SetupLockedError) error(404, 'Die Einrichtung ist abgeschlossen.');
 			throw e;
 		}
+		await ensureProfile(sql, userId);
+		await ensurePermanentQr(sql, userId);
 		cookies.delete(COOKIE, { path: '/setup' });
 		const { token, expiresAt } = await createSession(sql, userId, true, request.headers.get('user-agent'));
 		setSessionCookie(cookies, token, expiresAt);

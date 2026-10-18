@@ -5,6 +5,8 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import postgres from 'postgres';
+import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 for (const ev of ['uncaughtException', 'unhandledRejection']) {
 	process.on(ev, (e) => {
@@ -58,30 +60,51 @@ function totp(secret, offset = 0) {
 	return String(bin % 1e6).padStart(6, '0');
 }
 
-const jar = new Map();
-function cookieHeader() {
-	return [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
-}
-async function req(path, { method = 'GET', form } = {}) {
-	const res = await fetch(BASE + path, {
-		method,
-		redirect: 'manual',
-		headers: {
-			cookie: cookieHeader(),
-			origin: BASE,
-			accept: 'text/html',
-			...(form ? { 'content-type': 'application/x-www-form-urlencoded' } : {})
-		},
-		body: form ? new URLSearchParams(form).toString() : undefined
-	});
-	for (const c of res.headers.getSetCookie()) {
-		const [pair] = c.split(';');
-		const [k, ...v] = pair.split('=');
-		const val = v.join('=');
-		if (!val || /max-age=0|expires=thu, 01 jan 1970/i.test(c)) jar.delete(k);
-		else jar.set(k, val);
+// Jede „Person“ hat ihren eigenen Cookie-Speicher (wie ein eigener Browser)
+function client() {
+	const jar = new Map();
+	const cookieHeader = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
+	async function req(path, { method = 'GET', form, headers = {} } = {}) {
+		const res = await fetch(BASE + path, {
+			method,
+			redirect: 'manual',
+			headers: {
+				cookie: cookieHeader(),
+				origin: BASE,
+				accept: 'text/html',
+				...(form ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+				...headers
+			},
+			body: form ? new URLSearchParams(form).toString() : undefined
+		});
+		for (const c of res.headers.getSetCookie()) {
+			const [pair] = c.split(';');
+			const [k, ...v] = pair.split('=');
+			const val = v.join('=');
+			if (!val || /max-age=0|expires=thu, 01 jan 1970/i.test(c)) jar.delete(k);
+			else jar.set(k, val);
+		}
+		return { status: res.status, location: res.headers.get('location') ?? '', headers: res.headers, body: await res.text() };
 	}
-	return { status: res.status, location: res.headers.get('location') ?? '', headers: res.headers, body: await res.text() };
+	return { jar, req, cookieHeader };
+}
+const admin = client();
+const jar = admin.jar;
+const req = admin.req;
+const cookieHeader = admin.cookieHeader;
+
+// Ausgehende E-Mails landen im Test als Dateien
+const OUTBOX = '/tmp/kd-smoke-mail';
+env.MAIL_OUTBOX_DIR = OUTBOX;
+rmSync(OUTBOX, { recursive: true, force: true });
+function lastMailTo(to) {
+	let files = [];
+	try { files = readdirSync(OUTBOX).sort(); } catch {}
+	for (const f of files.reverse()) {
+		const m = JSON.parse(readFileSync(join(OUTBOX, f), 'utf8'));
+		if (m.to === to) return m;
+	}
+	return null;
 }
 
 const sql = postgres(DB, { max: 1, onnotice: () => {} });
@@ -143,10 +166,10 @@ try {
 	r = await req('/admin');
 	check(r.status === 303 && r.location.startsWith('/anmelden'), 'Ohne Anmeldung kein Adminzugang');
 
-	r = await req('/anmelden', { method: 'POST', form: { email: 'admin@example.org', password: 'falsches Passwort!' } });
+	r = await req('/anmelden?/anmelden', { method: 'POST', form: { email: 'admin@example.org', password: 'falsches Passwort!' } });
 	check(r.status === 400, 'Falsches Passwort abgelehnt');
 
-	r = await req('/anmelden?weiter=%2Fadmin', { method: 'POST', form: { email: 'admin@example.org', password: pw } });
+	r = await req('/anmelden?/anmelden&weiter=%2Fadmin', { method: 'POST', form: { email: 'admin@example.org', password: pw } });
 	check(r.status === 303 && r.location.startsWith('/anmelden/code'), 'Passwort richtig → zweiter Faktor verlangt');
 
 	r = await req('/admin');
@@ -176,6 +199,135 @@ try {
 	r = await fetch(BASE + '/admin/rechte?/vergeben', { method: 'POST', redirect: 'manual',
 		headers: { cookie: cookieHeader(), origin: 'https://evil.example', 'content-type': 'application/x-www-form-urlencoded' }, body: 'x=1' });
 	check(r.status === 403, 'Formular von fremder Herkunft wird blockiert (CSRF)');
+
+	// ---------- Abschnitt 1: Mitglieder ----------
+	r = await req('/admin?/testmail', { method: 'POST', form: {} });
+	check(r.status === 200 && lastMailTo('admin@example.org')?.subject.includes('Test'), 'Admin: Test-E-Mail wird verschickt');
+
+	const A = client();
+	const B = client();
+	const pwA = 'Mama sucht Spielplatzfreunde 1';
+	const pwB = 'Papa mag lange Spaziergaenge 2';
+
+	r = await A.req('/registrieren', { method: 'POST', form: { email: 'anna@example.org', password: pwA, password2: pwA } });
+	check(r.status === 400 && r.body.includes('Erwachsene'), 'Registrierung ohne Volljährigkeit abgelehnt');
+	r = await A.req('/registrieren', { method: 'POST', form: { email: 'anna@example.org', password: pwA, password2: pwA, adult: 'on' } });
+	check(r.status === 200 && r.body.includes('Fast geschafft'), 'Registrierung: Bestätigungs-E-Mail angekündigt');
+	let mail = lastMailTo('anna@example.org');
+	const verifyLink = /https?:\/\/\S+\/registrieren\/bestaetigen\?t=(\S+)/.exec(mail?.text ?? '');
+	check(!!verifyLink, 'Bestätigungs-E-Mail mit Link verschickt');
+
+	r = await A.req('/anmelden?/anmelden', { method: 'POST', form: { email: 'anna@example.org', password: pwA } });
+	check(r.status === 403 && r.body.includes('bestätige'), 'Anmeldung vor E-Mail-Bestätigung abgelehnt');
+
+	r = await A.req(`/registrieren/bestaetigen?t=${verifyLink?.[1]}`);
+	check(r.status === 200 && r.body.includes('Konto freischalten'), 'Bestätigungsseite löst nicht schon beim Öffnen aus');
+	r = await A.req('/registrieren/bestaetigen', { method: 'POST', form: { t: verifyLink?.[1] ?? '' } });
+	check(r.status === 303 && r.location.startsWith('/profil') && A.jar.has('kd_session'), 'E-Mail bestätigt, angemeldet');
+	r = await A.req('/registrieren/bestaetigen', { method: 'POST', form: { t: verifyLink?.[1] ?? '' } });
+	check(r.status === 400, 'Bestätigungslink nur einmal gültig');
+
+	r = await A.req('/registrieren', { method: 'POST', form: { email: 'anna@example.org', password: pwA, password2: pwA, adult: 'on' } });
+	mail = lastMailTo('anna@example.org');
+	check(r.status === 303 || (r.status === 200 && mail?.subject.includes('schon ein Konto')), 'Doppelte Registrierung verrät nichts, Mail „schon ein Konto“');
+
+	r = await A.req('/profil');
+	const annaId = /aria-label="Familien-ID ([^"]+)"/.exec(r.body)?.[1]?.replace(/ /g, '');
+	check(r.status === 200 && !!annaId && annaId.length === 9 && r.body.includes('QR-Code zur Kontaktkarte'), 'Profil zeigt Familien-ID mit QR-Code');
+	check(!r.body.includes('anna@example.org'), 'Profilseite enthält die E-Mail-Adresse nicht (auch nicht in Seitendaten)');
+
+	r = await A.req('/profil/bearbeiten', { method: 'POST', form: {
+		display_name: 'Anna', can_help: 'Tipps zum Kita-Antrag', looking_for: 'Spielplatzbekanntschaften', interests: 'Radfahren, Basteln',
+		child_ages: '1-3', region_code: '04011', discoverable: 'on', preset: 'zurueckhaltend'
+	} });
+	check(r.status === 303 && r.location.startsWith('/profil/vorschau'), 'Profil gespeichert');
+	r = await A.req('/profil/bearbeiten', { method: 'POST', form: { display_name: 'Anna 0421123456', preset: 'zurueckhaltend' } });
+	check(r.status === 400, 'Telefonnummer im Anzeigenamen abgelehnt');
+
+	r = await A.req('/profil/qr');
+	const qrToken = /\/k\/([A-Za-z0-9_-]{10,40})/.exec(r.body)?.[1];
+	check(r.status === 200 && !!qrToken, 'QR-Seite mit aktivem Code');
+
+	// Externe Person scannt den QR-Code
+	const X = client();
+	r = await X.req(`/k/${qrToken}`);
+	check(r.status === 200 && !r.body.includes('>Anna<') && !r.body.includes('Kita-Antrag') && r.body.includes('Anmelden und anfragen'),
+		'QR ohne Anmeldung: nur ID, kein Name, keine Angaben (zurückhaltend)');
+	check((r.headers.get('cache-control') ?? '').includes('no-store'), 'QR-Kontaktkarte wird nicht zwischengespeichert');
+
+	// Zweites Mitglied
+	r = await B.req('/registrieren', { method: 'POST', form: { email: 'ben@example.org', password: pwB, password2: pwB, adult: 'on' } });
+	const vB = /bestaetigen\?t=(\S+)/.exec(lastMailTo('ben@example.org')?.text ?? '')?.[1];
+	r = await B.req('/registrieren/bestaetigen', { method: 'POST', form: { t: vB ?? '' } });
+	check(r.status === 303 && B.jar.has('kd_session'), 'Zweites Mitglied registriert und bestätigt');
+
+	r = await B.req(`/k/${qrToken}`);
+	check(r.status === 200 && r.body.includes('Anna') && !r.body.includes('Kita-Antrag') && r.body.includes('Kontakt anfragen'),
+		'QR als Mitglied: Name sichtbar, Details nur für Kontakte');
+
+	r = await B.req(`/nachrichten/familie?id=${annaId.toLowerCase()}`);
+	check(r.status === 200 && r.body.includes('Anna'), 'ID-Suche findet Familie (Kleinschreibung toleriert)');
+	r = await B.req('/nachrichten/familie?id=AAA-AAA-AAA');
+	check(r.status === 200 && r.body.includes('keine gültige Familien-ID'), 'Ungültige ID wird erkannt');
+
+	r = await B.req(`/k/${qrToken}?/anfragen`, { method: 'POST', form: { message: 'Hallo vom Spielplatz' } });
+	check(r.status === 200 && r.body.includes('Anfrage gesendet'), 'Kontaktanfrage über QR gesendet');
+
+	r = await A.req('/nachrichten');
+	const reqId = /name="id" value="([0-9a-f-]{36})"/.exec(r.body)?.[1];
+	check(r.body.includes('Hallo vom Spielplatz') && !!reqId, 'Anfrage kommt mit Nachricht an');
+	r = await A.req('/nachrichten?/annehmen', { method: 'POST', form: { id: reqId ?? '' } });
+	check(r.status === 200 && r.body.includes('verbunden'), 'Anfrage angenommen');
+
+	r = await B.req(`/k/${qrToken}`);
+	check(r.body.includes('Kita-Antrag') && r.body.includes('Ihr seid verbunden'), 'Als Kontakt sichtbar: freigegebene Details');
+
+	// Widerruf
+	r = await A.req('/profil/qr?/ersetzen', { method: 'POST', form: {} });
+	r = await X.req(`/k/${qrToken}`);
+	check(r.status === 404, 'Ersetzter QR-Code zeigt nichts mehr');
+
+	// Blockieren
+	r = await A.req('/nachrichten');
+	const benCid = /name="cid" value="([0-9A-Z]{9})"/.exec(r.body)?.[1];
+	r = await A.req('/nachrichten?/blockieren', { method: 'POST', form: { cid: benCid ?? '' } });
+	check(r.status === 200 && r.body.includes('Blockiert'), 'Kontakt blockiert');
+	r = await B.req(`/nachrichten/familie?id=${annaId}`);
+	check(r.body.includes('Nicht gefunden'), 'Blockierte Familie findet die ID nicht mehr');
+
+	// Rechte: normales Mitglied kommt nicht in die Verwaltung
+	r = await B.req('/admin');
+	check(r.status === 403, 'Mitglied ohne Rolle: Verwaltung gesperrt (403)');
+
+	// Passwort vergessen
+	r = await B.req('/profil?/abmelden', { method: 'POST', form: {} });
+	r = await B.req('/passwort-vergessen', { method: 'POST', form: { email: 'ben@example.org' } });
+	const resetT = /passwort-neu\?t=(\S+)/.exec(lastMailTo('ben@example.org')?.text ?? '')?.[1];
+	check(r.status === 200 && !!resetT, 'Passwort-vergessen-Mail mit Link');
+	r = await B.req('/passwort-vergessen', { method: 'POST', form: { email: 'niemand@example.org' } });
+	check(r.status === 200 && r.body.includes('Wenn es zu dieser Adresse ein Konto gibt'), 'Unbekannte Adresse: gleiche Antwort');
+	const newPw = 'Ganz neues Passwort 2026';
+	r = await B.req('/passwort-neu', { method: 'POST', form: { t: resetT ?? '', password: newPw, password2: newPw } });
+	check(r.status === 303 && r.location.startsWith('/anmelden'), 'Neues Passwort gesetzt');
+	r = await B.req('/anmelden?/anmelden', { method: 'POST', form: { email: 'ben@example.org', password: newPw } });
+	check(r.status === 303 && r.location === '/profil', 'Anmeldung mit neuem Passwort');
+
+	// Export und Löschen
+	r = await B.req('/profil/konto/export');
+	check(r.status === 200 && (r.headers.get('content-disposition') ?? '').includes('attachment') && r.body.includes('ben@example.org') && !r.body.includes('anna@example.org'),
+		'Datenexport enthält eigene, keine fremden E-Mail-Adressen');
+	r = await B.req('/profil/konto?/loeschen', { method: 'POST', form: { current: newPw, confirm: 'löschen' } });
+	check(r.status === 303 && !B.jar.has('kd_session'), 'Konto gelöscht und abgemeldet');
+	r = await B.req('/anmelden?/anmelden', { method: 'POST', form: { email: 'ben@example.org', password: newPw } });
+	check(r.status === 400, 'Gelöschtes Konto kann sich nicht anmelden');
+
+	// Passkey-Endpunkte: nur gleiche Herkunft, nur angemeldet
+	r = await X.req('/api/passkey/login/options', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' } });
+	check(r.status === 403, 'Passkey-API lehnt fremde Herkunft ab');
+	r = await X.req('/api/passkey/register/options', { method: 'POST', headers: { 'content-type': 'application/json' } });
+	check(r.status === 401, 'Passkey-Registrierung nur angemeldet');
+	r = await X.req('/api/passkey/login/options', { method: 'POST', headers: { 'content-type': 'application/json' } });
+	check(r.status === 200 && r.body.includes('challenge'), 'Passkey-Anmeldung liefert Herausforderung');
 } finally {
 	server.kill();
 }
