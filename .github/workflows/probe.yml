@@ -11,6 +11,7 @@ jobs:
     steps:
       - name: Overpass (OpenStreetMap)
         run: |
+          exec > >(tee out1.txt) 2>&1
           set +e
           op() { curl -s -m 180 -A 'kinder-deutschlands-probe/1.0' --data-urlencode "data=$1" https://overpass-api.de/api/interpreter | head -c ${2:-1500}; echo; }
           for iso in DE-HB DE-NI; do
@@ -23,6 +24,7 @@ jobs:
           op '[out:json][timeout:60];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;rel["boundary"="administrative"]["admin_level"~"^(9|10)$"](area.a);out count;' 400
       - name: BKG VG250 WFS
         run: |
+          exec > >(tee out2.txt) 2>&1
           set +e
           for u in "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities&version=2.0.0"; do
             curl -s -m 60 "$u" -o cap.xml; ls -la cap.xml
@@ -38,6 +40,7 @@ jobs:
           curl -s -m 60 "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&typeNames=vg250:vg250_gem&count=1" | sed 's/<gml:posList>[^<]*</<gml:posList>…</g' | head -c 2500; echo
       - name: GDI-DE Katalog – Ortsteile Bremen
         run: |
+          exec > >(tee out3.txt) 2>&1
           set +e
           curl -s -m 60 -H 'Content-Type: application/json' -H 'Accept: application/json' \
             -X POST 'https://gdk.gdi-de.org/geonetwork/srv/api/search/records/_search' \
@@ -52,6 +55,7 @@ jobs:
           "
       - name: Protomaps-Kartenauszug
         run: |
+          exec > >(tee out4.txt) 2>&1
           set +e
           curl -s -m 30 https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;b=json.load(sys.stdin);print(b[-3:])"
           latest=$(curl -s -m 30 https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;b=json.load(sys.stdin);print(b[-1]['key'])")
@@ -65,8 +69,20 @@ jobs:
           done
       - name: basemaps-assets
         run: |
+          exec > >(tee out5.txt) 2>&1
           set +e
           curl -s https://api.github.com/repos/protomaps/basemaps-assets/commits/main | python3 -c "import json,sys;c=json.load(sys.stdin);print(c['sha'], c['commit']['committer']['date'])"
           curl -sL https://codeload.github.com/protomaps/basemaps-assets/tar.gz/refs/heads/main -o a.tgz; ls -la a.tgz
           tar tzf a.tgz | awk -F/ '{print $2"/"$3"/"$4}' | sort -u | head -60
           mkdir x && tar xzf a.tgz -C x && du -sh x/*/fonts/* x/*/sprites/* 2>/dev/null | head -40
+      - name: Ergebnisse als Hinweise
+        if: always()
+        run: |
+          for f in out*.txt; do
+            python3 -c "
+          import sys
+          t=open('$f',errors='replace').read()[-60000:]
+          t=t.replace('%','%25').replace('\\r','').replace('\\n','%0A')
+          print('::notice title=$f::'+t)
+          "
+          done
