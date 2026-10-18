@@ -1,33 +1,37 @@
-# Einmalig: echter Datenausschnitt für lokale Tests. Ergebnis kurz auf Branch tmp-fixtures (wird danach gelöscht). Keine Artefakte, kein Cache.
+# Manuelle Prüfung externer Dienste. Nur Hinweise im Lauf, keine Artefakte, kein Cache.
 name: probe
 on: workflow_dispatch
 permissions:
-  contents: write
+  contents: read
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
-      - name: Daten holen
+      - name: Prüfen
         run: |
-          mkdir out && cd out
-          op() { for i in 1 2 3 4; do for ep in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
-            if curl -sf -m 150 -A 'kinder-deutschlands-test/1.0' --data-urlencode "data=$1" "$ep" -o "$2" && head -c 1 "$2" | grep -q '{'; then return 0; fi; done; sleep $((i*15)); done; return 1; }
-          B='53.085,8.79,53.10,8.83'
-          op "[out:json][timeout:120];nwr[\"leisure\"=\"playground\"]($B);out geom qt;node[\"playground\"]($B);out qt;" spielplatz.json || echo "::warning::spielplatz fehlgeschlagen"
-          op "[out:json][timeout:120];nwr[\"amenity\"=\"toilets\"](53.07,8.78,53.10,8.84);out center qt;" toilette.json || echo "::warning::toilette fehlgeschlagen"
-          op '[out:json][timeout:180];rel["boundary"="administrative"]["admin_level"="10"](52.98,8.48,53.25,9.0);out geom;' stadtteile.json || echo "::warning::stadtteile fehlgeschlagen"
-          W='https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&srsName=EPSG:4326&outputFormat=application/json'
-          for t in lan krs gem; do curl -sf -m 120 "$W&typeNames=vg250:vg250_$t&cql_filter=sn_l='04'%20AND%20gf=4" -o vg250_$t.json || echo "::warning::vg250 $t fehlgeschlagen"; done
-          latest=$(curl -s https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;print(json.load(sys.stdin)[-1]['key'])")
-          curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar xz pmtiles
-          ./pmtiles extract "https://build.protomaps.com/$latest" bremen.pmtiles --bbox=8.70,53.03,8.92,53.14 --maxzoom=14 || echo "::warning::pmtiles fehlgeschlagen"
-          rm pmtiles
-          for f in *; do echo "::notice::$f $(stat -c %s "$f") Bytes"; done
-      - name: Auf temporären Branch legen
-        run: |
-          cd out
-          git init -q && git checkout -q -b tmp-fixtures
-          git config user.name "probe" && git config user.email "probe@users.noreply.github.com"
-          git add . && git commit -qm "temporäre Testdaten"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tmp-fixtures
+          set +e
+          cat > f.mjs <<'JS'
+          const urls = [
+            'https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities&version=2.0.0',
+            "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&typeNames=vg250:vg250_krs&srsName=EPSG:4326&outputFormat=application/json&cql_filter=sn_l='04' AND gf=4",
+            'https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0'
+          ];
+          for (const u of urls) {
+            try { const r = await fetch(u); const t = await r.arrayBuffer(); console.log('OK', r.status, t.byteLength, u.slice(0, 90)); }
+            catch (e) { console.log('FEHLER', u.slice(0, 90), e.message, String(e.cause?.code ?? ''), String(e.cause?.message ?? e.cause ?? '')); }
+          }
+          JS
+          docker run --rm -v "$PWD:/w" -w /w node:24-alpine node f.mjs > out1.txt 2>&1
+          # Luftbild Niedersachsen: Kachel Bremen-Mitte, Hannover, Bremerhaven (EPSG:3857, 256 px)
+          tile() { curl -s -m 60 -o t.img -w "%{http_code} %{content_type} %{size_download}" "https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=ni_dop20&STYLES=&FORMAT=image/jpeg&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX=$1"; python3 -c "
+          from PIL import Image; im=Image.open('t.img').convert('L'); h=im.histogram(); print(' dunkel/weiß-Anteil', round((h[0]+h[255])/sum(h),3), 'Mittel', round(sum(i*v for i,v in enumerate(h))/sum(h)))" 2>/dev/null; echo; }
+          { echo "Bremen Mitte:"; tile "979500,7000000,980100,7000600"
+            echo "Bremen Findorff:"; tile "979000,7002500,979600,7003100"
+            echo "Bremen Vegesack:"; tile "958500,7019000,959100,7019600"
+            echo "Bremerhaven:"; tile "952300,7086500,952900,7087100"
+            echo "Hannover:"; tile "1083500,6865000,1084100,6865600"
+            curl -s -m 60 "https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0" | grep -o '<Fees>[^<]*\|<AccessConstraints>[^<]*\|<Name>[^<]*' | head -12
+          } > out2.txt 2>&1
+          for f in out1.txt out2.txt; do python3 -c "
+          t=open('$f').read()[:3400].replace('%','%25').replace('\n','%0A'); print('::notice title=$f::'+t)"; done
