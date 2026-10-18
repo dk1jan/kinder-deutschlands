@@ -2,7 +2,7 @@
 
 ## Server (Stand 18.10.2026)
 
-Ubuntu 24.04, 8 Kerne, 31 GB RAM, ~318 GB frei · Plesk Obsidian 18.0.80 · Docker 29.8, Compose v5 · Portainer CE (lts) auf :9000 · IP 87.106.12.248 · Testdomain aktuell `kinder.public-power.de` (in Plesk angelegt, Docker-Proxyregel → `kinder-deutschlands-web-1:3000`). `kinder.jan-krueger.org` ist in Plesk nicht angelegt.
+Ubuntu 24.04, 8 Kerne, 31 GB RAM, ~318 GB frei · Plesk Obsidian 18.0.80 · Docker 29.8, Compose v5 · Portainer CE (lts) auf :9000 · IP 87.106.12.248 · Testdomain: `kinder.jan-krueger.org` (Plesk-Subdomain, Docker-Proxyregel → `kinder-deutschlands-web-1:3000`). `APP_URL` muss exakt `https://kinder.jan-krueger.org` sein – ohne Schrägstrich am Ende.
 Belegt und tabu: UDP 10000 (Jitsi), TCP/UDP 40000–40100 (MiroTalk), viele TCP-Ports 3001–9080. Kinder Deutschlands nutzt nur `127.0.0.1:3120`.
 
 ## So kommt ein Update auf den Server (automatisch)
@@ -37,11 +37,11 @@ Stacks → Add stack → Name `kinder-deutschlands` → **Repository**:
 - Repository reference: `refs/heads/deploy`
 - Compose path: `docker-compose.yml`
 - GitOps updates: **an**, Mechanism **Polling**, Interval **5m**, „Re-pull image“ an
-- Environment variables (je genau ein `=`): `APP_URL=https://kinder.public-power.de`, `APP_SECRET=…`, `POSTGRES_PASSWORD=…`
+- Environment variables (je genau ein `=`): `APP_URL=https://kinder.jan-krueger.org`, `APP_SECRET=…`, `POSTGRES_PASSWORD=…`
 - Deploy the stack
 
 ### 5. Ersten Admin anlegen
-Portainer → Containers → `kinder-deutschlands-web-1` → Logs → Einmal-Token kopieren → `https://kinder.public-power.de/setup` öffnen. Token ändert sich bei jedem Neustart, bis die Einrichtung abgeschlossen ist.
+Portainer → Containers → `kinder-deutschlands-web-1` → Logs → Einmal-Token kopieren → `https://kinder.jan-krueger.org/setup` öffnen. Token ändert sich bei jedem Neustart, bis die Einrichtung abgeschlossen ist.
 
 ### 6. Optional: Notfall-Update-Befehl
 Siehe Kopf von `deploy/update.sh` (Portainer-Access-Token nötig). Aufruf: `bash /opt/kinder-deutschlands/update.sh`.

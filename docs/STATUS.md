@@ -12,7 +12,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | GitHub Actions (Tests → Build → Branch `deploy` → Aufräumen) | getestet | Lauf vom 18.10. grün; Branch `deploy` zeigt auf `sha-9bd23eda4fce` |
 | Portainer-Stack aus Branch `deploy`, Polling 5 Min | umgesetzt | Stack läuft; DB-Volume muss nach Passwortwechsel neu angelegt werden |
 | GHCR-Paket öffentlich | getestet | Server zieht das Image ohne Anmeldung |
-| Plesk-Domain `kinder.public-power.de`, TLS, Docker-Proxyregel | umgesetzt | TLS-Zertifikat prüfen |
+| Plesk-Subdomain `kinder.jan-krueger.org`, TLS, Docker-Proxyregel | vorgesehen | Jan legt Subdomain an (bisher nur `kinder.public-power.de` vorhanden) |
 | Tägliche Sicherung (Container `backup`, 14 Tage) | umgesetzt | erst auf dem Server prüfbar |
 | Sicherung vor jeder Migration | getestet | Integrationstest |
 | Notfall-Update `update.sh` (Portainer-API) | umgesetzt | nicht getestet (Portainer-API hier nicht verfügbar) |
