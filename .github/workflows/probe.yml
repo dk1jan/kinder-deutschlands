@@ -6,25 +6,24 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Daten holen
         run: |
-          set -e
           mkdir out && cd out
-          op() { for i in 1 2 3 4 5; do for ep in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
-            if curl -sf -m 200 -A 'kinder-deutschlands-test/1.0' --data-urlencode "data=$1" "$ep" -o "$2" && head -c 1 "$2" | grep -q '{'; then return 0; fi; done; sleep $((i*20)); done; return 1; }
+          op() { for i in 1 2 3 4; do for ep in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
+            if curl -sf -m 150 -A 'kinder-deutschlands-test/1.0' --data-urlencode "data=$1" "$ep" -o "$2" && head -c 1 "$2" | grep -q '{'; then return 0; fi; done; sleep $((i*15)); done; return 1; }
           B='53.085,8.79,53.10,8.83'
-          op "[out:json][timeout:120];nwr[\"leisure\"=\"playground\"]($B);out geom qt;node[\"playground\"]($B);out qt;" spielplatz.json
-          op "[out:json][timeout:120];nwr[\"amenity\"=\"toilets\"](53.07,8.78,53.10,8.84);out center qt;" toilette.json
-          op '[out:json][timeout:300];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;rel["boundary"="administrative"]["admin_level"="10"](area.a);out geom;' stadtteile.json
+          op "[out:json][timeout:120];nwr[\"leisure\"=\"playground\"]($B);out geom qt;node[\"playground\"]($B);out qt;" spielplatz.json || echo "::warning::spielplatz fehlgeschlagen"
+          op "[out:json][timeout:120];nwr[\"amenity\"=\"toilets\"](53.07,8.78,53.10,8.84);out center qt;" toilette.json || echo "::warning::toilette fehlgeschlagen"
+          op '[out:json][timeout:180];rel["boundary"="administrative"]["admin_level"="10"](52.98,8.48,53.25,9.0);out geom;' stadtteile.json || echo "::warning::stadtteile fehlgeschlagen"
           W='https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&srsName=EPSG:4326&outputFormat=application/json'
-          for t in lan krs gem; do curl -sf -m 120 "$W&typeNames=vg250:vg250_$t&cql_filter=sn_l='04'%20AND%20gf=4" -o vg250_$t.json; done
+          for t in lan krs gem; do curl -sf -m 120 "$W&typeNames=vg250:vg250_$t&cql_filter=sn_l='04'%20AND%20gf=4" -o vg250_$t.json || echo "::warning::vg250 $t fehlgeschlagen"; done
           latest=$(curl -s https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;print(json.load(sys.stdin)[-1]['key'])")
           curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar xz pmtiles
-          ./pmtiles extract "https://build.protomaps.com/$latest" bremen.pmtiles --bbox=8.70,53.03,8.92,53.14 --maxzoom=14
+          ./pmtiles extract "https://build.protomaps.com/$latest" bremen.pmtiles --bbox=8.70,53.03,8.92,53.14 --maxzoom=14 || echo "::warning::pmtiles fehlgeschlagen"
           rm pmtiles
-          ls -la
+          for f in *; do echo "::notice::$f $(stat -c %s "$f") Bytes"; done
       - name: Auf temporären Branch legen
         run: |
           cd out
