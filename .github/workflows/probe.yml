@@ -1,0 +1,72 @@
+# Einmalige Prüfung externer Datenquellen (nur Ausgabe im Log, keine Artefakte, kein Cache).
+# Start: gh workflow run probe.yml
+name: probe
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Overpass (OpenStreetMap)
+        run: |
+          set +e
+          op() { curl -s -m 180 -A 'kinder-deutschlands-probe/1.0' --data-urlencode "data=$1" https://overpass-api.de/api/interpreter | head -c ${2:-1500}; echo; }
+          for iso in DE-HB DE-NI; do
+            for f in '["leisure"="playground"]' '["amenity"="toilets"]' '["changing_table"="yes"]["amenity"!="toilets"]' '["leisure"="indoor_play"]' '["tourism"="zoo"]' '["leisure"="water_park"]'; do
+              echo "== $iso $f"; op "[out:json][timeout:120];area[\"ISO3166-2\"=\"$iso\"][\"admin_level\"=\"4\"]->.a;nwr$f(area.a);out count;" 400
+            done
+          done
+          echo "== Beispiel Spielplätze HB"; op '[out:json][timeout:60];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;nwr["leisure"="playground"](area.a);out center tags 4;' 3000
+          echo "== Stadtteile/Ortsteile Bremen in OSM"; op '[out:json][timeout:60];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;rel["boundary"="administrative"]["admin_level"~"^(9|10)$"](area.a);out tags 6;' 4000
+          op '[out:json][timeout:60];area["ISO3166-2"="DE-HB"]["admin_level"="4"]->.a;rel["boundary"="administrative"]["admin_level"~"^(9|10)$"](area.a);out count;' 400
+      - name: BKG VG250 WFS
+        run: |
+          set +e
+          for u in "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities&version=2.0.0"; do
+            curl -s -m 60 "$u" -o cap.xml; ls -la cap.xml
+            grep -o '<wfs:Name>[^<]*</wfs:Name>\|<Name>[^<]*</Name>' cap.xml | head -20
+            grep -io 'outputformat[^>]*>' cap.xml | head -3
+            grep -o '<ows:Value>[^<]*</ows:Value>' cap.xml | sort -u | head -40
+          done
+          for fmt in application/json json geojson "application/geo%2Bjson"; do
+            echo "== GetFeature krs fmt=$fmt"
+            curl -s -m 60 "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&typeNames=vg250:vg250_krs&count=1&outputFormat=$fmt&srsName=EPSG:4326" | head -c 900; echo
+          done
+          echo "== GetFeature gem GML (Attribute)"
+          curl -s -m 60 "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&version=2.0.0&request=GetFeature&typeNames=vg250:vg250_gem&count=1" | sed 's/<gml:posList>[^<]*</<gml:posList>…</g' | head -c 2500; echo
+      - name: GDI-DE Katalog – Ortsteile Bremen
+        run: |
+          set +e
+          curl -s -m 60 -H 'Content-Type: application/json' -H 'Accept: application/json' \
+            -X POST 'https://gdk.gdi-de.org/geonetwork/srv/api/search/records/_search' \
+            -d '{"size":15,"_source":["resourceTitleObject","link","uuid"],"query":{"query_string":{"query":"Ortsteile Bremen"}}}' \
+            | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          for h in d.get('hits',{}).get('hits',[]):
+            s=h['_source']; print('-', s.get('resourceTitleObject',{}).get('default'), h['_id'])
+            for l in (s.get('link') or [])[:6]:
+              print('    ', l.get('protocol'), (l.get('urlObject') or {}).get('default'))
+          "
+      - name: Protomaps-Kartenauszug
+        run: |
+          set +e
+          curl -s -m 30 https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;b=json.load(sys.stdin);print(b[-3:])"
+          latest=$(curl -s -m 30 https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys;b=json.load(sys.stdin);print(b[-1]['key'])")
+          echo "latest=$latest"
+          v=$(curl -s https://api.github.com/repos/protomaps/go-pmtiles/releases/latest | python3 -c "import json,sys;print(json.load(sys.stdin)['tag_name'])")
+          echo "go-pmtiles $v"
+          curl -sL "https://github.com/protomaps/go-pmtiles/releases/download/$v/go-pmtiles_${v#v}_Linux_x86_64.tar.gz" | tar xz pmtiles && ./pmtiles version
+          ./pmtiles show "https://build.protomaps.com/$latest" | head -30
+          for bb in "8.48,52.98,8.99,53.23" "8.3,52.9,9.2,53.65" "6.6,51.29,11.62,53.9"; do
+            echo "== bbox $bb"; ./pmtiles extract "https://build.protomaps.com/$latest" out.pmtiles --bbox=$bb --dry-run 2>&1 | tail -5
+          done
+      - name: basemaps-assets
+        run: |
+          set +e
+          curl -s https://api.github.com/repos/protomaps/basemaps-assets/commits/main | python3 -c "import json,sys;c=json.load(sys.stdin);print(c['sha'], c['commit']['committer']['date'])"
+          curl -sL https://codeload.github.com/protomaps/basemaps-assets/tar.gz/refs/heads/main -o a.tgz; ls -la a.tgz
+          tar tzf a.tgz | awk -F/ '{print $2"/"$3"/"$4}' | sort -u | head -60
+          mkdir x && tar xzf a.tgz -C x && du -sh x/*/fonts/* x/*/sprites/* 2>/dev/null | head -40

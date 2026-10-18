@@ -9,6 +9,7 @@ on:
     paths-ignore:
       - "docs/**"
       - "**/*.md"
+      - ".github/workflows/probe.yml"
   workflow_dispatch:
 
 permissions:
