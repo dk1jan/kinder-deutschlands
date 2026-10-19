@@ -41,8 +41,10 @@ echo "$flows" | grep -q 'org.matrix.login.jwt' || fail "JWT-Anmeldung fehlt ($fl
 echo "$flows" | grep -q 'de.kinder.reauth' || fail "Regelmodul nicht geladen ($flows)"
 echo "$flows" | grep -q 'm.login.password' && fail "Passwort-Anmeldung ist aktiv"
 echo "OK  Anmeldearten: nur Token der App, Regelmodul geladen"
-code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3120/_synapse/admin/v1/server_version)
-[ "$code" = 404 ] || fail "Admin-Schnittstelle von außen erreichbar ($code)"
+# Nie an Synapse weitergereicht: vor der Ersteinrichtung leitet die App auf /setup um (303), danach 404
+body=$(curl -s -w ' HTTP%{http_code}' http://127.0.0.1:3120/_synapse/admin/v1/server_version)
+echo "$body" | grep -q 'server_version' && fail "Admin-Schnittstelle von außen erreichbar"
+echo "$body" | grep -qE 'HTTP(303|404)$' || fail "Unerwartete Antwort der Admin-Schnittstelle ($body)"
 echo "OK  Admin-Schnittstelle von außen gesperrt"
 
 # Testkonto direkt anlegen und echten Ablauf im internen Netz prüfen: JWT-Anmeldung → Raum → Senden (Regelprüfung über die App)
