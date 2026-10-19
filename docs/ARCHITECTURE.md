@@ -4,12 +4,17 @@
 
 ```
 Internet ── Plesk nginx (TLS, kinder.jan-krueger.org) ── 127.0.0.1:3120 ── web (SvelteKit/Node)
+                                                                              │  /_matrix/client, /_matrix/media → synapse
                                                                               │  Netz „backend“ (intern, ohne Internet)
-                                                                     db (PostgreSQL 17 + PostGIS 3.6)
-                                                                     backup (täglich pg_dump, 14 Tage)
+                                                       ┌──────────────────────┼───────────────────────┐
+                                     db (PostgreSQL 17 + PostGIS: kd, synapse)   synapse (Matrix, E2EE)   backup (täglich)
+                                                                              ▲
+                                       Regelprüfung /internal/chat/check, Push /_matrix/push/v1/notify (nur intern)
 ```
 
-Kartenkacheln (PMTiles) liefert die App selbst aus (Volume `tiles`, D-021); Datenabrufe laufen als Zeitplan im Web-Container (D-023). Geplante Zusatzdienste: Valkey (Abschnitt 4/5), Synapse + LiveKit/coturn (Abschnitt 4/7), optional n8n (intern).
+Kartenkacheln (PMTiles) liefert die App selbst aus (Volume `tiles`, D-021); Datenabrufe laufen als Zeitplan im Web-Container (D-023).
+
+Chat (D-034): Browser ↔ App-Proxy ↔ Synapse. Verschlüsselung nur im Browser (`app/src/lib/chat/`). Die App schreibt die Synapse-Konfiguration beim Start (`app/scripts/synapse-prepare.mjs`), das Regelmodul `app/scripts/kd_rules.py` fragt die App bei Einladungen, Beitritten ohne Einladung und beim Senden. Serverseite: `app/src/lib/server/chat/` (Admin-Zugang, Räume/Treffen, Regeln, Meldungen), `app/src/lib/server/push.ts` (Web-Push, Gateway, Ruhezeiten). Geplante Zusatzdienste: LiveKit/coturn (Abschnitt 7), optional n8n (intern).
 
 ## Repo-Aufbau
 
@@ -26,7 +31,7 @@ Kartenkacheln (PMTiles) liefert die App selbst aus (Volume `tiles`, D-021); Date
 | `deploy/docker-compose.yml` | Stack-Vorlage (`__WEB_IMAGE__` wird von Actions ersetzt) |
 | `deploy/update.sh` | Notfall-Neuausrollen über Portainer-API |
 | `deploy/plesk-nginx.conf` | nginx-Block für Plesk |
-| `.github/workflows/build-deploy.yml` | Tests → Image → Branch `deploy` → Aufräumen |
+| `.github/workflows/build-deploy.yml` | Tests (mit echtem Synapse) → Image → Stack-Test (`deploy/stack-test.sh`) → Branch `deploy` → Aufräumen |
 | Branch `deploy` | nur generiert: fertige Compose-Datei für Portainer |
 
 ## Datenmodell (Stand 0001)

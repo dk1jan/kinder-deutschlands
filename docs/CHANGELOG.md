@@ -2,6 +2,27 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-19 · Abschnitt 4: Ende-zu-Ende-verschlüsselter Chat, Push, Treffen per QR, Live-Standort
+
+**Was**
+- Eigener Chat-Server (Matrix/Synapse 1.162.0) im Stack: ohne Föderation, ohne Registrierung, ohne Passwörter, ohne Online-Status, ohne Nutzersuche. Die App schreibt Konfiguration, Regelmodul und Signaturschlüssel beim Start selbst (Geheimnisse aus `APP_SECRET` abgeleitet) und legt die Datenbank `synapse` an. Synapse startet bei geänderter Konfiguration von selbst neu. Erreichbar nur über die App (`/_matrix/client`, `/_matrix/media`) – keine Plesk-Änderung.
+- Anmeldung am Chat automatisch über das bestehende Konto (kurzlebiges Token). Chat-Kennung zufällig, nicht aus Familien-ID ableitbar. Anzeigename nur, wenn er für Mitglieder sichtbar ist.
+- Regeln serverseitig (Regelmodul fragt die App): Einladungen nur an bestätigte Kontakte, Direktchat nur für die zwei, Blockieren stoppt Nachrichten, Beitritt ohne Einladung nur per Treffen-Ticket, Moderations-Einschränkung gilt in Gruppen/Treffen, Sperre für alles. Bei Störung wird abgelehnt.
+- Nachrichten (M02): Direktchat und Gruppen, Text mit klickbaren Links, Bilder (im Browser verkleinert, ohne GPS), Dateien bis 20 MB, Sprachnachrichten, Löschen, Stummschalten, Einladungen, Verlassen. Alles im Browser Ende-zu-Ende-verschlüsselt (Matrix Rust-Krypto als WebAssembly); der Server speichert nur Chiffrat (im Rauchtest geprüft).
+- Erstnachricht ehrlich: Hat das Gegenüber den Chat noch nie geöffnet, gibt es keine Schlüssel – das Eingabefeld wartet, das Gegenüber bekommt automatisch einen Hinweis; Direktchat-Einladungen von Kontakten werden automatisch angenommen.
+- Gerätewechsel: Wiederherstellungsschlüssel (einmal angezeigt: kopieren, als Datei, drucken), neues Gerät freischalten und frühere Nachrichten aus der verschlüsselten Schlüsselsicherung lesen, bei Verlust neu einrichten (bestätigt durch die App statt Passwort). Geräteliste mit Abmelden. Seite „Geräte und Schlüssel“.
+- Push (PWA): Service Worker, eigenes Push-Gateway ohne Inhalt („Neue Nachricht“), Ruhezeiten, Chat/Community getrennt schaltbar, Test-Push, iPhone-Installationshilfe, App-Symbole (PNG, maskable). Lesebestätigungen und Tippanzeige standardmäßig aus.
+- Treffen per QR (M06): temporärer verschlüsselter Raum (2 Std. bis 7 Tage), QR-Code/Link, Beitritt nur angemeldet mit Ticket, nach Ablauf Raum samt Nachrichten vom Server gelöscht, „dauerhaft als Gruppe behalten“, „beenden“. Treffpunkt-Pin (eigener Standort oder Karte) mit Hinweg-Auswahl. Live-Standort 15/30/60 Min., sichtbar aktiv, sofort stoppbar, nur verschlüsselt im Raum.
+- Melden aus dem Chat: Die meldende Person gibt die Nachricht (optional bis 5 vorherige) ausdrücklich frei; Absender und Zeitpunkt bestätigt der Server. Moderation zeigt den Fall ehrlich (Wortlaut nicht prüfbar) und erlaubt nur freigeben/verwarnen/einschränken/sperren/eskalieren.
+- Verwaltung: Systemzustand zeigt Chat-Server mit technischen Kennzahlen (keine Inhalte).
+- Kontolöschung legt das Chat-Konto still (Synapse „erase“), löscht Push-Abos und Einstellungen; Datenexport erklärt, warum Chatinhalte nicht exportierbar sind.
+- Sicherung: Chat-Datenbank täglich (14 Tage), Chat-Medien (verschlüsselt) letzte 3 Stände.
+- CI: Rauchtest mit echtem Synapse; neuer Stack-Test startet vor jedem Ausrollen die echten Container (Web-Image, Synapse-Image, PostGIS) und prüft Anmeldung, Verschlüsselung, Regelmodul ↔ App, gesperrte Admin-Schnittstelle.
+- Korrekturen: `Permissions-Policy` erlaubte Standort/Mikrofon/Kamera nicht einmal für die eigene Seite („Mein Standort“ auf der Karte ging dadurch nicht) – jetzt `self`. Kontolöschung schlug fehl, wenn jemand Community-Antworten geschrieben hatte (leerer Text verletzte Prüfregel) – behoben und getestet.
+**Warum** Bauabschnitt 4 laut ROADMAP; Verschlüsselungsarchitektur endgültig festgelegt (D-034 bis D-041).
+**Module** M02 (ohne Anrufe), M06, M24, Querschnitt (PWA, Push, Datenschutz) · **DB-Migration** ja – `0006_chat.sql` (Chat-Konten, Räume, Treffen-Tickets, Push-Abos, Benachrichtigungseinstellungen, Beweisfeld für Chat-Meldungen)
+**Tests** svelte-check 0 Fehler, 138 Unit/DB-Tests (neu: Darstellung/XSS, Ruhezeiten, Synapse-Konfiguration, Token; DB: Regeln Einladen/Beitreten/Senden, Push-Gateway, Einstellungen, VAPID, Löschung), 173 E2E-Prüfungen mit echtem Synapse (u. a. E2EE-Nachricht, Klartext nicht in der Server-DB, Push ohne Inhalt, Ruhezeit, Gerätewechsel mit Wiederherstellungsschlüssel, Zurücksetzen nur mit Bestätigung, Treffen-Ticket, Ablauf + Löschung, Blockieren, Melden, Kontolöschung), Browsertest in Chromium (zwei Personen chatten, Bild, Treffpunkt, Treffen per QR), Bildschirmfotos mobil/desktop hell/dunkel, Build
+
 ## 2026-10-18 · Abschnitt 3: Community, Gruppen, Moderation, Wissen, Ortsbewertungen
 
 **Was**

@@ -64,6 +64,12 @@ export async function updateProfile(sql: Sql, userId: string, i: ProfileInput) {
 		discoverable = ${i.discoverable}, privacy_preset = ${i.preset}, visibility = ${sql.json(visibility)},
 		updated_at = now()
 		where user_id = ${userId}`;
+	// Anzeigename im Chat angleichen (nur wenn schon ein Chat-Konto besteht; Fehler stören das Speichern nicht)
+	const [acc] = await sql`select 1 as x from chat_accounts where user_id = ${userId}`;
+	if (acc) {
+		const chat = await import('./chat/synapse');
+		if (chat.chatEnabled()) await chat.ensureAccount(sql, userId).catch(() => {});
+	}
 }
 
 export async function isBlockedEither(sql: Sql, a: string, b: string): Promise<boolean> {

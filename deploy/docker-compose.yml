@@ -38,6 +38,11 @@ services:
       SMTP_INSECURE_TLS: ${SMTP_INSECURE_TLS:-false}
       TILES_DIR: /data/tiles
       MEDIA_DIR: /data/media
+      # Chat (Abschnitt 4): interner Chat-Server, Konfiguration schreibt die App selbst
+      SYNAPSE_URL: http://synapse:8008
+      SYNAPSE_CONFIG_DIR: /synapse-config
+      SYNAPSE_CONFIG_PATH_IN_CONTAINER: /config
+      CHAT_INTERNAL_URL: http://web:3000
       # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
       NODE_OPTIONS: --max-old-space-size=1536
     ports:
@@ -47,6 +52,7 @@ services:
       - backups:/backups
       - tiles:/data/tiles
       - media:/data/media
+      - synapse-config:/synapse-config
     networks: [backend, frontend]
     mem_limit: 2g
     logging: *logging
@@ -70,6 +76,39 @@ services:
       retries: 10
     logging: *logging
 
+  # Chat-Server (Matrix/Synapse) – nur im internen Netz, keine Föderation, kein eigener Port nach außen.
+  # Erreichbar für Browser ausschließlich über die App (/_matrix/client, /_matrix/media).
+  # Startet sich selbst neu, wenn die App eine geänderte Konfiguration schreibt (Prüfung alle 30 s).
+  synapse:
+    image: ghcr.io/element-hq/synapse:v1.162.0
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      SYNAPSE_CONFIG_PATH: /config/homeserver.yaml
+      PYTHONPATH: /config
+      TZ: Europe/Berlin
+    volumes:
+      - synapse-config:/config:ro
+      - synapse-data:/data
+    networks: [backend]
+    mem_limit: 1g
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /data/media_store && chown 991:991 /data /data/media_store
+        sum() { cat /config/homeserver.yaml /config/kd_rules.py /config/signing.key 2>/dev/null | md5sum; }
+        h=$$(sum)
+        /start.py & p=$$!
+        trap 'kill -TERM $$p; wait $$p; exit 0' TERM INT
+        while kill -0 $$p 2>/dev/null; do
+          sleep 30
+          if [ "$$(sum)" != "$$h" ]; then echo "[synapse] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
+        done
+        wait $$p
+    logging: *logging
+
   # Tägliche Sicherung (14 Tage). Schreibt last-backup.json für die Admin-Übersicht.
   backup:
     image: postgis/postgis:17-3.6-alpine
@@ -83,6 +122,7 @@ services:
     volumes:
       - backups:/backups
       - media:/media:ro
+      - synapse-data:/synapse:ro
     networks: [backend]
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -101,6 +141,14 @@ services:
             if [ -n "$$(ls -A /media 2>/dev/null)" ]; then
               tar -czf "/backups/media-$$ts.tar.gz" -C /media . && ls -1t /backups/media-*.tar.gz | tail -n +4 | xargs -r rm -f
             fi
+            # Chat-Server: Datenbank (verschlüsselte Nachrichten, Schlüsselsicherungen) 14 Tage, Medien (verschlüsselt) letzte 3 Stände
+            if psql -h db -U kd -d kd -tAc "select 1 from pg_database where datname = 'synapse'" | grep -q 1; then
+              pg_dump --format=custom --no-owner -h db -U kd -d synapse -f "/backups/chat-$$ts.dump" && echo "[backup] ok: chat-$$ts.dump" || echo "[backup] FEHLER Chat-Datenbank"
+              find /backups -name 'chat-*.dump' -mtime +14 -delete
+            fi
+            if [ -n "$$(ls -A /synapse/media_store 2>/dev/null)" ]; then
+              tar -czf "/backups/chatmedien-$$ts.tar.gz" -C /synapse media_store && ls -1t /backups/chatmedien-*.tar.gz | tail -n +4 | xargs -r rm -f
+            fi
           else
             echo "{\"at\":\"$$(date -Iseconds)\",\"ok\":false}" > /backups/last-backup.json
             echo "[backup] FEHLER"
@@ -114,6 +162,8 @@ volumes:
   backups:
   tiles:
   media:
+  synapse-config:
+  synapse-data:
 
 networks:
   backend:

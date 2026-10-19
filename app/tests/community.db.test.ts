@@ -225,5 +225,11 @@ d('Community (Datenbank)', async () => {
 		expect(g.n).toBe(0);
 		const [r] = await sql`select count(*)::int as n from place_reviews where user_id = ${u.anna}`;
 		expect(r.n).toBe(0);
+		// Auch wer Antworten geschrieben hat, kann löschen (Antworttext wird ersetzt, nicht geleert)
+		const [{ n: before }] = await sql`select count(*)::int as n from comments where author_id = ${u.ben}`;
+		expect(before).toBeGreaterThan(0);
+		await deleteAccount(sql, u.ben);
+		const [c] = await sql`select count(*)::int as n from comments where author_id = ${u.ben} and (body <> '[gelöscht]' or status <> 'entfernt')`;
+		expect(c.n).toBe(0);
 	});
 });

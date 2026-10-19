@@ -53,6 +53,13 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
           echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+      - name: Chat-Server (Synapse) für den Rauchtest – gleiche Version wie im Stack
+        working-directory: .
+        run: |
+          python3 -m venv /tmp/synapse
+          /tmp/synapse/bin/pip install -q --no-cache-dir "matrix-synapse[jwt]==1.162.0" psycopg2-binary
+          echo "SYNAPSE_PYTHON=/tmp/synapse/bin/python" >> "$GITHUB_ENV"
+          echo "SYNAPSE_REQUIRED=1" >> "$GITHUB_ENV"
       - run: npm ci --no-audit --no-fund
       - name: Typprüfung
         run: npm run check
@@ -101,8 +108,20 @@ jobs:
         if: always()
         run: docker system prune -af >/dev/null || true
 
-  deploy:
+  # Echter Stack (Web-Image, Synapse, PostGIS) wie auf dem Server – erst danach wird ausgerollt
+  stack:
     needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Stack-Test
+        run: deploy/stack-test.sh "${IMAGE}:${{ needs.build.outputs.tag }}"
+      - name: Runner-Speicher freimachen
+        if: always()
+        run: docker system prune -af --volumes >/dev/null || true
+
+  deploy:
+    needs: [build, stack]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5

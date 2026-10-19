@@ -113,18 +113,19 @@ function totp(secret, offset = 0) {
 function client() {
 	const jar = new Map();
 	const cookieHeader = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
-	async function req(path, { method = 'GET', form, headers = {} } = {}) {
+	async function req(path, { method, form, json, headers = {} } = {}) {
 		const res = await fetch(BASE + path, {
-			method,
+			method: method ?? (form || json !== undefined ? 'POST' : 'GET'),
 			redirect: 'manual',
 			headers: {
 				cookie: cookieHeader(),
 				origin: BASE,
-				accept: 'text/html',
+				accept: json !== undefined ? 'application/json' : 'text/html',
 				...(form ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+				...(json !== undefined ? { 'content-type': 'application/json' } : {}),
 				...headers
 			},
-			body: form ? new URLSearchParams(form).toString() : undefined
+			body: form ? new URLSearchParams(form).toString() : json !== undefined ? JSON.stringify(json) : undefined
 		});
 		for (const c of res.headers.getSetCookie()) {
 			const [pair] = c.split(';');
@@ -156,14 +157,49 @@ function lastMailTo(to) {
 	return null;
 }
 
+// Abschnitt 4: echter Chat-Server (Synapse), wenn SYNAPSE_PYTHON gesetzt ist (CI: immer, siehe Workflow)
+const SYN_PY = process.env.SYNAPSE_PYTHON;
+if (!SYN_PY && process.env.SYNAPSE_REQUIRED) throw new Error('SYNAPSE_PYTHON fehlt – Chat-Test ist Pflicht.');
+const SYN_DIR = '/tmp/kd-smoke-synapse';
+const SYN_PORT = 8019;
+if (SYN_PY) {
+	rmSync(SYN_DIR, { recursive: true, force: true });
+	Object.assign(env, {
+		SYNAPSE_URL: `http://127.0.0.1:${SYN_PORT}`,
+		SYNAPSE_CONFIG_DIR: `${SYN_DIR}/config`,
+		SYNAPSE_DB: 'synapse_smoke',
+		SYNAPSE_MEDIA_STORE: `${SYN_DIR}/media`,
+		SYNAPSE_PORT: String(SYN_PORT),
+		SYNAPSE_BIND: '127.0.0.1',
+		SYNAPSE_PID_FILE: `${SYN_DIR}/homeserver.pid`,
+		SYNAPSE_PUSH_ALLOW: '127.0.0.0/8',
+		CHAT_INTERNAL_URL: BASE,
+		PUSH_OUTBOX_DIR: '/tmp/kd-smoke-push',
+		CHAT_JOBS: 'on',
+		CHAT_JOBS_MS: '1500'
+	});
+	rmSync('/tmp/kd-smoke-push', { recursive: true, force: true });
+}
+
 const sql = postgres(DB, { max: 1, onnotice: () => {} });
 await sql.unsafe('drop schema public cascade; create schema public;');
+if (SYN_PY) await sql.unsafe('drop database if exists synapse_smoke with (force)');
 await sql.end();
 
 const migrateOut = execFileSync('node', ['scripts/migrate.mjs'], { env, encoding: 'utf8' });
 const token = /Einmal-Token:\s+(\S+)/.exec(migrateOut)?.[1];
 check(!!token, 'Migration gibt Einmal-Token aus');
 
+let synapse = null;
+let synapseLog = '';
+if (SYN_PY) {
+	synapse = spawn(SYN_PY, ['-m', 'synapse.app.homeserver', '-c', `${SYN_DIR}/config/homeserver.yaml`], {
+		env: { ...process.env, PYTHONPATH: `${SYN_DIR}/config`, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' },
+		stdio: ['ignore', 'pipe', 'pipe']
+	});
+	synapse.stdout.on('data', (d) => (synapseLog += d));
+	synapse.stderr.on('data', (d) => (synapseLog += d));
+}
 const server = spawn('node', ['build'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', (d) => (serverLog += d));
@@ -332,7 +368,7 @@ try {
 	r = await B.req(`/k/${qrToken}?/anfragen`, { method: 'POST', form: { message: 'Hallo vom Spielplatz' } });
 	check(r.status === 200 && r.body.includes('Anfrage gesendet'), 'Kontaktanfrage über QR gesendet');
 
-	r = await A.req('/nachrichten');
+	r = await A.req('/nachrichten?ansicht=kontakte');
 	const reqId = /name="id" value="([0-9a-f-]{36})"/.exec(r.body)?.[1];
 	check(r.body.includes('Hallo vom Spielplatz') && !!reqId, 'Anfrage kommt mit Nachricht an');
 	r = await A.req('/nachrichten?/annehmen', { method: 'POST', form: { id: reqId ?? '' } });
@@ -347,7 +383,7 @@ try {
 	check(r.status === 404, 'Ersetzter QR-Code zeigt nichts mehr');
 
 	// Blockieren
-	r = await A.req('/nachrichten');
+	r = await A.req('/nachrichten?ansicht=kontakte');
 	const benCid = /name="cid" value="([0-9A-Z]{9})"/.exec(r.body)?.[1];
 	r = await A.req('/nachrichten?/blockieren', { method: 'POST', form: { cid: benCid ?? '' } });
 	check(r.status === 200 && r.body.includes('Blockiert'), 'Kontakt blockiert');
@@ -548,6 +584,236 @@ try {
 	r = await C.req('/admin/moderation');
 	check(r.status === 403, 'Mitglied ohne Rolle: Moderation gesperrt');
 	await sqlT.end();
+	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
+
+	// ---------- Abschnitt 4: Chat (Ende-zu-Ende-verschlüsselt), Push, Treffen ----------
+	if (!SYN_PY) {
+		console.log('HINWEIS  Chat-Test übersprungen (SYNAPSE_PYTHON nicht gesetzt)');
+	} else {
+		for (let i = 0; i < 150; i++) {
+			try { if ((await fetch(`http://127.0.0.1:${SYN_PORT}/health`)).ok) break; } catch {}
+			await new Promise((res) => setTimeout(res, 300));
+		}
+		const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+		async function until(fn, ms = 15000, step = 200) {
+			const t0 = Date.now();
+			while (Date.now() - t0 < ms) {
+				try { const v = await fn(); if (v) return v; } catch {}
+				await wait(step);
+			}
+			return null;
+		}
+		t = await fetch(BASE + '/_matrix/client/versions');
+		check(t.status === 200 && (await t.json()).versions?.length > 0, 'Chat-Server über die App erreichbar (/_matrix/client)');
+		t = await fetch(BASE + '/_synapse/admin/v1/server_version');
+		check(t.status === 404, 'Admin-Schnittstelle des Chat-Servers von außen nicht erreichbar');
+		t = await fetch(BASE + '/internal/chat/check', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9' }, body: '{"action":"send"}' });
+		check(t.status === 404, 'Interne Prüfschnittstelle über Proxy (X-Forwarded-For) gesperrt');
+		t = await fetch(BASE + '/internal/chat/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"send"}' });
+		check(t.status === 403, 'Interne Prüfschnittstelle ohne Geheimnis abgelehnt');
+		t = await fetch(BASE + '/_matrix/push/v1/notify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9' }, body: '{}' });
+		check(t.status === 404, 'Push-Gateway von außen nicht erreichbar');
+		r = await X2.req('/api/chat/sitzung', { json: {} });
+		check(r.status === 401, 'Chat-Sitzung nur angemeldet');
+		r = await req('/admin');
+		check(/Chat-Server<\/td><td class="st ok[^"]*">/.test(r.body) && r.body.includes('Synapse 1.') && r.body.includes('Chat-Konten'), 'Systemzustand zeigt Chat-Server (ohne Inhalte)');
+
+		// Cem und Anna werden Kontakte
+		r = await C.req('/nachrichten/familie?/anfragen', { form: { cid: annaId, message: 'Hallo Anna' } });
+		r = await A.req('/nachrichten?ansicht=kontakte');
+		const reqC = /name="id" value="([0-9a-f-]{36})"/.exec(r.body)?.[1];
+		r = await A.req('/nachrichten?ansicht=kontakte&/annehmen', { form: { id: reqC ?? '' } });
+		check(r.status === 200 && r.body.includes('verbunden'), 'Kontakt Anna ↔ Cem für den Chat');
+		r = await C.req('/profil');
+		const cemId = /aria-label="Familien-ID ([^"]+)"/.exec(r.body)?.[1]?.replace(/[ -]/g, '');
+
+		const sdk = await import('matrix-js-sdk');
+		try { (await import('matrix-js-sdk/lib/logger.js')).logger.setLevel?.('silent'); } catch {}
+		const origDebug = console.debug, origInfo = console.info, origWarn = console.warn;
+		console.debug = console.info = console.warn = () => {};
+		const ENC = { type: 'm.room.encryption', state_key: '', content: { algorithm: 'm.megolm.v1.aes-sha2' } };
+		const clients = [];
+		async function mx(person, holder = { key: null }) {
+			const s = JSON.parse((await person.req('/api/chat/sitzung', { json: {} })).body);
+			const lr = await fetch(BASE + '/_matrix/client/v3/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'org.matrix.login.jwt', token: s.token, initial_device_display_name: 'Rauchtest' }) });
+			const j = await lr.json();
+			const c = sdk.createClient({
+				baseUrl: BASE, accessToken: j.access_token, userId: j.user_id, deviceId: j.device_id,
+				cryptoCallbacks: { getSecretStorageKey: async ({ keys }) => (holder.key ? [Object.keys(keys)[0], holder.key] : null) }
+			});
+			await c.initRustCrypto({ useIndexedDB: false });
+			await c.startClient({ initialSyncLimit: 10 });
+			await until(() => c.isInitialSyncComplete(), 20000);
+			clients.push(c);
+			return { c, s };
+		}
+		try {
+			const holderA = { key: null };
+			const { c: ma, s: sa } = await mx(A, holderA);
+			const { c: mc, s: sc } = await mx(C);
+			check(/^@k[a-z2-7]{15}:kinder-deutschlands$/.test(sa.userId) && !sa.userId.includes(annaId.toLowerCase()), 'Chat-Kennung zufällig, nicht aus Familien-ID ableitbar');
+			check(sa.displayName === 'Anna', 'Anzeigename im Chat aus dem Profil (für Mitglieder sichtbar)');
+			const kc = JSON.parse((await C.req('/api/chat/kontakte')).body);
+			check(kc.contacts?.some((x) => x.mxid === sa.userId && x.name === 'Anna'), 'Kontaktliste für den Chat');
+
+			// Direktchat Cem → Anna, Ende-zu-Ende-verschlüsselt
+			const { room_id: dm } = await mc.createRoom({ is_direct: true, invite: [sa.userId], preset: 'trusted_private_chat', initial_state: [ENC] });
+			r = await C.req('/api/chat/raeume', { json: { action: 'direkt', peer: annaId, roomId: dm } });
+			check(r.status === 200 && JSON.parse(r.body).roomId === dm, 'Direktchat angemeldet und geprüft');
+			r = await A.req('/api/chat/raeume', { json: { action: 'direkt-suchen', peer: cemId } });
+			check(JSON.parse(r.body).roomId === dm, 'Bestehender Direktchat wird gefunden (kein zweiter)');
+			await until(() => ma.getRoom(dm)?.getMyMembership() === 'invite');
+			await ma.joinRoom(dm);
+
+			// Push für Anna (Testbetrieb: Ablage statt Versand)
+			r = await A.req('/api/push/abo', { json: { subscription: { endpoint: 'https://push.example.org/anna-1', keys: { p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM', auth: 'tBHItJI5svbpez7KI4CCXg' } }, label: 'Rauchtest' } });
+			const pushkey = JSON.parse(r.body).pushkey;
+			check(r.status === 200 && typeof pushkey === 'string' && pushkey.length > 20, 'Push-Abo angelegt (zufälliger Schlüssel)');
+			await ma.setPusher({ pushkey, kind: 'http', app_id: sa.push.appId, app_display_name: 'KD', device_display_name: 'Rauchtest', lang: 'de', data: { url: sa.push.url, format: 'event_id_only' }, append: false });
+
+			const got = new Promise((res) => {
+				ma.on(sdk.RoomEvent.Timeline, async (ev) => {
+					if (ev.getRoomId() !== dm) return;
+					await ma.decryptEventIfNeeded(ev);
+					if (ev.getType() === 'm.room.message' && ev.getSender() === sc.userId) res(ev);
+				});
+			});
+			await mc.sendTextMessage(dm, 'Hallo Anna, wir sind heute am Spielplatz Torfkanal!');
+			const ev = await Promise.race([got, wait(20000).then(() => null)]);
+			check(ev?.getContent().body === 'Hallo Anna, wir sind heute am Spielplatz Torfkanal!' && ev.isEncrypted(), 'Nachricht verschlüsselt gesendet und bei Anna entschlüsselt');
+			const synSql = postgres(DB.replace(/\/[^/?]+(\?|$)/, '/synapse_smoke$1'), { max: 1, onnotice: () => {} });
+			const [{ plain }] = await synSql`select count(*)::int as plain from event_json where json like '%Torfkanal%'`;
+			const [{ enc }] = await synSql`select count(*)::int as enc from event_json where json like '%m.room.encrypted%'`;
+			check(plain === 0 && enc > 0, 'Server speichert die Nachricht nur verschlüsselt (Klartext nicht in der Datenbank)');
+
+			const pushFile = await until(() => {
+				try { return readdirSync('/tmp/kd-smoke-push').map((f) => JSON.parse(readFileSync(join('/tmp/kd-smoke-push', f), 'utf8'))).find((x) => x.endpoint.endsWith('anna-1')); } catch { return null; }
+			}, 15000);
+			check(pushFile?.payload?.body === 'Neue Nachricht' && !JSON.stringify(pushFile).includes('Torfkanal') && pushFile.payload.url.startsWith('/nachrichten/chat/'), 'Push „Neue Nachricht“ ohne Inhalt, mit Link zur Unterhaltung');
+
+			// Gerätewechsel: Wiederherstellungsschlüssel einrichten, neues Gerät freischalten, alte Nachricht lesen
+			const cryptoA = ma.getCrypto();
+			const rk = await cryptoA.createRecoveryKeyFromPassphrase();
+			holderA.key = rk.privateKey;
+			await cryptoA.bootstrapCrossSigning({ authUploadDeviceSigningKeys: async (make) => { await make(null); } });
+			await cryptoA.bootstrapSecretStorage({ createSecretStorageKey: async () => rk, setupNewSecretStorage: true, setupNewKeyBackup: true });
+			check(await cryptoA.isSecretStorageReady(), 'Wiederherstellungsschlüssel eingerichtet (ohne Passwortabfrage)');
+			const backedUp = await until(async () => (await synSql`select count(*)::int as n from e2e_room_keys where user_id = ${sa.userId}`)[0].n > 0, 20000, 500);
+			check(!!backedUp, 'Schlüssel der Unterhaltung verschlüsselt gesichert');
+			const holderA2 = { key: null };
+			const { c: ma2 } = await mx(A, holderA2);
+			const { decodeRecoveryKey } = await import('matrix-js-sdk/lib/crypto-api/recovery-key.js');
+			holderA2.key = decodeRecoveryKey(rk.encodedPrivateKey);
+			const crypto2 = ma2.getCrypto();
+			await crypto2.bootstrapCrossSigning({});
+			await crypto2.loadSessionBackupPrivateKeyFromSecretStorage();
+			await crypto2.checkKeyBackupAndEnable();
+			await crypto2.restoreKeyBackup();
+			const room2 = ma2.getRoom(dm);
+			if (room2) await ma2.scrollback(room2, 20).catch(() => {});
+			const oldEv = await until(async () => {
+				const e = ma2.getRoom(dm)?.findEventById(ev.getId());
+				if (!e) return null;
+				await ma2.decryptEventIfNeeded(e).catch(() => {});
+				return e.getContent().body?.includes('Torfkanal') ? e : null;
+			}, 20000, 500);
+			check(!!oldEv, 'Neues Gerät liest frühere Nachricht nach Eingabe des Wiederherstellungsschlüssels');
+			const st2 = await crypto2.getCrossSigningStatus();
+			check(st2.privateKeysCachedLocally.masterKey && st2.privateKeysCachedLocally.selfSigningKey, 'Neues Gerät ist freigeschaltet (Kreuzsignierung)');
+			// Schlüssel verloren: Neu einrichten mit Bestätigung der App (statt Passwort)
+			let resetDenied = false;
+			try { await crypto2.resetEncryption(async (make) => { await make({ type: 'de.kinder.reauth', token: 'falsch.falsch', identifier: { type: 'm.id.user', user: sa.userId } }); }); } catch { resetDenied = true; }
+			check(resetDenied, 'Zurücksetzen ohne gültige Bestätigung abgelehnt');
+			const conf = JSON.parse((await A.req('/api/chat/bestaetigung', { json: {} })).body);
+			let resetOk = true;
+			try { await crypto2.resetEncryption(async (make) => { await make({ type: 'de.kinder.reauth', token: conf.token, identifier: { type: 'm.id.user', user: sa.userId } }); }); } catch (e) { resetOk = false; console.log('Reset-Fehler', e.message); }
+			check(resetOk, 'Verschlüsselung mit App-Bestätigung neu eingerichtet');
+
+			// Ruhezeit: ganztägig → kein Push
+			r = await A.req('/profil/benachrichtigungen', { form: { push_chat: 'on', quiet: 'on', quiet_from: '00:00', quiet_to: '23:59' } });
+			check(r.status === 200, 'Ruhezeit gespeichert');
+			const before = readdirSync('/tmp/kd-smoke-push').length;
+			await mc.sendTextMessage(dm, 'Zweite Nachricht in der Ruhezeit');
+			await wait(3000);
+			check(readdirSync('/tmp/kd-smoke-push').length === before, 'In der Ruhezeit kein Push');
+			r = await A.req('/profil/benachrichtigungen', { form: { push_chat: 'on' } });
+
+			// Einladung an Nicht-Kontakt wird vom Chat-Server abgelehnt
+			const sAdmin = JSON.parse((await req('/api/chat/sitzung', { json: {} })).body);
+			let denied = '';
+			try { await mc.createRoom({ name: 'Fremd', invite: [sAdmin.userId], initial_state: [ENC] }); } catch (e) { denied = e.errcode; }
+			check(denied === 'M_FORBIDDEN', 'Einladung an Nicht-Kontakt abgelehnt');
+			const up = await mc.uploadContent(Buffer.from('verschluesselte-testdaten'), { type: 'application/octet-stream' });
+			check(/^mxc:\/\/kinder-deutschlands\//.test(up.content_uri), 'Anhang-Upload über die App');
+
+			// Chatnachricht melden (Inhalt nur mit Freigabe)
+			r = await A.req('/api/chat/melden', { json: { roomId: dm, eventId: ev.getId(), reason: 'beleidigung', message: 'Test', messages: [{ eventId: ev.getId(), senderName: 'Cem', ts: ev.getTs(), body: ev.getContent().body }], consent: false } });
+			check(r.status === 400, 'Chat-Meldung ohne Freigabe abgelehnt');
+			r = await A.req('/api/chat/melden', { json: { roomId: dm, eventId: ev.getId(), reason: 'beleidigung', message: 'Test', messages: [{ eventId: ev.getId(), senderName: 'Cem', ts: ev.getTs(), body: ev.getContent().body }], consent: true } });
+			check(r.status === 200, 'Chatnachricht gemeldet');
+			r = await req('/admin/moderation');
+			check(r.body.includes('Torfkanal') && r.body.includes('Chat'), 'Moderation sieht die freigegebene Chatnachricht');
+			const [cc] = await sqlT2`select id from mod_cases where target_type = 'chat' and status = 'offen'`;
+			r = await req(`/admin/moderation/${cc.id}?/entscheiden`, { form: { action: 'entfernen', reason: 'Test' } });
+			check(r.status === 400, 'Verschlüsselte Nachricht kann nicht „entfernt“ werden (ehrlich)');
+			r = await req(`/admin/moderation/${cc.id}?/entscheiden`, { form: { action: 'verwarnen', reason: 'Bitte freundlich bleiben' } });
+			check(r.status === 200 || r.status === 303, 'Chat-Meldung: Verwarnung ausgesprochen');
+
+			// Treffen per QR
+			const { room_id: tr } = await mc.createRoom({ name: 'Spielplatz-Treffen Smoke', preset: 'public_chat', visibility: 'private', initial_state: [ENC, { type: 'm.room.history_visibility', state_key: '', content: { history_visibility: 'joined' } }] });
+			r = await C.req('/api/chat/raeume', { json: { action: 'treffen', roomId: tr, hours: 2 } });
+			const turl = JSON.parse(r.body).url ?? '';
+			const ttok = turl.split('/t/')[1];
+			check(r.status === 200 && !!ttok, 'Treffen angelegt, QR-Link erzeugt');
+			const { c: madm } = await mx(admin);
+			let adminJoin = '';
+			try { await madm.joinRoom(tr); } catch (e) { adminJoin = e.errcode; }
+			check(adminJoin === 'M_FORBIDDEN', 'Ohne QR-Ticket kein Beitritt zum Treffen');
+			r = await A.req(`/t/${ttok}`);
+			check(r.status === 200 && r.body.includes('Spielplatz-Treffen Smoke'), 'QR-Seite zeigt das Treffen');
+			r = await A.req(`/t/${ttok}`, { form: {}, headers: { accept: 'application/json', 'x-sveltekit-action': 'true' } });
+			check(r.body.includes(tr), 'Beitrittsticket ausgestellt');
+			let joined = true;
+			try { await ma.joinRoom(tr); } catch { joined = false; }
+			check(joined, 'Mit Ticket dem Treffen beigetreten');
+			r = await A.req(`/api/qr?d=${encodeURIComponent(turl)}`);
+			check(r.status === 200 && r.body.includes('<svg'), 'QR-Code für das Treffen');
+			r = await A.req(`/api/qr?d=${encodeURIComponent('https://evil.example/x')}`);
+			check(r.status === 400, 'QR-Dienst nur für eigene Treffen-Links');
+			await sqlT2`update chat_rooms set expires_at = now() - interval '1 second' where room_id = ${tr}`;
+			const expired = await until(async () => (await sqlT2`select status from chat_rooms where room_id = ${tr}`)[0]?.status === 'abgelaufen', 15000);
+			// Synapse löscht im Hintergrund – kurz warten
+			const purged = await until(async () => (await synSql`select count(*)::int as n from rooms where room_id = ${tr}`)[0].n === 0, 20000);
+			check(expired && purged, 'Abgelaufenes Treffen samt Nachrichten vom Server gelöscht');
+			r = await A.req(`/t/${ttok}`);
+			check(r.body.includes('Treffen nicht gefunden'), 'Abgelaufener QR-Code zeigt nichts mehr');
+
+			// Geräte
+			r = await A.req('/api/chat/geraete');
+			check(JSON.parse(r.body).devices?.some((d) => d.name === 'Rauchtest'), 'Chat-Geräte sichtbar');
+
+			// Blockieren stoppt den Direktchat (Regelprüfung wird bis zu 20 s zwischengespeichert)
+			r = await A.req('/nachrichten?ansicht=kontakte');
+			const cemCid = [...r.body.matchAll(/name="cid" value="([0-9A-Z]{9})"/g)].map((m) => m[1]).find((x) => x === cemId);
+			r = await A.req('/nachrichten?ansicht=kontakte&/blockieren', { form: { cid: cemCid ?? '' } });
+			await wait(21000);
+			let blockedSend = '';
+			try { await mc.sendTextMessage(dm, 'Nach dem Blockieren'); } catch (e) { blockedSend = e.errcode ?? e.name; }
+			check(blockedSend === 'M_FORBIDDEN', `Nach dem Blockieren kann Cem Anna nicht mehr schreiben (${blockedSend || 'gesendet'})`);
+
+			// Kontolöschung legt das Chat-Konto still
+			r = await C.req('/profil/konto?/loeschen', { form: { current: pwC, confirm: 'löschen' } });
+			const [deact] = await synSql`select deactivated from users where name = ${sc.userId}`;
+			check(r.status === 303 && deact?.deactivated === 1, 'Kontolöschung legt das Chat-Konto still');
+			await synSql.end();
+		} finally {
+			for (const c of clients) c.stopClient();
+			console.debug = origDebug;
+			console.info = origInfo;
+			console.warn = origWarn;
+		}
+	}
+	await sqlT2.end();
 
 	// Passkey-Endpunkte: nur gleiche Herkunft, nur angemeldet
 	r = await X.req('/api/passkey/login/options', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' } });
@@ -558,12 +824,15 @@ try {
 	check(r.status === 200 && r.body.includes('challenge'), 'Passkey-Anmeldung liefert Herausforderung');
 } finally {
 	server.kill();
+	synapse?.kill();
 	mock.close();
 }
 
 if (failures) {
-	console.log(`\n${failures} Prüfung(en) fehlgeschlagen.\n--- Serverlog ---\n${serverLog}`);
+	console.log(`\n${failures} Prüfung(en) fehlgeschlagen.\n--- Serverlog ---\n${serverLog}${synapseLog ? `\n--- Chat-Server ---\n${synapseLog.slice(-4000)}` : ''}`);
 	if (process.env.GITHUB_ACTIONS) console.log(`::error title=Serverlog::${serverLog.slice(-1500).replace(/\n/g, '%0A')}`);
 	process.exit(1);
 }
 console.log('\nAlle Rauchtests bestanden.');
+// Chat-Clients halten Zeitgeber offen – Testlauf hier ausdrücklich beenden
+process.exit(0);

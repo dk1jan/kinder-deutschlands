@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { prepareSynapse } from './synapse-prepare.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || join(here, '..', 'migrations');
@@ -96,6 +97,9 @@ async function main() {
 			}
 			console.log(`[migrate] ${pending.length} Migration(en) eingespielt.`);
 		}
+
+		// Chat-Server: Konfiguration schreiben und Datenbank anlegen (nur wenn SYNAPSE_CONFIG_DIR gesetzt ist)
+		await prepareSynapse(sql);
 
 		// Setup-Token: nur solange das Setup nicht abgeschlossen ist. Bei jedem Start neu (altes wird ungültig).
 		const [setup] = await sql`select value from settings where key = 'setup'`;

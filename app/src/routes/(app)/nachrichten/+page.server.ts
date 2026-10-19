@@ -16,6 +16,7 @@ export const load: PageServerLoad = async (event) => {
 	const fmtDate = (d: Date) => new Date(d).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
 	return {
 		member: true as const,
+		view: (event.url.searchParams.get('ansicht') === 'kontakte' ? 'kontakte' : 'chats') as 'kontakte' | 'chats',
 		contacts: o.contacts.map((r) => ({
 			cid: r.contact_id as string,
 			id: formatContactId(r.contact_id as string),

@@ -8,6 +8,8 @@ import { reapplyDeletions } from '$lib/server/account';
 import { loadMailSettings, mailSettingsLoaded } from '$lib/server/mailsettings';
 import { startScheduler } from '$lib/server/import/jobs';
 import { loadAerial } from '$lib/server/aerial';
+import { startChatJobs } from '$lib/server/chat/jobs';
+import { proxyMatrix } from '$lib/server/chat/proxy';
 
 // Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
 export const init: ServerInit = async () => {
@@ -24,6 +26,7 @@ export const init: ServerInit = async () => {
 	}
 	// Datenquellen nach Zeitplan abrufen (Regionen, Kartenkacheln, Orte)
 	startScheduler().catch((e) => console.error('Zeitplan konnte nicht starten:', (e as Error).message));
+	startChatJobs();
 };
 
 const THEMES = new Set(['system', 'light', 'dark']);
@@ -35,12 +38,18 @@ const OPEN_BEFORE_SETUP = [/^\/setup(\/|$)/, /^\/healthz$/, /^\/readyz$/, /^\/_a
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
+	// Chat-Server (nur Client- und Medien-Schnittstelle) läuft intern und wird über die App erreicht – keine Plesk-Änderung nötig
+	if (path.startsWith('/_matrix/client/') || path.startsWith('/_matrix/media/')) return proxyMatrix(event);
+	// Interne Schnittstellen (Regelprüfung, Push-Gateway) nur aus dem internen Netz: Über Plesk kommt immer X-Forwarded-For
+	if ((path.startsWith('/internal/') || path.startsWith('/_matrix/push/')) && (event.request.headers.has('x-forwarded-for') || event.request.headers.has('x-real-ip'))) {
+		return new Response('Nicht gefunden', { status: 404 });
+	}
 	const themeCookie = event.cookies.get('kd_theme') ?? 'system';
 	event.locals.theme = (THEMES.has(themeCookie) ? themeCookie : 'system') as App.Locals['theme'];
 	event.locals.user = null;
 	event.locals.session = null;
 
-	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/') && !path.startsWith('/kacheln/') && !path.startsWith('/luftbild/')) {
+	if (path !== '/healthz' && path !== '/readyz' && !path.startsWith('/_app/') && !path.startsWith('/kacheln/') && !path.startsWith('/luftbild/') && !path.startsWith('/internal/') && !path.startsWith('/_matrix/push/')) {
 		const sql = db();
 		if (!mailSettingsLoaded()) await loadMailSettings(sql).catch(() => {});
 		if (!setupDone) {
@@ -73,7 +82,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+	// Kamera (QR), Mikrofon (Sprachnachricht) und Standort (Karte, Treffpunkt) nur für die eigene Seite – der Browser fragt jeweils nach
+	response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), interest-cohort=()');
 	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
 	if (!allowIndexing()) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 	// Persönliche Seiten nie in geteilten Caches ablegen

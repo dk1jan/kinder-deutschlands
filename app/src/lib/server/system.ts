@@ -45,6 +45,25 @@ export async function systemChecks(sql: Sql): Promise<Check[]> {
 		state: mailConfigured() ? 'ok' : 'warn',
 		detail: mailConfigured() ? 'Konfiguriert' : 'Nicht eingerichtet – Registrierung und Passwort-Zurücksetzen sind deaktiviert'
 	});
+	// Chat-Server: nur technische Kennzahlen, keine Inhalte (Nachrichten sind Ende-zu-Ende-verschlüsselt)
+	const { chatEnabled, health } = await import('./chat/synapse');
+	if (chatEnabled()) {
+		const h = await health();
+		const [c] = await sql`select (select count(*)::int from chat_accounts) as konten,
+			(select count(*)::int from chat_rooms where status = 'aktiv' and kind = 'direkt') as direkt,
+			(select count(*)::int from chat_rooms where status = 'aktiv' and kind = 'gruppe') as gruppen,
+			(select count(*)::int from chat_rooms where status = 'aktiv' and kind = 'treffen') as treffen,
+			(select count(*)::int from push_subscriptions) as push`;
+		checks.push({
+			label: 'Chat-Server',
+			state: h.ok ? 'ok' : 'error',
+			detail: h.ok
+				? `Synapse ${h.version ?? ''} · ${c.konten} Chat-Konten · ${c.direkt} Direktchats, ${c.gruppen} Gruppen, ${c.treffen} laufende Treffen · ${c.push} Geräte mit Push`
+				: `Nicht erreichbar (${h.error}). Container „synapse“ prüfen.`
+		});
+	} else {
+		checks.push({ label: 'Chat-Server', state: 'warn', detail: 'Nicht eingerichtet (SYNAPSE_URL fehlt)' });
+	}
 	checks.push({ label: 'Version', state: 'ok', detail: gitSha() });
 	return checks;
 }

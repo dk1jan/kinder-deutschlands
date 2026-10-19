@@ -14,7 +14,15 @@ export const load: PageServerLoad = async (event) => {
 	const d = await caseDetail(sql, user.id, event.params.id);
 	if (!d) error(404, 'Fall nicht gefunden oder nicht in deiner Zuständigkeit.');
 	const topics = await sql`select key, name from topics order by sort`;
-	return { d, actions: ACTIONS, reasons: REASON_LABEL, topics, me: user.id };
+	// Chat-Meldungen: interne Konto-ID nicht an die Oberfläche geben
+	if (d.c.evidence) {
+		const { sender_user: _drop, ...rest } = d.c.evidence as Record<string, unknown>;
+		void _drop;
+		d.c.evidence = rest;
+	}
+	const chatOnly = ['freigeben', 'verwarnen', 'stumm', 'sperren', 'eskalieren'];
+	const actions = d.c.target_type === 'chat' ? Object.fromEntries(Object.entries(ACTIONS).filter(([k]) => chatOnly.includes(k))) : ACTIONS;
+	return { d, actions: actions as typeof ACTIONS, reasons: REASON_LABEL, topics, me: user.id };
 };
 
 async function guarded(fn: () => Promise<void>, ok: string) {

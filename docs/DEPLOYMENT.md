@@ -73,6 +73,20 @@ F=$(ls -t /var/lib/docker/volumes/kinder-deutschlands_backups/_data/media-*.tar.
 docker run --rm -v kinder-deutschlands_media:/m -v "$F":/b.tgz:ro alpine sh -c 'tar -xzf /b.tgz -C /m'
 ```
 
+## Chat (ab Abschnitt 4)
+Nichts von Hand: Der Stack enthält den Container `synapse`. Die App schreibt dessen Konfiguration beim Start in das Volume `synapse-config` und legt die Datenbank `synapse` an; Synapse startet sich bei Änderungen selbst neu (Log: „Konfiguration geändert – Neustart“). Kein eigener Port, keine Plesk-Änderung – Browser erreichen den Chat über die App.
+
+Prüfen: Verwaltung → Übersicht → „Chat-Server“ = „In Ordnung“. Logs: `docker logs --tail 50 kinder-deutschlands-synapse-1`.
+
+Chat-Datenbank wiederherstellen (überschreibt den aktuellen Chat-Stand!):
+```bash
+docker stop kinder-deutschlands-synapse-1
+F=$(ls -t /var/lib/docker/volumes/kinder-deutschlands_backups/_data/chat-*.dump | head -1)
+docker exec -i kinder-deutschlands-db-1 pg_restore -U kd -d synapse --clean --if-exists --no-owner < "$F"
+docker start kinder-deutschlands-synapse-1
+```
+Chat-Medien (verschlüsselt): `chatmedien-*.tar.gz` analog zu den Bildern in das Volume `kinder-deutschlands_synapse-data` (Ordner `media_store`) entpacken.
+
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.
 2. Plattform → **Verwaltung → Einstellungen** → E-Mail-Versand: Mailserver `jan-krueger.org`, Port `587`, Absender und Benutzername `noreply@jan-krueger.org`, Passwort → **Speichern und Verbindung prüfen**.
@@ -113,11 +127,11 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 | Variable | Pflicht | Bedeutung |
 |---|---|---|
 | `APP_URL` | ja | öffentliche Adresse mit https |
-| `APP_SECRET` | ja | ≥ 32 Zeichen, nie ändern |
+| `APP_SECRET` | ja | ≥ 32 Zeichen, nie ändern (auch Chat-Geheimnisse werden daraus abgeleitet) |
 | `POSTGRES_PASSWORD` | ja | Datenbankpasswort |
 | `ALLOW_INDEXING` | nein | `true` erst beim echten Start |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | nein | nur Rückfall – normal in Verwaltung → Einstellungen |
 | `SMTP_INSECURE_TLS` | nein | nur bei Zertifikatsfehler des Mailservers |
 
 ## Domainwechsel später
-Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung.
+Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung. Chats bleiben erhalten (feste Chat-Serverkennung, D-035); Push-Abos melden sich auf der neuen Adresse neu an.

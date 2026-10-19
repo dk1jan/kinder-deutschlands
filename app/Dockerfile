@@ -16,7 +16,7 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine
 # pg_dump passend zur Datenbank (PostgreSQL 17) für die Sicherung vor Migrationen; tini für sauberes Beenden
-RUN apk add --no-cache postgresql17-client tini tzdata && mkdir -p /backups /data/tiles /data/media && chown node:node /backups /data/tiles /data/media
+RUN apk add --no-cache postgresql17-client tini tzdata && mkdir -p /backups /data/tiles /data/media /synapse-config && chown node:node /backups /data/tiles /data/media /synapse-config
 # pmtiles (go-pmtiles, BSD-3) schneidet den Kartenausschnitt aus dem Protomaps-Build.
 # Das Release hat keine Prüfsummendatei – die Prüfsumme des Archivs ist hier fest hinterlegt (geprüft 18.10.2026).
 ARG PMTILES_VERSION=1.31.2
@@ -30,7 +30,7 @@ WORKDIR /app
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --from=build /app/scripts/migrate.mjs /app/scripts/synapse-prepare.mjs /app/scripts/kd_rules.py ./scripts/
 COPY --from=build /app/migrations ./migrations
 ARG GIT_SHA=unbekannt
 ENV GIT_SHA=$GIT_SHA

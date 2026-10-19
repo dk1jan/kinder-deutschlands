@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 18.10.2026 · Bauabschnitt 3 (Community) fertig – Abschnitt 2 läuft auf dem Server
+Stand: 19.10.2026 · Bauabschnitt 4 (Kommunikation) fertig – Chat Ende-zu-Ende-verschlüsselt
 
 Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig geprüft) · **getestet** (automatische Tests bestanden) · **extern blockiert**
 
@@ -13,7 +13,8 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Portainer-Stack aus Branch `deploy`, Polling 5 Min | umgesetzt | Stack läuft; DB-Volume muss nach Passwortwechsel neu angelegt werden |
 | GHCR-Paket öffentlich | getestet | Server zieht das Image ohne Anmeldung |
 | Plesk-Subdomain `kinder.jan-krueger.org`, TLS, Docker-Proxyregel | getestet | Zertifikat korrekt, HTTPS 200 (18.10.) |
-| Tägliche Sicherung (Container `backup`, 14 Tage; Bilder als Archiv, letzte 3) | umgesetzt | erst auf dem Server prüfbar |
+| Tägliche Sicherung (Container `backup`, 14 Tage; Bilder als Archiv, letzte 3; Chat-DB 14 Tage, Chat-Medien letzte 3) | umgesetzt | erst auf dem Server prüfbar |
+| Chat-Server Synapse (Container `synapse`, Volumes `synapse-config`, `synapse-data`) | getestet | Stack-Test in CI mit echten Images vor jedem Ausrollen; Neustart bei Konfigurationsänderung automatisch |
 | Datenabrufe nach Zeitplan (im Web-Container) | getestet | mit Nachbau der Dienste; echter Erstabruf auf dem Server nach dem Ausrollen (Regionen → Kacheln → Orte, ca. 10–30 Min) |
 | Eigene Kartenkacheln (Volume `tiles`, ~1,5 GB) | getestet | Auslieferung mit Range lokal mit echtem Bremer Ausschnitt geprüft |
 | Sicherung vor jeder Migration | getestet | Integrationstest |
@@ -38,7 +39,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Luftbild (LGLN Niedersachsen, optional Esri) | getestet | mit Nachbau des WMS; Bremen nur mit Esri-Schlüssel |
 | Navigation an externe Apps | getestet | Google, Apple, Waze, OSM, geo: |
 | Kartenoberfläche hell/dunkel, mobil/desktop | getestet | Bildschirmfotos geprüft; Screenreader-Test: vorgesehen |
-| PWA | vorgesehen | Manifest vorhanden; Service Worker, Push, Installationshilfe iOS: Abschnitt 4/5 |
+| PWA | umgesetzt | Manifest mit PNG-Symbolen, Service Worker (nur Push, kein Offline-Speicher), Push-Gateway getestet (Testablage), iOS-Installationshilfe. Echte Zustellung über Apple/Google/Mozilla erst auf dem Server prüfbar |
 | Mehrsprachigkeit / einfache Sprache | vorgesehen | Oberfläche Deutsch |
 | E-Mail-Versand (SMTP) | getestet | Einstellung in Verwaltung → Einstellungen (Passwort verschlüsselt, Verbindungsprüfung, Test-Mail); Rückfall Portainer-Variablen. Echter Versand: wartet auf Eintrag durch Jan |
 | Datenschutzerklärung, Impressum | vorgesehen | Inhalte brauchen rechtliche Prüfung durch Betreiber |
@@ -48,12 +49,12 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Modul | Status | Abschnitt |
 |---|---|---|
 | M01 Mitglieder-ID, Profile, QR | getestet | Familien-ID, Profil + Sichtbarkeit, Vorschau „So sehen andere mich“, QR dauerhaft/befristet/widerrufbar, Druckvorlage, Kontaktanfragen, Kontakte, Blockieren, Entdecken nach Region. Freigabestufe „Gruppen“ kommt mit M04 (Abschnitt 3) |
-| M02 Kommunikation (Text/Medien) | vorgesehen | 4 |
-| M02 Audio/Video | vorgesehen | 7 |
+| M02 Kommunikation (Text/Medien) | getestet | Direkt-/Gruppenchat E2EE, Bilder, Dateien, Sprachnachrichten, Links, Löschen, Stummschalten, Melden mit Freigabe, Blockieren wirkt serverseitig, Wiederherstellungsschlüssel/Gerätewechsel, Geräteliste, Ruhezeiten, Lesebestätigung/Tippen nur bewusst, kein Online-Status. Suche nur im Gerät (geladene Nachrichten): vorgesehen. Sprachnachricht/Kamera im Browser nur auf echten Geräten prüfbar | 4 |
+| M02 Audio/Video, „Ruf mich an“ | vorgesehen | 7 (TURN/LiveKit) |
 | M03 Regionale Community | getestet | Themen + Regionen abonnierbar, Feed, Beiträge/Antworten/Bilder, Suche, Schlagworte, Lesezeichen, Umfragen, hilfreich/Lösung, anheften/schließen/archivieren/verschieben. Medien: nur Bilder (Video/Audio mit M02) | 3 |
 | M04 Geschützte Gruppen | getestet | offen/Anfrage/geschützt, Aufnahmefragen, Pseudonym, keine Mitgliederliste für Fremde, Gruppenmoderation ohne Profilzugriff. Aufnahme durch Partnerorganisationen: vorgesehen (Rolle vorhanden, Ablauf noch nicht). Profil-Freigabestufe „Gruppen“ (M01): vorgesehen | 3 |
 | M05 Familienradar | vorgesehen | 5 |
-| M06 Treffen, temporäre Räume, Live-Standort | vorgesehen | 4 |
+| M06 Treffen, temporäre Räume, Live-Standort | getestet | Treffen per QR mit Ablauf und Löschung, dauerhaft behalten, Treffpunkt-Pin mit Hinweg, Live-Standort 15/30/60 Min. (nur bei geöffneter Seite – Grenze von Web-Apps) | 4 |
 | M07 Social-Media-Links, Editor | getestet | Linkkarte mit SSRF-Schutz, Einbettung YouTube/Vimeo erst nach Klick, Teilen-Menü (PWA, Android/Chrome; iOS unterstützt share_target nicht), Editor mit Vorschau. Abruf echter Fremdseiten nur auf dem Server prüfbar | 3 |
 | M08 Affiliate | extern blockiert | 7 – Amazon-Bedingungen prüfen, PartnerNet-Konto nötig |
 | M09 Marktplatz | vorgesehen | 6 |
@@ -71,13 +72,13 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | M21 Geburtstage, Einladungen | vorgesehen | 6 |
 | M22 Verifizierte Einrichtungen | vorgesehen | 5 |
 | M23 Datenversorgung | umgesetzt | Quellenkatalog, Abruf, Abgleich, Vorschau/Freigabe, Sperren, Dubletten, Archiv, Fehlerwiederholung getestet. Weitere Prüfkandidaten (familiennetz bremen, Kita-Portal, FreiKarte …): je Quelle Lizenz klären, vorgesehen | 2 |
-| M24 Admin/Moderation/Redaktion | getestet | Übersicht, Nutzer, Rechte, Protokoll, Einstellungen, Datenzentrale, Moderation (Warteschlange, Fall, Entscheidung mit Begründung, Einspruch, Einschränkung, Zuständigkeit nach Region/Thema/Gruppe), Gruppen, Wissen. Zweite Freigabe kritischer Aktionen: vorgesehen |
+| M24 Admin/Moderation/Redaktion | getestet | Übersicht, Nutzer, Rechte, Protokoll, Einstellungen, Datenzentrale, Moderation (Warteschlange, Fall, Entscheidung mit Begründung, Einspruch, Einschränkung, Zuständigkeit nach Region/Thema/Gruppe), Gruppen, Wissen, Chat-Meldungen (Wortlaut nur mit Freigabe), Chat-Server im Systemzustand. Zweite Freigabe kritischer Aktionen: vorgesehen |
 
 ## Offene Punkte
 
 1. **Jan:** Mailserver in Verwaltung → Einstellungen eintragen, dann Test-E-Mail. Bis dahin ist die Registrierung geschlossen.
-2. Nach dem Ausrollen: Verwaltung → Rollen und Rechte: Moderation vergeben (regional/Thema/Gruppe). Gruppen unter Verwaltung → Gruppen anlegen. Als Nächstes Abschnitt 4 (Kommunikation).
+2. Nach dem Ausrollen: Verwaltung → Übersicht → „Chat-Server“ muss „In Ordnung“ zeigen. Dann mit zwei Konten testen: Kontakt verbinden → „Nachricht“ → Wiederherstellungsschlüssel aufbewahren. Als Nächstes Abschnitt 5.
 3. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
-4. Annahmen bestätigen (DECISIONS.md D-008 bis D-010): E2EE-Chat über eigenen Synapse, TURN auf demselben Server, Mail über Plesk.
+4. Annahmen bestätigen (DECISIONS.md D-009, D-010): TURN auf demselben Server, Mail über Plesk. Chat-Architektur ist mit D-034 festgelegt.
 5. Sicherheit Server allgemein (nicht Kinder-spezifisch): Firewall aus, Portainer :9000 und weitere Dienste öffentlich erreichbar.
 6. ODbL: Orte aus OSM + Mitglieder-Ergänzungen bilden eine abgeleitete Datenbank – auf Anfrage als ODbL-Export bereitstellen; rechtliche Prüfung durch Betreiber empfohlen (D-020).

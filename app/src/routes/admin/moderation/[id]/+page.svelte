@@ -25,7 +25,14 @@
 			{#if data.d.content.title}<h3>{data.d.content.title}</h3>{/if}
 			{#if data.d.content.stars}<p>{'★'.repeat(data.d.content.stars)}{'☆'.repeat(5 - data.d.content.stars)}</p>{/if}
 			{#if data.d.content.image}<img src={data.d.content.image} alt="" class="img" />{/if}
-			{#if data.d.content.body}<div class="prose box">{@html renderMarkup(data.d.content.body)}</div>{/if}
+			{#if c.target_type === 'chat' && c.evidence?.messages}
+				<p class="small muted">Ende-zu-Ende-verschlüsselter Chat ({c.evidence.room_kind}). Absender und Zeitpunkt der gemeldeten Nachricht hat der Server bestätigt; den Wortlaut hat die meldende Person freigegeben – er ist technisch nicht prüfbar.</p>
+				<ol class="chatev">
+					{#each c.evidence.messages as m}
+						<li class:rep={m.reported}><span class="muted small">{m.senderName} · {m.ts ? fmt(new Date(m.ts)) : ''}{m.reported ? ' · gemeldet' : ''}</span><p>{m.body}</p></li>
+					{/each}
+				</ol>
+			{:else if data.d.content.body}<div class="prose box">{@html renderMarkup(data.d.content.body)}</div>{/if}
 			{#if data.d.content.link}<p><a href={data.d.content.link} target="_blank">Im Zusammenhang ansehen</a></p>{/if}
 		{:else}<p class="muted">Der Inhalt existiert nicht mehr.</p>{/if}
 		<p class="muted small">Vorgeschichte der Person: {data.d.history.removed} ausgeblendete/entfernte Inhalte, {data.d.history.restrictions} Verwarnungen/Einschränkungen.</p>
@@ -67,6 +74,25 @@
 </div>
 
 <style>
+	.chatev {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: grid;
+		gap: var(--sp-2);
+	}
+	.chatev li {
+		padding: var(--sp-2) var(--sp-3);
+		border-radius: var(--radius-s);
+		background: var(--surface-2);
+	}
+	.chatev li.rep {
+		border-left: 5px solid var(--red);
+	}
+	.chatev p {
+		margin: 0;
+		white-space: pre-wrap;
+	}
 	.msg {
 		padding: var(--sp-3) var(--sp-4);
 		background: var(--surface);

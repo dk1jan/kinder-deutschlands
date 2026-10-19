@@ -215,6 +215,21 @@
 		void features.join(',');
 		if (ready) schedule(true);
 	});
+	// Mini-Karte: Punkte geändert (z. B. Live-Standorte im Chat) → Daten tauschen, Ausschnitt anpassen
+	$effect(() => {
+		const pts = points.map((p) => `${p.kind}:${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join('|');
+		if (!ready || mode !== 'mini' || !map) return;
+		const src = map.getSource('orte') as GeoJSONSource | undefined;
+		src?.setData({
+			type: 'FeatureCollection',
+			features: points.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: String(i), k: p.kind } }))
+		});
+		if (points.length > 1) {
+			const lons = points.map((p) => p.lon), lats = points.map((p) => p.lat);
+			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 60, maxZoom: 17, duration: 300 });
+		} else if (points.length === 1) map.easeTo({ center: [points[0].lon, points[0].lat], duration: 300 });
+		void pts;
+	});
 	// Auswahl geändert → Markierung hervorheben
 	$effect(() => {
 		const s = selected ?? '';

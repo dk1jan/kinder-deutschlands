@@ -55,6 +55,11 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 		return r ? { regionCode: r.region_code, topicKey: null, groupId: null, groupKind: null, authorId: r.user_id } : null;
 	}
 	if (type === 'user') return { regionCode: null, topicKey: null, groupId: null, groupKind: null, authorId: id };
+	if (type === 'chat') {
+		// Verschlüsselte Chats: Absender vom Server bestätigt, Inhalt nur aus der Meldung (freigegeben von der meldenden Person)
+		const [c] = await sql`select evidence->>'sender_user' as author from mod_cases where target_type = 'chat' and target_id = ${id} limit 1`;
+		return c ? { regionCode: null, topicKey: null, groupId: null, groupKind: null, authorId: c.author ?? null } : null;
+	}
 	return null;
 }
 
@@ -138,6 +143,7 @@ export async function queue(sql: Sql, userId: string, f: QueueFilter) {
 	if (ids('comment').length) add(await sql`select id, body as t from comments where id::text = any(${ids('comment')})`);
 	if (ids('review').length) add(await sql`select id, stars || ' ★ ' || coalesce(body, '') as t from place_reviews where id::text = any(${ids('review')})`);
 	if (ids('media').length) add(await sql`select id, coalesce(alt, 'Bild') as t from media where id::text = any(${ids('media')})`);
+	for (const r of out) if (r.target_type === 'chat') preview.set(String(r.target_id), String((r.evidence?.messages ?? []).find((m: { reported?: boolean }) => m.reported)?.body ?? '').replace(/\s+/g, ' ').slice(0, 90));
 	return out.map((r) => ({
 		preview: preview.get(String(r.target_id)) ?? null,
 		id: r.id as string,
@@ -176,6 +182,9 @@ export async function caseDetail(sql: Sql, userId: string, id: string) {
 	} else if (c.target_type === 'review') {
 		const [v] = await sql`select stars, body, status, place_id from place_reviews where id = ${c.target_id}`;
 		if (v) content = { title: 'Bewertung eines Ortes', body: v.body ?? '', status: v.status, stars: v.stars, link: `/orte/${v.place_id}` };
+	} else if (c.target_type === 'chat') {
+		const ev = (c.evidence ?? {}) as { messages?: { reported?: boolean; body?: string }[] };
+		content = { title: 'Gemeldete Chatnachricht', body: ev.messages?.find((m) => m.reported)?.body ?? '', status: 'gemeldet' };
 	}
 	// Vorgeschichte der Person (nur Anzahl früherer Entscheidungen, keine Inhalte anderer Fälle)
 	const [hist] = s?.authorId
@@ -231,6 +240,8 @@ export async function decide(
 		else if (type === 'review') await sql`update place_reviews set status = ${status} where id = ${c.target_id}`;
 	};
 	const postId = type === 'post' ? c.target_id : null;
+	if (type === 'chat' && !['freigeben', 'verwarnen', 'stumm', 'sperren', 'eskalieren'].includes(action))
+		throw new PostError('Chatnachrichten sind verschlüsselt und können nicht entfernt werden. Möglich: freigeben, verwarnen, einschränken, sperren, eskalieren.');
 	switch (action) {
 		case 'freigeben':
 			if (d.content?.status === 'pruefung') await setStatus('sichtbar');
@@ -280,6 +291,10 @@ export async function decide(
 				if (!(await userCan(sql, modId, 'users.suspend'))) throw new PostError('Konten sperren darf nur der Betreiber – bitte eskalieren.');
 				await sql`update users set status = 'suspended' where id = ${author} and status = 'active'`;
 				await sql`delete from sessions where user_id = ${author}`;
+				// Auch alle Chat-Geräte abmelden
+				const chat = await import('../chat/synapse');
+				const [acc] = await sql`select localpart from chat_accounts where user_id = ${author}`;
+				if (acc && chat.chatEnabled()) await chat.logoutAll(sql, acc.localpart).catch(() => {});
 			}
 			break;
 		case 'eskalieren':
@@ -297,7 +312,7 @@ export async function decide(
 		entfernen: 'Ein Inhalt von dir wurde von der Moderation entfernt',
 		kennzeichnen: 'Ein Inhalt von dir wurde mit einem Hinweis der Moderation versehen',
 		verwarnen: 'Du hast eine Verwarnung der Moderation erhalten',
-		stumm: `Du kannst ${extra.days ?? 7} Tage keine Beiträge und Antworten schreiben`,
+		stumm: `Du kannst ${extra.days ?? 7} Tage keine Beiträge, Antworten und Nachrichten in Gruppen oder Treffen schreiben`,
 		wiederherstellen: 'Ein Inhalt von dir ist wieder sichtbar',
 		sperren: 'Dein Konto wurde gesperrt'
 	};

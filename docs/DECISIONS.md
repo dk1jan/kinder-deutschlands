@@ -23,7 +23,7 @@ Recht = Rolle × Geltungsbereich × Aktion. Regionen vererben nur nach unten. Ge
 ## D-007 · Navigation: fünf Hauptziele (18.10.2026)
 Entdecken · Karte · Community · Nachrichten · Profil. Veranstaltungen, Marktplatz, Hilfe und Lebenslagen sind Einstiege in „Entdecken“ und Ebenen der Karte – keine eigenen Hauptpunkte. Verwaltung für Berechtigte am Desktop in der Leiste, mobil über Profil.
 
-## D-008 · Chat Ende-zu-Ende-verschlüsselt über eigenen Matrix-Server – ANNAHME (18.10.2026)
+## D-008 · Chat Ende-zu-Ende-verschlüsselt über eigenen Matrix-Server – FESTGELEGT mit D-034 (19.10.2026)
 Eigene Synapse-Instanz nur für Kinder Deutschlands (nicht die vorhandene auf dem Server), eigene Oberfläche. Moderation privater Chats nur über gemeldete, vom Meldenden freigegebene Inhalte. Wird mit Abschnitt 4 endgültig festgelegt. Jan hat nicht widersprochen.
 
 ## D-009 · TURN auf demselben Server – ANNAHME (18.10.2026)
@@ -100,3 +100,27 @@ Alle hochgeladenen Bilder werden mit sharp neu kodiert (WebP, max. 2000 px), Met
 
 ## D-033 · Wissen nur mit Zustimmung (18.10.2026)
 Aus einem Beitrag entsteht ein Wissenseintrag nur als Entwurf; veröffentlicht wird erst nach Zustimmung der Autorin/des Autors. Beiträge aus Gruppen werden nie übernommen. Veröffentlichung braucht mindestens eine Quelle, das Prüfdatum wird angezeigt.
+
+## D-034 · Chat: eigener Synapse, Ende-zu-Ende-verschlüsselt, ohne Föderation (19.10.2026)
+Synapse im Stack (nur internes Netz), erreichbar ausschließlich über die App (Proxy für `/_matrix/client` und `/_matrix/media`; Admin-Schnittstelle nie). Keine Föderation, keine Registrierung, keine Passwörter: Anmeldung nur mit kurzlebigem JWT der App. Verschlüsselung im Browser (Matrix Rust-Krypto). Der Betreiber kann Inhalte nicht lesen; die Datenbank enthält nur Chiffrat. Plattformregeln setzt ein Regelmodul im Chat-Server durch, das die App fragt (fail closed). Alternative „serverseitig verschlüsselt“ verworfen: Betreiber hätte Lesezugriff, widerspricht M02 („kein pauschaler Admin-Lesezugriff“) und dem Schutzbedarf geschützter Gruppen.
+
+## D-035 · Feste Chat-Serverkennung (19.10.2026)
+`server_name` = `kinder-deutschlands`, unabhängig von der Domain. Ein Domainwechsel (APP_URL) zerstört so keine Chats. Chat-Kennungen sind zufällig (`@k…`), nicht aus Familien- oder Konto-ID ableitbar.
+
+## D-036 · Moderation im Chat (19.10.2026)
+Melden nur mit ausdrücklicher Freigabe des Wortlauts durch die meldende Person (optional 5 Nachrichten Zusammenhang); Absender und Zeitpunkt bestätigt der Server, der Wortlaut ist technisch nicht prüfbar – so wird er angezeigt. Verschlüsselte Nachrichten können nicht „entfernt“ werden; möglich sind freigeben, verwarnen, einschränken, sperren (Betreiber), eskalieren. Eine Einschränkung gilt in Gruppen und Treffen, nicht im Direktchat mit bestätigten Kontakten (dort hilft Blockieren). Sperren meldet alle Chat-Geräte ab.
+
+## D-037 · Push ohne Inhalt (19.10.2026)
+Eigenes Push-Gateway in der App; der Chat-Server sendet nur Ereigniskennungen („event_id_only“). Hinweis lautet immer „Neue Nachricht“/„Neue Mitteilung“ – kein Absender, kein Text, kein Thema auf dem Sperrbildschirm. Ruhezeiten serverseitig. VAPID-Schlüssel automatisch erzeugt, verschlüsselt gespeichert. Lesebestätigungen und Tippanzeige standardmäßig aus, Online-Status gibt es nicht.
+
+## D-038 · Gerätewechsel und Wiederherstellung (19.10.2026)
+Wiederherstellungsschlüssel (Matrix Secret Storage + Schlüsselsicherung), wird einmal angezeigt. Ohne ihn sind frühere Nachrichten auf neuen Geräten nicht lesbar – das steht so in der Oberfläche, auch dass niemand sie wiederherstellen kann. „Neu einrichten“ bei Verlust bestätigt die App (signiertes Kurzzeit-Token statt Passwort, geprüft im Regelmodul). Geräte abmelden über die App.
+
+## D-039 · Treffen: Lösch- und Aufbewahrungsregel (19.10.2026)
+Treffen-Räume laufen 2 Stunden bis 7 Tage. Nach Ablauf löscht der Server den Raum mit allen Nachrichten (Synapse „purge“); auf Geräten verschwinden sie beim nächsten Laden. Wer später beitritt, sieht nur Nachrichten ab Beitritt. Beitritt nur angemeldet, per QR-Link mit Ticket (10 Min.), höchstens 50 Personen. Raumname und Ablaufzeit kennt der Server, Inhalte und Treffpunkt nicht. „Dauerhaft behalten“ macht eine Gruppe daraus, QR-Beitritt endet.
+
+## D-040 · Live-Standort nur im Vordergrund (19.10.2026)
+Web-Apps dürfen im Hintergrund nicht orten. Live-Standort läuft nur, solange die Seite offen ist, endet nach 15/30/60 Min. oder sofort per „Stoppen“, und geht nur verschlüsselt an die Mitglieder des Raums. Keine Admin-Karte, keine Speicherung in der App-Datenbank.
+
+## D-041 · Erste Nachricht an Personen ohne Chat-Gerät (19.10.2026)
+Ende-zu-Ende-Verschlüsselung braucht Schlüssel des Empfängergeräts. Hat das Gegenüber den Chat noch nie geöffnet, wartet das Eingabefeld (statt unlesbar zu senden) und das Gegenüber bekommt einen Hinweis. Direktchat-Einladungen bestätigter Kontakte nimmt der Client automatisch an, damit Schlüssel sofort verfügbar sind. In Gruppen wird angezeigt, wer neue Nachrichten erst nach dem ersten Öffnen lesen kann.

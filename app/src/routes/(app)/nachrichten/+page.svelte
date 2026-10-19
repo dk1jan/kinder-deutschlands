@@ -2,11 +2,12 @@
 	import Planned from '$lib/components/Planned.svelte';
 	import ModuleArt from '$lib/components/art/ModuleArt.svelte';
 	import Notice from '$lib/components/Notice.svelte';
+	import ChatList from '$lib/components/chat/ChatList.svelte';
 	let { data, form } = $props();
 	const via: Record<string, string> = { qr: 'über deinen QR-Code', id: 'über deine ID', entdecken: 'über „Familien entdecken“' };
 </script>
 
-<svelte:head><title>Kontakte und Nachrichten – Kinder Deutschlands</title></svelte:head>
+<svelte:head><title>Nachrichten – Kinder Deutschlands</title></svelte:head>
 
 {#if !data.member}
 	<Planned
@@ -28,10 +29,20 @@
 	</div>
 {:else}
 	<div class="container page">
-		<h1>Kontakte</h1>
+		<h1>Nachrichten</h1>
+		<nav class="viewtabs" aria-label="Ansicht">
+			<a href="/nachrichten" aria-current={data.view === 'chats' ? 'page' : undefined}>Chats</a>
+			<a href="/nachrichten?ansicht=kontakte" aria-current={data.view === 'kontakte' ? 'page' : undefined}>Kontakte{#if data.incoming.length} <span class="count small">{data.incoming.length}</span>{/if}</a>
+		</nav>
 		{#if form?.ok}<Notice kind="ok">{form.ok}</Notice>{/if}
 		{#if form?.error}<Notice kind="error">{form.error}</Notice>{/if}
 
+		{#if data.view === 'chats'}
+			{#if data.incoming.length}
+				<p class="reqhint"><a href="/nachrichten?ansicht=kontakte#neu">{data.incoming.length === 1 ? 'Eine neue Kontaktanfrage' : `${data.incoming.length} neue Kontaktanfragen`}</a> – nach dem Annehmen könnt ihr schreiben.</p>
+			{/if}
+			<ChatList />
+		{:else}
 		<section class="find card">
 			<form method="GET" action="/nachrichten/familie" class="search">
 				<div class="field">
@@ -56,9 +67,9 @@
 								{#if r.message}<p class="msg">„{r.message}“</p>{/if}
 							</div>
 							<div class="acts">
-								<form method="POST" action="?/annehmen"><input type="hidden" name="id" value={r.id} /><button class="btn small signal" type="submit">Annehmen</button></form>
-								<form method="POST" action="?/ablehnen"><input type="hidden" name="id" value={r.id} /><button class="btn small secondary" type="submit">Ablehnen</button></form>
-								<form method="POST" action="?/anfrageBlockieren"><input type="hidden" name="id" value={r.id} /><button class="btn small danger" type="submit">Blockieren</button></form>
+								<form method="POST" action="?ansicht=kontakte&/annehmen"><input type="hidden" name="id" value={r.id} /><button class="btn small signal" type="submit">Annehmen</button></form>
+								<form method="POST" action="?ansicht=kontakte&/ablehnen"><input type="hidden" name="id" value={r.id} /><button class="btn small secondary" type="submit">Ablehnen</button></form>
+								<form method="POST" action="?ansicht=kontakte&/anfrageBlockieren"><input type="hidden" name="id" value={r.id} /><button class="btn small danger" type="submit">Blockieren</button></form>
 							</div>
 						</li>
 					{/each}
@@ -78,18 +89,19 @@
 								<a class="who" href={`/nachrichten/familie?id=${c.cid}`}>{c.name ?? 'Familie'} <span class="muted">{c.id}</span></a>
 								<p class="muted meta">Verbunden seit {c.since}</p>
 							</div>
+							<a class="btn small" href={`/nachrichten/chat/neu?mit=${c.cid}`}>Nachricht</a>
 							<details class="more">
 								<summary>Optionen</summary>
 								<div class="acts">
-									<form method="POST" action="?/entfernen"><input type="hidden" name="cid" value={c.cid} /><button class="btn small secondary" type="submit">Kontakt entfernen</button></form>
-									<form method="POST" action="?/blockieren"><input type="hidden" name="cid" value={c.cid} /><button class="btn small danger" type="submit">Blockieren</button></form>
+									<form method="POST" action="?ansicht=kontakte&/entfernen"><input type="hidden" name="cid" value={c.cid} /><button class="btn small secondary" type="submit">Kontakt entfernen</button></form>
+									<form method="POST" action="?ansicht=kontakte&/blockieren"><input type="hidden" name="cid" value={c.cid} /><button class="btn small danger" type="submit">Blockieren</button></form>
 								</div>
 							</details>
 						</li>
 					{/each}
 				</ul>
 			{/if}
-			<p class="muted chatnote">Schreiben und anrufen könnt ihr ab Bauabschnitt 4. Bis dahin seht ihr die Angaben, die ihr für Kontakte freigegeben habt.</p>
+			<p class="muted chatnote">Schreiben könnt ihr Ende-zu-Ende-verschlüsselt über „Nachricht“. Anrufe folgen in Bauabschnitt 7.</p>
 		</section>
 
 		{#if data.outgoing.length}
@@ -99,7 +111,7 @@
 					{#each data.outgoing as r}
 						<li class="item">
 							<div><span class="who">{r.contactId}</span><p class="muted meta">gesendet am {r.at}</p></div>
-							<form method="POST" action="?/zurueckziehen"><input type="hidden" name="id" value={r.id} /><button class="btn small secondary" type="submit">Zurückziehen</button></form>
+							<form method="POST" action="?ansicht=kontakte&/zurueckziehen"><input type="hidden" name="id" value={r.id} /><button class="btn small secondary" type="submit">Zurückziehen</button></form>
 						</li>
 					{/each}
 				</ul>
@@ -113,16 +125,55 @@
 					{#each data.blocked as b}
 						<li class="item">
 							<span class="who">{b.contactId}</span>
-							<form method="POST" action="?/freigeben"><input type="hidden" name="cid" value={b.cid} /><button class="btn small secondary" type="submit">Blockierung aufheben</button></form>
+							<form method="POST" action="?ansicht=kontakte&/freigeben"><input type="hidden" name="cid" value={b.cid} /><button class="btn small secondary" type="submit">Blockierung aufheben</button></form>
 						</li>
 					{/each}
 				</ul>
 			</section>
 		{/if}
+		{/if}
 	</div>
 {/if}
 
 <style>
+	.viewtabs {
+		display: flex;
+		gap: var(--sp-1);
+		margin: 0 0 var(--sp-5);
+		border-bottom: 2px solid var(--line);
+	}
+	.viewtabs a {
+		padding: var(--sp-2) var(--sp-4);
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sp-2);
+		color: var(--ink-2);
+		text-decoration: none;
+		font-weight: 700;
+		border-bottom: 4px solid transparent;
+		margin-bottom: -2px;
+	}
+	.viewtabs a[aria-current='page'] {
+		color: var(--ink);
+		border-bottom-color: var(--yellow);
+	}
+	.count.small {
+		min-width: 1.5rem;
+		height: 1.5rem;
+		font-size: var(--fs-xs);
+	}
+	.reqhint {
+		padding: var(--sp-3) var(--sp-4);
+		border-radius: var(--radius-m);
+		background: #fff3d1;
+		color: var(--navy);
+		max-width: 52rem;
+	}
+	.reqhint a {
+		color: var(--navy);
+		font-weight: 700;
+	}
 	.guest-cta {
 		margin-top: calc(-1 * var(--sp-6));
 		padding-bottom: var(--sp-8);

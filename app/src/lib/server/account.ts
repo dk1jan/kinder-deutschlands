@@ -59,6 +59,13 @@ export async function exportAccount(sql: Sql, userId: string) {
 		community_beitraege: beitraege,
 		community_antworten: antworten,
 		community_gruppen: gruppen,
+		chat: {
+			hinweis: 'Chatnachrichten sind Ende-zu-Ende-verschlüsselt. Der Server kann sie nicht lesen und deshalb nicht exportieren. Sie liegen nur auf deinen Geräten.',
+			chat_konto: (await sql`select created_at from chat_accounts where user_id = ${userId}`)[0] ?? null,
+			benachrichtigungen: (await sql`select push_chat, push_community, quiet_from, quiet_to, read_receipts, typing from notification_settings where user_id = ${userId}`)[0] ?? null,
+			push_geraete: await sql`select device_label, created_at, last_used_at from push_subscriptions where user_id = ${userId}`,
+			treffen_angelegt: await sql`select kind, status, created_at, expires_at from chat_rooms where created_by = ${userId}`
+		},
 		community_abos: abos,
 		orte_bewertungen: bewertungen,
 		moderation_einschraenkungen: einschraenkungen,
@@ -96,7 +103,7 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`update place_notices set created_by = null where created_by = ${userId}`;
 		// Community: eigene Texte verschwinden, Antworten anderer bleiben stehen; Bilder werden gelöscht
 		await tx`update posts set title = '[gelöscht]', body = '', link_card = null, link_url = null, status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;
-		await tx`update comments set body = '', status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;
+		await tx`update comments set body = '[gelöscht]', status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;
 		await tx`delete from place_reviews where user_id = ${userId}`;
 		await tx`delete from group_members where user_id = ${userId}`;
 		await tx`delete from subscriptions where user_id = ${userId}`;
@@ -106,6 +113,11 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from notifications where user_id = ${userId}`;
 		await tx`update mod_cases set reporter_id = null, message = null where reporter_id = ${userId} and status = 'erledigt'`;
 		mediaIds = (await tx`update media set status = 'entfernt' where owner_id = ${userId} returning id`).map((r) => r.id as string);
+		// Chat: Push-Abos, Einstellungen, Beitrittstickets weg; Direktchats enden
+		await tx`delete from push_subscriptions where user_id = ${userId}`;
+		await tx`delete from notification_settings where user_id = ${userId}`;
+		await tx`delete from chat_join_tickets where user_id = ${userId}`;
+		await tx`update chat_rooms set status = 'abgelaufen', ended_at = now() where kind = 'direkt' and status = 'aktiv' and (dm_a = ${userId} or dm_b = ${userId})`;
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',
 			totp_secret_enc = null, totp_enabled_at = null, display_name = null where id = ${userId}`;
@@ -114,6 +126,14 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 	});
 	const { deleteImageFile } = await import('./community/media');
 	for (const id of mediaIds) await deleteImageFile(id).catch(() => {});
+	// Chat-Konto auf dem Chat-Server stilllegen und Profil/Nachrichten-Metadaten löschen (erase)
+	const chat = await import('./chat/synapse');
+	try {
+		await chat.deactivate(sql, userId);
+		await sql`delete from chat_accounts where user_id = ${userId}`;
+	} catch (e) {
+		console.error('Chat-Konto konnte nicht stillgelegt werden:', (e as Error).message);
+	}
 	const f = deletionFile();
 	if (f && !opts.fromLog) {
 		try {

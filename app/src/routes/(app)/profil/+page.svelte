@@ -59,6 +59,14 @@
 				<strong>Sicherheit</strong>
 				<span>{m.counts.passkeys ? `${m.counts.passkeys} Passkey${m.counts.passkeys > 1 ? 's' : ''}` : 'Passkey einrichten'}{m.counts.totp ? ', Zwei-Faktor an' : ''}, Geräte</span>
 			</a>
+			<a href="/profil/benachrichtigungen" class="tile">
+				<strong>Benachrichtigungen</strong>
+				<span>Push auf diesem Gerät, Ruhezeiten, Lesebestätigungen</span>
+			</a>
+			<a href="/nachrichten/sicherheit" class="tile">
+				<strong>Chat-Verschlüsselung</strong>
+				<span>Wiederherstellungsschlüssel, Chat-Geräte</span>
+			</a>
 			<a href="/profil/darstellung" class="tile">
 				<strong>Darstellung</strong>
 				<span>Hell, dunkel oder wie das Gerät</span>

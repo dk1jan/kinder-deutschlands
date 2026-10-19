@@ -12,7 +12,11 @@ const config = {
 			mode: 'auto',
 			directives: {
 				'default-src': ['self'],
-				'script-src': ['self'],
+				// WebAssembly für die Chat-Verschlüsselung (Matrix Rust-Krypto) – kein eval von Skripttext
+				'script-src': ['self', 'wasm-unsafe-eval'],
+				'worker-src': ['self', 'blob:'],
+				// Entschlüsselte Bilder und Sprachnachrichten liegen nur als Blob im Browser
+				'media-src': ['self', 'blob:'],
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': ['self', 'data:', 'blob:'],
 				'font-src': ['self'],
