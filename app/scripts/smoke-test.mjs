@@ -756,6 +756,39 @@ try {
 	check(r.body.includes('Einladung nicht gefunden'), 'Alter Link nach Erneuern ungültig');
 	r = await X2.req('/');
 	check(r.body.includes('/marktplatz') && r.body.includes('/kompass') && r.body.includes('/einladungen'), 'Startseite: Einstiege Abschnitt 6');
+
+	// ---------- Abschnitt 7: Kinderwagenrouten, Statistik, zweite Freigabe, Partnerlinks ----------
+	const coords = JSON.stringify([[8.7905, 53.0935], [8.7930, 53.0950], [8.7960, 53.0965], [8.7985, 53.0975]]);
+	const routeForm = { title: 'Smoke-Runde Torfkanal', description: 'Breite Wege', coords, surface: 'asphalt', incline: 'eben', stairs: 'nein', duration: '20' };
+	r = await D.req('/routen/neu', { form: routeForm });
+	check(r.status === 400 && r.body.includes('öffentlich'), 'Route ohne Bestätigung „öffentliche Orte“ abgelehnt');
+	r = await D.req('/routen/neu', { form: { ...routeForm, public_ends: 'on' } });
+	const rPath = (r.location ?? '').split('?')[0];
+	check(r.status === 303 && /^\/routen\/[0-9a-f-]{36}$/.test(rPath), `Route eingereicht (${r.status})`);
+	r = await X2.req(rPath);
+	check(r.status === 404, 'Route vor Prüfung nicht öffentlich');
+	r = await req(`${rPath}?/pruefen`, { form: { decision: 'ja' } });
+	r = await X2.req(rPath);
+	check(r.status === 200 && r.body.includes('Smoke-Runde Torfkanal') && r.body.includes('km'), 'Nach Prüfung öffentlich mit Länge');
+	r = await X2.req(`${rPath}/gpx`);
+	check(r.status === 200 && r.body.includes('<trkpt lat="53.0935" lon="8.7905">'), 'GPX-Download');
+	r = await X2.req('/routen');
+	check(r.status === 200 && r.body.includes('Smoke-Runde Torfkanal'), 'Routenliste öffentlich');
+	r = await A.req(`${rPath}?/erfahrung`, { form: { kind: 'hindernis', text: 'Baustelle an der Brücke' } });
+	r = await X2.req(rPath);
+	check(r.body.includes('Baustelle an der Brücke'), 'Aktueller Hinweis an der Route');
+	r = await req('/admin/statistik?zeitraum=30');
+	check(r.status === 200 && r.body.includes('Mitglieder') && r.body.includes('nicht erfasst'), 'Statistik: Zählungen, Unerfasstes als solches markiert');
+	r = await req('/admin/freigaben');
+	check(r.status === 200, 'Freigaben-Seite');
+	r = await D.req('/admin/statistik');
+	check(r.status === 403 || r.status === 404 || r.status === 303, `Statistik nur mit Recht (${r.status})`);
+	r = await req('/admin/affiliate?/speichern', { form: { enabled: 'on', tag: 'smoke-21' } });
+	check(r.status === 400, 'Partnerlinks nur nach bestätigter Prüfung der Bedingungen');
+	r = await req('/admin/affiliate?/testen', { form: { url: 'https://www.amazon.de/dp/B000000000' } });
+	check(r.status === 200, 'Partnerlink-Test');
+	r = await X2.req('/partnerlinks');
+	check(r.status === 200 && r.body.includes('Partnerlink'), 'Erklärseite Partnerlinks öffentlich');
 	await sqlT.end();
 	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
 

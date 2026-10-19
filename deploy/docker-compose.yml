@@ -43,6 +43,10 @@ services:
       SYNAPSE_CONFIG_DIR: /synapse-config
       SYNAPSE_CONFIG_PATH_IN_CONTAINER: /config
       CHAT_INTERNAL_URL: http://web:3000
+      # Anrufe: TURN-Server (Host aus APP_URL). Abschalten mit TURN_ENABLED=false, öffentliche IP nur bei NAT nötig.
+      TURN_ENABLED: ${TURN_ENABLED:-true}
+      TURN_HOST: ${TURN_HOST:-}
+      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-}
       # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
       NODE_OPTIONS: --max-old-space-size=1536
     ports:
@@ -105,6 +109,35 @@ services:
         while kill -0 $$p 2>/dev/null; do
           sleep 30
           if [ "$$(sum)" != "$$h" ]; then echo "[synapse] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
+        done
+        wait $$p
+    logging: *logging
+
+  # Anrufe (Abschnitt 7): TURN-Server (coturn) vermittelt Audio/Video, wenn Geräte sich nicht direkt erreichen.
+  # Sieht nur verschlüsselte Medienpakete. Konfiguration (inkl. Geheimnis) schreibt die App; Ports siehe DEPLOYMENT.md:
+  # 3479 UDP/TCP und 49160–49200 UDP (eigener Bereich neben Jitsi/MiroTalk, D-009/D-056). Host-Netz, damit die
+  # öffentliche Adresse stimmt und kein riesiger Portbereich durch Docker geleitet werden muss.
+  turn:
+    image: coturn/coturn:4.6.3
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - synapse-config:/cfg:ro
+    mem_limit: 256m
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while [ ! -f /cfg/turnserver.conf ]; do echo "[turn] warte auf Konfiguration"; sleep 10; done
+        sum() { md5sum /cfg/turnserver.conf; }
+        h=$$(sum)
+        turnserver -c /cfg/turnserver.conf & p=$$!
+        trap 'kill -TERM $$p; wait $$p; exit 0' TERM INT
+        while kill -0 $$p 2>/dev/null; do
+          sleep 30
+          if [ "$$(sum)" != "$$h" ]; then echo "[turn] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
         done
         wait $$p
     logging: *logging

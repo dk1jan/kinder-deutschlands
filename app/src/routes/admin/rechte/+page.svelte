@@ -58,7 +58,7 @@
 			<input id="expires_at" name="expires_at" type="datetime-local" />
 		</div>
 		<div class="field">
-			<label for="note">Grund <span class="muted">(optional)</span></label>
+			<label for="note">Grund <span class="muted">(bei Betreiber- und Technikrolle Pflicht – eine zweite Person muss zustimmen)</span></label>
 			<input id="note" name="note" type="text" maxlength="300" />
 		</div>
 		<div><button class="btn" type="submit">Rolle vergeben</button></div>
@@ -99,6 +99,7 @@
 						<td>
 							<form method="POST" action="?/entziehen">
 								<input type="hidden" name="id" value={a.id} />
+								<input name="reason" maxlength="300" placeholder="Grund" aria-label="Grund" required={a.role === 'superadmin' || a.role === 'tech_admin'} />
 								<button class="btn small danger" type="submit">Entziehen</button>
 							</form>
 						</td>

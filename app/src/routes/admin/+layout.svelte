@@ -9,14 +9,18 @@
 			{ href: '/admin', label: 'Übersicht', icon: 'system', show: true },
 			{ href: '/admin/nutzer', label: 'Nutzer', icon: 'nutzer', show: data.may.users },
 			{ href: '/admin/rechte', label: 'Rollen und Rechte', icon: 'schild', show: data.may.rights },
+			{ href: '/admin/freigaben', label: data.openApprovals ? `Freigaben (${data.openApprovals})` : 'Freigaben', icon: 'schloss', show: data.may.approvals },
+			{ href: '/admin/statistik', label: 'Statistik', icon: 'daten', show: data.may.stats },
 			{ href: '/admin/moderation', label: 'Moderation', icon: 'flagge', show: data.may.moderation },
 			{ href: '/admin/gruppen', label: 'Gruppen', icon: 'community', show: data.may.groups },
 			{ href: '/admin/wissen', label: 'Wissen', icon: 'protokoll', show: data.may.knowledge },
 			{ href: '/admin/einrichtungen', label: 'Einrichtungen', icon: 'ok', show: data.may.orgs },
 			{ href: '/admin/hinweise', label: 'Hinweise', icon: 'hinweis', show: data.may.notices },
 			{ href: '/admin/kompass', label: 'Lebenslagen', icon: 'entdecken', show: data.may.compass },
+			{ href: '/admin/routen', label: 'Routen', icon: 'route', show: data.may.routes },
 			{ href: '/admin/daten', label: 'Daten und Orte', icon: 'daten', show: data.may.data },
 			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit },
+			{ href: '/admin/affiliate', label: 'Affiliate', icon: 'extern', show: data.may.affiliate },
 			{ href: '/admin/einstellungen', label: 'Einstellungen', icon: 'einstellungen', show: data.may.settings }
 		].filter((i) => i.show)
 	);

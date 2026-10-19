@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireAction } from '$lib/server/guard';
 import { assignRole, loadAssignments, loadPermissions, revokeAssignment, RightsError } from '$lib/server/roles';
+import { ApprovalError, CRITICAL_ROLES, request as requestApproval } from '$lib/server/approvals';
 import { effectivePermissions, type ScopeType } from '$lib/server/rights';
 import { ipHash } from '$lib/server/crypto';
 import { key } from '$lib/server/config';
@@ -56,19 +57,22 @@ export const actions: Actions = {
 		const expiresRaw = String(f.get('expires_at') ?? '').trim();
 		const expiresAt = expiresRaw ? new Date(expiresRaw) : null;
 		if (expiresAt && (isNaN(expiresAt.getTime()) || expiresAt <= new Date())) return fail(400, { error: 'Das Ablaufdatum muss in der Zukunft liegen.' });
+		const roleKey = String(f.get('role_key') ?? '');
+		const userId = String(f.get('user_id') ?? '');
+		const note = String(f.get('note') ?? '').trim().slice(0, 300) || null;
+		const ip = ipHash(event.getClientAddress(), key('ip'));
+		const sql = db();
 		try {
-			await assignRole(db(), {
-				actorId: actor.id,
-				userId: String(f.get('user_id') ?? ''),
-				roleKey: String(f.get('role_key') ?? ''),
-				scopeType,
-				scopeId: scopeType === 'global' ? null : scopeIdRaw || null,
-				expiresAt,
-				note: String(f.get('note') ?? '').trim().slice(0, 300) || null,
-				ipHash: ipHash(event.getClientAddress(), key('ip'))
-			});
+			if (CRITICAL_ROLES.includes(roleKey)) {
+				const [u] = await sql`select email from users where id = ${userId}`;
+				if (!u) return fail(400, { error: 'Person nicht gefunden.' });
+				const r = await requestApproval(sql, actor.id, 'role.assign', { userId, roleKey, scopeType, scopeId: scopeType === 'global' ? null : scopeIdRaw || null, expiresAt: expiresAt?.toISOString() ?? null, note },
+					`Rolle „${roleKey}“ an ${u.email} vergeben`, note ?? '', ip);
+				return { ok: r === 'beantragt' ? 'Beantragt – eine zweite berechtigte Person muss unter Verwaltung → Freigaben zustimmen.' : 'Rolle vergeben (keine zweite berechtigte Person vorhanden – im Protokoll vermerkt).' };
+			}
+			await assignRole(sql, { actorId: actor.id, userId, roleKey, scopeType, scopeId: scopeType === 'global' ? null : scopeIdRaw || null, expiresAt, note, ipHash: ip });
 		} catch (e) {
-			if (e instanceof RightsError) return fail(400, { error: e.message });
+			if (e instanceof RightsError || e instanceof ApprovalError) return fail(400, { error: e.message });
 			throw e;
 		}
 		return { ok: 'Rolle vergeben.' };
@@ -76,10 +80,20 @@ export const actions: Actions = {
 	entziehen: async (event) => {
 		const actor = await requireAction(event, 'roles.assign');
 		const f = await event.request.formData();
+		const id = String(f.get('id') ?? '');
+		const reason = String(f.get('reason') ?? '').trim() || null;
+		const ip = ipHash(event.getClientAddress(), key('ip'));
+		const sql = db();
 		try {
-			await revokeAssignment(db(), actor.id, String(f.get('id') ?? ''), String(f.get('reason') ?? '').trim() || null, ipHash(event.getClientAddress(), key('ip')));
+			const [a] = /^[0-9a-f-]{36}$/i.test(id) ? await sql`select ra.role_key, u.email from role_assignments ra join users u on u.id = ra.user_id where ra.id = ${id} and ra.revoked_at is null` : [];
+			if (!a) return fail(400, { error: 'Zuweisung nicht gefunden.' });
+			if (CRITICAL_ROLES.includes(a.role_key)) {
+				const r = await requestApproval(sql, actor.id, 'role.revoke', { assignmentId: id }, `Rolle „${a.role_key}“ von ${a.email} entziehen`, reason ?? '', ip);
+				return { ok: r === 'beantragt' ? 'Beantragt – eine zweite berechtigte Person muss unter Verwaltung → Freigaben zustimmen.' : 'Rolle entzogen (keine zweite berechtigte Person vorhanden – im Protokoll vermerkt).' };
+			}
+			await revokeAssignment(sql, actor.id, id, reason, ip);
 		} catch (e) {
-			if (e instanceof RightsError) return fail(400, { error: e.message });
+			if (e instanceof RightsError || e instanceof ApprovalError) return fail(400, { error: e.message });
 			throw e;
 		}
 		return { ok: 'Rolle entzogen.' };

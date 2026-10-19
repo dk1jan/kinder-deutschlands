@@ -99,3 +99,25 @@ describe('Hilfsfunktionen', () => {
 		expect(slugify('Größe für Übergänge')).toBe('groesse-fuer-uebergaenge');
 	});
 });
+
+describe('Partnerlinks (M08)', async () => {
+	const { affiliateLink, isAmazonDe } = await import('../src/lib/affiliate');
+	const { renderMarkup } = await import('../src/lib/markup');
+	it('ergänzt nur amazon.de, überschreibt nie fremde Kennungen', () => {
+		expect(isAmazonDe('https://www.amazon.de/dp/B000')).toBe(true);
+		expect(isAmazonDe('https://amazon.de.evil.example/dp/B000')).toBe(false);
+		expect(isAmazonDe('https://www.amazon.com/dp/B000')).toBe(false);
+		expect(affiliateLink('https://www.amazon.de/dp/B000?th=1', 'kd-21')).toEqual({ href: 'https://www.amazon.de/dp/B000?th=1&tag=kd-21', kind: 'ergaenzt' });
+		expect(affiliateLink('https://www.amazon.de/dp/B000?tag=andere-21', 'kd-21')).toEqual({ href: 'https://www.amazon.de/dp/B000?tag=andere-21', kind: 'fremd' });
+		expect(affiliateLink('https://amzn.to/abc', 'kd-21').kind).toBe('keiner');
+		expect(affiliateLink('https://www.amazon.de/dp/B000', null).kind).toBe('keiner');
+	});
+	it('Kennzeichnung im Text, Original ohne Kennung bleibt ohne Option unverändert', () => {
+		const html = renderMarkup('Schau: https://www.amazon.de/dp/B000', { affiliateTag: 'kd-21' });
+		expect(html).toContain('tag=kd-21');
+		expect(html).toContain('rel="sponsored');
+		expect(html).toContain('>Partnerlink</a>');
+		expect(renderMarkup('Schau: https://www.amazon.de/dp/B000')).not.toContain('tag=');
+		expect(renderMarkup('[Link](https://www.amazon.de/dp/B000?tag=x-21)', { affiliateTag: 'kd-21' })).toContain('fremder Partnerlink');
+	});
+});

@@ -2,6 +2,8 @@
 // Erlaubt: **fett**, *kursiv*, Listen (- / 1.), Zitate (>), Absätze, Links (nur http/https, automatisch erkannt oder [Text](URL)).
 // Kein HTML, keine Bilder, keine Skripte – alles andere wird als Text angezeigt.
 
+import { AFFILIATE_NOTE, FOREIGN_NOTE, affiliateLink } from './affiliate';
+
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 function safeUrl(u: string): string | null {
@@ -15,13 +17,27 @@ function safeUrl(u: string): string | null {
 
 const LINK_ATTR = 'rel="nofollow ugc noopener noreferrer" target="_blank"';
 
-function inline(raw: string): string {
+
+export interface MarkupOptions {
+	/** Partnerkennung für Amazon-Links (nur in offenen Bereichen, nur wenn eingeschaltet) */
+	affiliateTag?: string | null;
+}
+
+function anchor(u: string, label: string, o: MarkupOptions): string {
+	const a = o.affiliateTag !== undefined ? affiliateLink(u, o.affiliateTag) : { href: u, kind: 'keiner' as const };
+	if (a.kind === 'ergaenzt')
+		return `<a href="${esc(a.href)}" rel="sponsored nofollow ugc noopener noreferrer" target="_blank">${esc(label)}</a> <a class="aff" href="/partnerlinks" title="${esc(AFFILIATE_NOTE)}">Partnerlink</a>`;
+	if (a.kind === 'fremd') return `<a href="${esc(u)}" ${LINK_ATTR}>${esc(label)}</a> <a class="aff fremd" href="/partnerlinks" title="${esc(FOREIGN_NOTE)}">fremder Partnerlink</a>`;
+	return `<a href="${esc(u)}" ${LINK_ATTR}>${esc(label)}</a>`;
+}
+
+function inline(raw: string, o: MarkupOptions = {}): string {
 	// Platzhalter für Links, damit Formatierung die URLs nicht zerlegt
 	const links: string[] = [];
 	let s = raw.replace(/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]{1,2000})\)/g, (_, text: string, url: string) => {
 		const u = safeUrl(url);
 		if (!u) return _;
-		links.push(`<a href="${esc(u)}" ${LINK_ATTR}>${esc(text)}</a>`);
+		links.push(anchor(u, text, o));
 		return `\u0000${links.length - 1}\u0000`;
 	});
 	s = s.replace(/https?:\/\/[^\s<>"]{2,2000}/g, (m) => {
@@ -30,7 +46,7 @@ function inline(raw: string): string {
 		const u = safeUrl(url);
 		if (!u) return m;
 		const shown = url.replace(/^https?:\/\//, '').slice(0, 60) + (url.length > 68 ? '…' : '');
-		links.push(`<a href="${esc(u)}" ${LINK_ATTR}>${esc(shown)}</a>`);
+		links.push(anchor(u, shown, o));
 		return `\u0000${links.length - 1}\u0000${trail}`;
 	});
 	s = esc(s)
@@ -39,22 +55,23 @@ function inline(raw: string): string {
 	return s.replace(/\u0000(\d+)\u0000/g, (_, i) => links[Number(i)]);
 }
 
-export function renderMarkup(text: string): string {
+export function renderMarkup(text: string, o: MarkupOptions = {}): string {
+	const inl = (x: string) => inline(x, o);
 	const lines = text.replace(/\r\n?/g, '\n').split('\n');
 	const out: string[] = [];
 	let para: string[] = [];
 	let list: { type: 'ul' | 'ol'; items: string[] } | null = null;
 	let quote: string[] = [];
 	const flushPara = () => {
-		if (para.length) out.push(`<p>${para.map(inline).join('<br>')}</p>`);
+		if (para.length) out.push(`<p>${para.map(inl).join('<br>')}</p>`);
 		para = [];
 	};
 	const flushList = () => {
-		if (list) out.push(`<${list.type}>${list.items.map((i) => `<li>${inline(i)}</li>`).join('')}</${list.type}>`);
+		if (list) out.push(`<${list.type}>${list.items.map((i) => `<li>${inl(i)}</li>`).join('')}</${list.type}>`);
 		list = null;
 	};
 	const flushQuote = () => {
-		if (quote.length) out.push(`<blockquote>${quote.map(inline).join('<br>')}</blockquote>`);
+		if (quote.length) out.push(`<blockquote>${quote.map(inl).join('<br>')}</blockquote>`);
 		quote = [];
 	};
 	for (const line of lines) {

@@ -24,7 +24,10 @@ export const load: PageServerLoad = async (event) => {
 	// Teilen-Menü des Handys (PWA share_target): url/text/title
 	const shared = [q.get('url'), q.get('text')].filter(Boolean).join(' ');
 	const sharedUrl = /https?:\/\/\S+/.exec(shared)?.[0] ?? null;
+	const { getAffiliate } = await import('$lib/server/affiliate');
+	const aff = await getAffiliate(sql);
 	return {
+		affiliate: aff.enabled && !!aff.amazon_tag,
 		topics,
 		groups,
 		prefill: {

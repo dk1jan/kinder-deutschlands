@@ -115,7 +115,13 @@ push:
   group_unread_count_by_room: false
 ip_range_whitelist: [${o.pushAllow.map(yamlStr).join(', ')}]
 
-# Regeln der Plattform (Einladungen nur an Kontakte, Blockieren, Treffen-Räume, Einschränkungen)
+${o.turn ? `# Anrufe (Abschnitt 7): eigener TURN-Server (coturn), kurzlebige Zugangsdaten nur für angemeldete Konten
+turn_uris: [${o.turn.uris.map(yamlStr).join(', ')}]
+turn_shared_secret: ${yamlStr(s('turn'))}
+turn_user_lifetime: 1h
+turn_allow_guests: false
+
+` : ''}# Regeln der Plattform (Einladungen nur an Kontakte, Blockieren, Treffen-Räume, Einschränkungen)
 modules:
   - module: kd_rules.KdRules
     config:
@@ -123,6 +129,52 @@ modules:
       secret: ${yamlStr(s('module'))}
       system_user: ${yamlStr('@kd-system:' + SERVER_NAME)}
       reauth_secret: ${yamlStr(s('reauth'))}
+`;
+}
+
+/** TURN-Einstellungen aus der Umgebung. Standard: Host aus APP_URL, Port 3479, Relais 49160–49200 (D-056). */
+export function turnSettings(env = process.env) {
+	if ((env.TURN_ENABLED ?? 'true') === 'false') return null;
+	let host = env.TURN_HOST;
+	if (!host) {
+		try {
+			host = new URL(env.APP_URL || '').hostname;
+		} catch {
+			host = '';
+		}
+	}
+	if (!host || host === 'localhost') return null;
+	const port = Number(env.TURN_PORT || 3479);
+	const min = Number(env.TURN_MIN_PORT || 49160), max = Number(env.TURN_MAX_PORT || 49200);
+	if (!(port > 0 && port < 65536 && min > 1024 && max >= min && max < 65536)) throw new Error('TURN-Ports ungültig.');
+	return { host, port, min, max, externalIp: env.TURN_EXTERNAL_IP || '', uris: [`turn:${host}:${port}?transport=udp`, `turn:${host}:${port}?transport=tcp`] };
+}
+
+/** coturn-Konfiguration: nur Relais für Anrufe, keine Weiterleitung in interne Netze, gemeinsames Geheimnis mit Synapse. */
+export function buildTurnConfig(appSecret, t) {
+	const denied = ['0.0.0.0-0.255.255.255', '10.0.0.0-10.255.255.255', '100.64.0.0-100.127.255.255', '127.0.0.0-127.255.255.255', '169.254.0.0-169.254.255.255', '172.16.0.0-172.31.255.255', '192.0.0.0-192.0.0.255', '192.0.2.0-192.0.2.255', '192.88.99.0-192.88.99.255', '192.168.0.0-192.168.255.255', '198.18.0.0-198.19.255.255', '198.51.100.0-198.51.100.255', '203.0.113.0-203.0.113.255', '240.0.0.0-255.255.255.255', '::1', '64:ff9b::-64:ff9b::ffff:ffff', '::ffff:0.0.0.0-::ffff:255.255.255.255', 'fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff', 'fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff'];
+	return `# Automatisch erzeugt von scripts/synapse-prepare.mjs – Änderungen hier werden beim nächsten Start überschrieben.
+listening-port=${t.port}
+min-port=${t.min}
+max-port=${t.max}
+${t.externalIp ? `external-ip=${t.externalIp}
+` : ''}realm=${SERVER_NAME}
+use-auth-secret
+static-auth-secret=${chatSecret(appSecret, 'turn')}
+fingerprint
+no-tls
+no-dtls
+no-cli
+no-multicast-peers
+no-tcp-relay
+user-quota=12
+total-quota=400
+stale-nonce=600
+max-bps=2000000
+pidfile=/tmp/turnserver.pid
+log-file=stdout
+simple-log
+${denied.map((d) => `denied-peer-ip=${d}`).join('\n')}
 `;
 }
 
@@ -188,15 +240,18 @@ export async function prepareSynapse(sql, env = process.env) {
 		bind: env.SYNAPSE_BIND || '0.0.0.0',
 		pidFile: env.SYNAPSE_PID_FILE || '/tmp/homeserver.pid',
 		internalUrl: env.CHAT_INTERNAL_URL || 'http://web:3000',
-		pushAllow: (env.SYNAPSE_PUSH_ALLOW || '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16').split(',').map((x) => x.trim()).filter(Boolean)
+		pushAllow: (env.SYNAPSE_PUSH_ALLOW || '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16').split(',').map((x) => x.trim()).filter(Boolean),
+		turn: turnSettings(env)
 	});
+	const turn = turnSettings(env);
 	const module = await readFile(join(here, 'kd_rules.py'), 'utf8');
 	const changed = [
 		await writeIfChanged(join(configDir, 'homeserver.yaml'), cfg),
 		await writeIfChanged(join(configDir, 'log.config'), LOG_CONFIG),
 		await writeIfChanged(join(configDir, 'signing.key'), signingKey(appSecret)),
-		await writeIfChanged(join(configDir, 'kd_rules.py'), module)
+		await writeIfChanged(join(configDir, 'kd_rules.py'), module),
+		turn ? await writeIfChanged(join(configDir, 'turnserver.conf'), buildTurnConfig(appSecret, turn)) : false
 	].some(Boolean);
-	console.log(`[chat] Synapse-Konfiguration ${changed ? 'aktualisiert' : 'unverändert'}${created ? ', Datenbank angelegt' : ''}.`);
+	console.log(`[chat] Synapse-Konfiguration ${changed ? 'aktualisiert' : 'unverändert'}${created ? ', Datenbank angelegt' : ''}${turn ? `, Anrufe über TURN ${turn.host}:${turn.port}` : ', ohne TURN'}.`);
 	return { changed, created };
 }

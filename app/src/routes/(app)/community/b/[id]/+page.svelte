@@ -73,8 +73,8 @@
 		{#if tw}
 			<div class="tw"><p>Dieser Beitrag behandelt ein belastendes Thema.</p><button class="btn small secondary" onclick={() => (showTw = true)}>Trotzdem anzeigen</button></div>
 		{:else}
-			{#if p.body}<div class="body prose">{@html renderMarkup(p.body)}</div>{/if}
-			{#if p.card}<LinkCard card={p.card} />{/if}
+			{#if p.body}<div class="body prose">{@html renderMarkup(p.body, { affiliateTag: data.affiliateTag })}</div>{/if}
+			{#if p.card}<LinkCard card={p.card} affiliateTag={data.affiliateTag} />{/if}
 			{#if p.media.length}
 				<div class="gallery">
 					{#each p.media as m}
@@ -157,7 +157,7 @@
 	{#if solved}
 		<section class="solution">
 			<h2>✓ Lösung</h2>
-			<div class="prose">{@html renderMarkup(solved.body)}</div>
+			<div class="prose">{@html renderMarkup(solved.body, { affiliateTag: data.affiliateTag })}</div>
 			<p class="by">{solved.author.name}</p>
 		</section>
 	{/if}
@@ -179,7 +179,7 @@
 				{:else if c.status === 'entfernt' && !p.moderator}
 					<p class="muted">[entfernt]</p>
 				{:else}
-					<div class="prose">{@html renderMarkup(c.body)}</div>
+					<div class="prose">{@html renderMarkup(c.body, { affiliateTag: data.affiliateTag })}</div>
 				{/if}
 				<div class="cactions">
 					{#if !c.own && c.status === 'sichtbar'}

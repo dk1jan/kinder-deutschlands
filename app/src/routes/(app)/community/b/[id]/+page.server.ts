@@ -8,6 +8,7 @@ import { userCan } from '$lib/server/roles';
 import { addComment, deleteOwnComment, deleteOwnPost, editComment, editPost, getPost, markSolved, PostError, toggleBookmark, toggleHelpful, vote } from '$lib/server/community/posts';
 import { appeal, decide, report, ACTIONS, type ModAction } from '$lib/server/community/moderation';
 import { draftFromPost } from '$lib/server/community/knowledge';
+import { tagFor } from '$lib/server/affiliate';
 
 export const load: PageServerLoad = async (event) => {
 	const user = requireMember(event);
@@ -16,7 +17,8 @@ export const load: PageServerLoad = async (event) => {
 	const post = await getPost(sql, user.id, event.params.id);
 	if (!post) error(404, 'Beitrag nicht gefunden.');
 	const editor = await userCan(sql, user.id, 'knowledge.edit');
-	return { post, editor, held: event.url.searchParams.has('pruefung') };
+	const affiliateTag = await tagFor(sql, { protectedGroup: post.group?.kind === 'geschuetzt' });
+	return { post, editor, held: event.url.searchParams.has('pruefung'), affiliateTag };
 };
 
 async function run(event: RequestEvent, fn: (uid: string, f: FormData) => Promise<unknown>) {

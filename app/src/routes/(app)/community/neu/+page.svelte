@@ -121,6 +121,7 @@
 		</fieldset>
 
 		<p class="muted small">Beiträge sehen nur angemeldete Mitglieder. Bei Gesundheitsfragen ersetzt die Community keine ärztliche Beratung.</p>
+		{#if data.affiliate}<p class="muted small">Links zu amazon.de bekommen beim Anzeigen die Partnerkennung von Kinder Deutschlands – so kann die Plattform eine Provision erhalten, nicht du. Fremde Kennungen ändern wir nicht; in geschützten Gruppen gibt es keine Partnerlinks. <a href="/partnerlinks">Mehr dazu</a></p>{/if}
 		<button class="btn" type="submit">Veröffentlichen</button>
 	</form>
 </div>

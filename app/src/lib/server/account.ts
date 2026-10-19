@@ -71,6 +71,8 @@ export async function exportAccount(sql: Sql, userId: string) {
 		einladungen_eigene: await sql`select i.title, i.message, i.starts_at, i.place_text, i.status, i.created_at,
 			(select json_agg(json_build_object('name', r.name, 'antwort', r.answer, 'kinder', r.kids, 'erwachsene', r.adults, 'notiz', r.note)) from invitation_rsvps r where r.invitation_id = i.id) as antworten
 			from invitations i where i.organizer_id = ${userId}`,
+		kinderwagenrouten: await sql`select title, description, distance_m, status, created_at from stroller_routes where created_by = ${userId} and status <> 'entfernt'`,
+		routen_erfahrungen: await sql`select r.title, x.kind, x.text, x.created_at from route_reports x join stroller_routes r on r.id = x.route_id where x.user_id = ${userId}`,
 		einladungen_antworten: await sql`select i.title, i.starts_at, r.name, r.answer, r.kids, r.adults, r.note, r.updated_at from invitation_rsvps r join invitations i on i.id = r.invitation_id where r.user_id = ${userId}`,
 		chat: {
 			hinweis: 'Chatnachrichten sind Ende-zu-Ende-verschlüsselt. Der Server kann sie nicht lesen und deshalb nicht exportieren. Sie liegen nur auf deinen Geräten.',
@@ -147,6 +149,11 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`update help_posts set status = 'entfernt', title = '[gelöscht]', body = '' where user_id = ${userId}`;
 		invitationRooms = (await tx`delete from invitations where organizer_id = ${userId} returning chat_room_id`).map((r) => r.chat_room_id as string | null).filter((x): x is string => !!x);
 		await tx`delete from invitation_rsvps where user_id = ${userId}`;
+		// Abschnitt 7: eigene Routen (Mitglieder-Routen) und Erfahrungsmeldungen; offene Freigabe-Anträge
+		await tx`update stroller_routes set status = 'entfernt', description = '', created_by = null where created_by = ${userId} and origin = 'mitglied'`;
+		await tx`update stroller_routes set created_by = null where created_by = ${userId}`;
+		await tx`delete from route_reports where user_id = ${userId}`;
+		await tx`update approvals set status = 'zurueckgezogen' where requested_by = ${userId} and status = 'offen'`;
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',
 			totp_secret_enc = null, totp_enabled_at = null, display_name = null where id = ${userId}`;

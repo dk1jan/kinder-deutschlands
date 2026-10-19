@@ -121,3 +121,29 @@ describe('Anmeldetoken für den Chat', async () => {
 		expect(localpartOf('@kabc:evil.example')).toBeNull();
 	});
 });
+
+describe('Anrufe: TURN', async () => {
+	const { turnSettings, buildTurnConfig, buildConfig: bc }: any = await import(/* @vite-ignore */ prepPath);
+	const secret = 'y'.repeat(48);
+	it('Host aus APP_URL, eigener Portbereich, abschaltbar', () => {
+		const t = turnSettings({ APP_URL: 'https://kinder.example.org' });
+		expect(t.uris).toEqual(['turn:kinder.example.org:3479?transport=udp', 'turn:kinder.example.org:3479?transport=tcp']);
+		expect([t.min, t.max]).toEqual([49160, 49200]);
+		expect(turnSettings({ APP_URL: 'https://kinder.example.org', TURN_ENABLED: 'false' })).toBeNull();
+		expect(turnSettings({ APP_URL: 'http://localhost:3000' })).toBeNull();
+		expect(() => turnSettings({ APP_URL: 'https://a.b', TURN_MIN_PORT: '60000', TURN_MAX_PORT: '50000' })).toThrow();
+	});
+	it('coturn: gleiches Geheimnis wie Synapse, keine Weiterleitung in interne Netze, kein CLI', () => {
+		const t = turnSettings({ APP_URL: 'https://kinder.example.org' });
+		const conf = buildTurnConfig(secret, t);
+		const sec = chatSecret(secret, 'turn');
+		expect(conf).toContain(`static-auth-secret=${sec}`);
+		expect(conf).toContain('use-auth-secret');
+		expect(conf).toContain('no-cli');
+		for (const r of ['10.0.0.0-10.255.255.255', '127.0.0.0-127.255.255.255', '172.16.0.0-172.31.255.255', '192.168.0.0-192.168.255.255', '::1']) expect(conf).toContain(`denied-peer-ip=${r}`);
+		const hs = bc({ appUrl: 'https://kinder.example.org', appSecret: secret, databaseUrl: 'postgres://u:p@db/kd', dbName: 'synapse', configDir: '/c', mediaStore: '/m', port: 8008, bind: '0.0.0.0', pidFile: '/p', internalUrl: 'http://web:3000', pushAllow: [], turn: t });
+		expect(hs).toContain(`turn_shared_secret: "${sec}"`);
+		expect(hs).toContain('turn_allow_guests: false');
+		expect(bc({ appUrl: 'https://kinder.example.org', appSecret: secret, databaseUrl: 'postgres://u:p@db/kd', dbName: 'synapse', configDir: '/c', mediaStore: '/m', port: 8008, bind: '0.0.0.0', pidFile: '/p', internalUrl: 'http://web:3000', pushAllow: [], turn: null })).not.toContain('turn_uris');
+	});
+});

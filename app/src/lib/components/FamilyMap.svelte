@@ -15,7 +15,8 @@
 </script>
 
 <script lang="ts">
-	// Gemeinsame Familienkarte (M10). Modi: „browse“ (Karte mit Orten), „mini“ (ein Ort), „pick“ (Ort setzen).
+	// Gemeinsame Familienkarte (M10). Modi: „browse“ (Karte mit Orten), „mini“ (ein Ort), „pick“ (Ort setzen),
+	// „draw“ (Weg durch Antippen einzeichnen – Kinderwagenrouten, M14). Linien (Routen) in jedem Modus.
 	import { onMount } from 'svelte';
 	import type { Map as MlMap, GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
@@ -23,8 +24,14 @@
 	import { addMarkerImages } from '$lib/map/markers';
 
 	interface Props {
-		mode?: 'browse' | 'mini' | 'pick';
+		mode?: 'browse' | 'mini' | 'pick' | 'draw';
 		tiles: boolean;
+		/** Linien (z. B. Kinderwagenrouten), Koordinaten [lon, lat] */
+		lines?: { coords: [number, number][]; id?: string }[];
+		/** Zeichnen: aktueller Entwurf (vom Aufrufer verwaltet) */
+		draft?: [number, number][];
+		onDrawClick?: (lon: number, lat: number) => void;
+		onLine?: (id: string) => void;
 		center: [number, number];
 		zoom: number;
 		filters?: string[];
@@ -57,8 +64,24 @@
 		onData,
 		onView,
 		onPick,
-		onPoint
+		onPoint,
+		lines = [],
+		draft = [],
+		onDrawClick,
+		onLine
 	}: Props = $props();
+
+	const lineData = (ls: { coords: [number, number][]; id?: string }[]): GeoJSON.FeatureCollection => ({
+		type: 'FeatureCollection',
+		features: ls.filter((l) => l.coords.length > 1).map((l, i) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: l.coords }, properties: { id: l.id ?? String(i) } }))
+	});
+	const draftData = (d: [number, number][]): GeoJSON.FeatureCollection => ({
+		type: 'FeatureCollection',
+		features: [
+			...(d.length > 1 ? [{ type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: d }, properties: {} }] : []),
+			...d.map((c, i) => ({ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: c }, properties: { i, last: i === d.length - 1 } }))
+		]
+	});
 
 	let el: HTMLDivElement;
 	let map: MlMap | null = null;
@@ -121,6 +144,12 @@
 				'symbol-sort-key': ['case', ['==', ['get', 'id'], selected ?? ''], 1, 0]
 			}
 		});
+		map.addSource('linien', { type: 'geojson', data: lineData(lines) });
+		map.addLayer({ id: 'linien-rand', type: 'line', source: 'linien', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0a1626' : '#ffffff', 'line-width': 8 } }, 'orte');
+		map.addLayer({ id: 'linien', type: 'line', source: 'linien', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1f7468', 'line-width': 5 } }, 'orte');
+		map.addSource('draft', { type: 'geojson', data: draftData(draft) });
+		map.addLayer({ id: 'draft-line', type: 'line', source: 'draft', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#d63d31', 'line-width': 4, 'line-dasharray': [2, 1] } });
+		map.addLayer({ id: 'draft-pt', type: 'circle', source: 'draft', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': ['case', ['get', 'last'], 7, 4], 'circle-color': '#d63d31', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
 		map.addSource('me', { type: 'geojson', data: meData() });
 		map.addLayer({ id: 'me', type: 'symbol', source: 'me', layout: { 'icon-image': 'm-me', 'icon-allow-overlap': true } });
 	}
@@ -233,6 +262,22 @@
 		} else if (points.length === 1) map.easeTo({ center: [points[0].lon, points[0].lat], duration: 300 });
 		void pts;
 	});
+	// Linien und Zeichen-Entwurf aktualisieren
+	$effect(() => {
+		const d = lineData(lines);
+		if (!ready || !map) return;
+		(map.getSource('linien') as GeoJSONSource | undefined)?.setData(d);
+		if (mode !== 'draw' && lines.length && lines.some((l) => l.coords.length > 1)) {
+			const all = lines.flatMap((l) => l.coords);
+			const lons = all.map((c) => c[0]), lats = all.map((c) => c[1]);
+			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 40, maxZoom: 16, duration: 0 });
+		}
+	});
+	$effect(() => {
+		const d = draftData(draft);
+		if (!ready || !map) return;
+		(map.getSource('draft') as GeoJSONSource | undefined)?.setData(d);
+	});
 	// Auswahl geändert → Markierung hervorheben
 	$effect(() => {
 		const s = selected ?? '';
@@ -341,6 +386,18 @@
 					});
 					m.on('mouseenter', 'orte', () => (m.getCanvas().style.cursor = 'pointer'));
 					m.on('mouseleave', 'orte', () => (m.getCanvas().style.cursor = ''));
+				}
+				if (mode === 'draw') {
+					m.getCanvas().style.cursor = 'crosshair';
+					m.on('click', (e) => onDrawClick?.(Math.round(e.lngLat.lng * 1e6) / 1e6, Math.round(e.lngLat.lat * 1e6) / 1e6));
+				}
+				if (onLine) {
+					m.on('click', 'linien', (e) => {
+						const f = e.features?.[0] as MapGeoJSONFeature | undefined;
+						if (f) onLine(String((f.properties as Record<string, string>).id));
+					});
+					m.on('mouseenter', 'linien', () => (m.getCanvas().style.cursor = 'pointer'));
+					m.on('mouseleave', 'linien', () => (m.getCanvas().style.cursor = ''));
 				}
 				map = m;
 				currentBasemap = basemap;

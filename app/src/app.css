@@ -404,6 +404,13 @@ code,
 }
 
 /* Beitragstexte (aus renderMarkup) */
+.prose a.aff {
+	font-size: 0.75em;
+	font-weight: 700;
+	color: var(--ink-2);
+	text-decoration: underline dotted;
+	white-space: nowrap;
+}
 .prose {
 	line-height: 1.6;
 	overflow-wrap: anywhere;

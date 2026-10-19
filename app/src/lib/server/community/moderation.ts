@@ -75,6 +75,10 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 		const [h] = await sql`select region_code, user_id from help_posts where id = ${id}`;
 		return h ? { regionCode: h.region_code, topicKey: null, groupId: null, groupKind: null, authorId: h.user_id } : null;
 	}
+	if (type === 'route') {
+		const [r] = await sql`select region_code, created_by, origin from stroller_routes where id = ${id}`;
+		return r ? { regionCode: r.region_code, topicKey: null, groupId: null, groupKind: null, authorId: r.origin === 'mitglied' ? r.created_by : null } : null;
+	}
 	if (type === 'invitation') {
 		const [i] = await sql`select organizer_id from invitations where id = ${id}`;
 		return i ? { regionCode: null, topicKey: null, groupId: null, groupKind: null, authorId: i.organizer_id } : null;
@@ -88,7 +92,7 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 }
 
 /** Meldung durch ein Mitglied. Doppelte Meldungen derselben Person zum selben Inhalt werden zusammengefasst. */
-export async function report(sql: Sql, reporterId: string, type: 'post' | 'comment' | 'media' | 'review' | 'user' | 'event' | 'offer' | 'org' | 'listing' | 'help' | 'invitation', id: string, reason: string, message: string | null) {
+export async function report(sql: Sql, reporterId: string, type: 'post' | 'comment' | 'media' | 'review' | 'user' | 'event' | 'offer' | 'org' | 'listing' | 'help' | 'invitation' | 'route', id: string, reason: string, message: string | null) {
 	if (!(REPORT_REASONS as readonly string[]).includes(reason)) throw new PostError('Bitte einen Grund wählen.');
 	const s = await scopeOf(sql, type, id);
 	if (!s) throw new PostError('Inhalt nicht gefunden.');
@@ -172,6 +176,7 @@ export async function queue(sql: Sql, userId: string, f: QueueFilter) {
 	if (ids('org').length) add(await sql`select id, name as t from organizations where id::text = any(${ids('org')})`);
 	if (ids('listing').length) add(await sql`select id, title as t from market_listings where id::text = any(${ids('listing')})`);
 	if (ids('help').length) add(await sql`select id, title as t from help_posts where id::text = any(${ids('help')})`);
+	if (ids('route').length) add(await sql`select id, title as t from stroller_routes where id::text = any(${ids('route')})`);
 	if (ids('invitation').length) add(await sql`select id, title as t from invitations where id::text = any(${ids('invitation')})`);
 	for (const r of out) if (r.target_type === 'chat') preview.set(String(r.target_id), String((r.evidence?.messages ?? []).find((m: { reported?: boolean }) => m.reported)?.body ?? '').replace(/\s+/g, ' ').slice(0, 90));
 	return out.map((r) => ({
@@ -228,6 +233,9 @@ export async function caseDetail(sql: Sql, userId: string, id: string) {
 	} else if (c.target_type === 'help') {
 		const [h] = await sql`select id, title, body, status from help_posts where id = ${c.target_id}`;
 		if (h) content = { title: `Hilfe: ${h.title}`, body: h.body, status: h.status, link: `/hilfe/${h.id}` };
+	} else if (c.target_type === 'route') {
+		const [r] = await sql`select id, title, description, status from stroller_routes where id = ${c.target_id}`;
+		if (r) content = { title: `Route: ${r.title}`, body: r.description, status: r.status === 'aktiv' ? 'sichtbar' : r.status, link: `/routen/${r.id}` };
 	} else if (c.target_type === 'invitation') {
 		const [i] = await sql`select title, message, status from invitations where id = ${c.target_id}`;
 		if (i) content = { title: `Einladung: ${i.title}`, body: i.message, status: i.status };
@@ -291,6 +299,7 @@ export async function decide(
 		else if (type === 'offer') await sql`update offers set status = ${status === 'sichtbar' ? 'aktiv' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
 		else if (type === 'listing') await sql`update market_listings set status = ${status === 'sichtbar' ? 'verfuegbar' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
 		else if (type === 'help') await sql`update help_posts set status = ${status === 'sichtbar' ? 'offen' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
+		else if (type === 'route') await sql`update stroller_routes set status = ${status === 'sichtbar' ? 'aktiv' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
 		else if (type === 'invitation' && status !== 'sichtbar') await sql`update invitations set status = 'abgesagt', token_hash = null, token_enc = null, cancel_note = ${reason.trim()}, updated_at = now() where id = ${c.target_id}`;
 		else if (type === 'org' && status !== 'sichtbar') await sql`update organizations set status = 'pausiert', decision_note = ${reason.trim()}, updated_at = now() where id = ${c.target_id} and status = 'verifiziert'`;
 	};
@@ -344,12 +353,20 @@ export async function decide(
 			{
 				const { userCan } = await import('../roles');
 				if (!(await userCan(sql, modId, 'users.suspend'))) throw new PostError('Konten sperren darf nur der Betreiber – bitte eskalieren.');
-				await sql`update users set status = 'suspended' where id = ${author} and status = 'active'`;
-				await sql`delete from sessions where user_id = ${author}`;
-				// Auch alle Chat-Geräte abmelden
-				const chat = await import('../chat/synapse');
-				const [acc] = await sql`select localpart from chat_accounts where user_id = ${author}`;
-				if (acc && chat.chatEnabled()) await chat.logoutAll(sql, acc.localpart).catch(() => {});
+				// Zweite Freigabe (D-057): gibt es eine weitere berechtigte Person, entscheidet sie unter Verwaltung → Freigaben
+				const A = await import('../approvals');
+				let r: 'beantragt' | 'ausgefuehrt';
+				try {
+					r = await A.request(sql, modId, 'user.suspend', { userId: author, caseId }, `Konto sperren (Fall ${String(caseId).slice(0, 8)})`, reason);
+				} catch (e) {
+					if (e instanceof A.ApprovalError) throw new PostError(e.message);
+					throw e;
+				}
+				if (r === 'beantragt') {
+					await sql`update mod_cases set status = 'in_arbeit', assigned_to = coalesce(assigned_to, ${modId}),
+						internal_note = coalesce(internal_note || E'\n', '') || ${'Sperre beantragt – wartet auf zweite Freigabe: ' + reason.trim()} where id = ${caseId}`;
+					return 'beantragt';
+				}
 			}
 			break;
 		case 'eskalieren':

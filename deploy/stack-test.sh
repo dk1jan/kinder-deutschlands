@@ -71,6 +71,33 @@ const t = h + "." + p + "." + createHmac("sha256", sec("jwt")).update(h + "." + 
 })().catch((e) => { console.error(e); process.exit(1); });
 ' || fail "Chat-Ablauf im Stack"
 
+# Anrufe: TURN-Server läuft mit der Konfiguration der App, Synapse gibt kurzlebige Zugangsdaten aus
+for i in $(seq 1 15); do
+	t=$(docker inspect -f '{{.State.Running}}' kdstack-turn-1 2>/dev/null || echo false)
+	[ "$t" = true ] && dc logs turn 2>&1 | grep -qv "warte auf Konfiguration" && break
+	sleep 4
+done
+[ "$t" = true ] || fail "TURN-Server läuft nicht"
+sleep 5
+docker inspect -f '{{.State.Running}}' kdstack-turn-1 | grep -q true || fail "TURN-Server beendet sich"
+dc logs turn 2>&1 | grep -qE "ERROR:" && { dc logs --tail 40 turn; fail "Fehler im TURN-Log"; }
+dc exec -T web sh -c 'grep -q "^listening-port=3479" /synapse-config/turnserver.conf && grep -q "^use-auth-secret" /synapse-config/turnserver.conf' || fail "TURN-Konfiguration fehlt"
+dc exec -T web node -e '
+const { hkdfSync, createHmac } = require("crypto");
+const sec = (k) => Buffer.from(hkdfSync("sha256", process.env.APP_SECRET, "kinder-deutschlands", "chat:" + k, 32)).toString("base64url");
+const b = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const h = b({ alg: "HS256", typ: "JWT" }), p = b({ sub: "kstacktest234567", iss: "kinder-deutschlands", exp: Math.floor(Date.now() / 1000) + 60 });
+const t = h + "." + p + "." + createHmac("sha256", sec("jwt")).update(h + "." + p).digest("base64url");
+(async () => {
+	const S = process.env.SYNAPSE_URL;
+	const j = await (await fetch(S + "/_matrix/client/v3/login", { method: "POST", body: JSON.stringify({ type: "org.matrix.login.jwt", token: t }) })).json();
+	const r = await (await fetch(S + "/_matrix/client/v3/voip/turnServer", { headers: { authorization: "Bearer " + j.access_token } })).json();
+	if (!r.uris || !r.uris.some((u) => u.includes(":3479")) || !r.username || !r.password) { console.error("TURN", r); process.exit(1); }
+	console.log("OK  TURN-Zugangsdaten vom Chat-Server (" + r.uris.length + " Adressen, gültig " + r.ttl + " s)");
+})().catch((e) => { console.error(e); process.exit(1); });
+' || fail "TURN-Zugangsdaten"
+echo "OK  TURN-Server läuft"
+
 dc logs synapse 2>&1 | grep -q "Traceback" && fail "Fehler im Synapse-Log"
 dc logs web 2>&1 | grep -q "\[chat\] Synapse-Konfiguration" || fail "Web hat keine Synapse-Konfiguration geschrieben"
 echo "OK  Logs sauber"

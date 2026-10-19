@@ -2,8 +2,21 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import Pennant from '$lib/components/Pennant.svelte';
+	import CallOverlay from '$lib/components/chat/CallOverlay.svelte';
+	import { onMount } from 'svelte';
 
 	let { children, data } = $props();
+
+	// Chat (und damit eingehende Anrufe) im Hintergrund starten – nur, wenn er auf diesem Gerät schon eingerichtet ist
+	onMount(() => {
+		if (!data.user) return;
+		const go = async () => {
+			const c = await import('$lib/chat/client.svelte');
+			if (c.hasStoredChat()) void c.startChat();
+		};
+		if ('requestIdleCallback' in window) requestIdleCallback(() => void go(), { timeout: 4000 });
+		else setTimeout(() => void go(), 1500);
+	});
 
 	// Fünf Hauptziele (DECISIONS D-007). Veranstaltungen, Marktplatz und Hilfe laufen über „Entdecken“.
 	const nav = [
@@ -51,6 +64,7 @@
 
 <main id="inhalt" tabindex="-1">
 	{@render children()}
+	<CallOverlay />
 </main>
 
 <nav class="tabs" aria-label="Hauptnavigation">

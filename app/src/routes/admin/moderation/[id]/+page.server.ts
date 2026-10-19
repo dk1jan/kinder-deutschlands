@@ -25,9 +25,10 @@ export const load: PageServerLoad = async (event) => {
 	return { d, actions: actions as typeof ACTIONS, reasons: REASON_LABEL, topics, me: user.id };
 };
 
-async function guarded(fn: () => Promise<void>, ok: string) {
+async function guarded(fn: () => Promise<unknown>, ok: string) {
 	try {
-		await fn();
+		const r = await fn();
+		if (r === 'beantragt') return { ok: 'Sperre beantragt – eine zweite berechtigte Person muss unter Verwaltung → Freigaben zustimmen.' };
 		return { ok };
 	} catch (e) {
 		if (e instanceof PostError) return fail(400, { error: e.message });

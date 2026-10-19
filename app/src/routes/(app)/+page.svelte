@@ -141,6 +141,7 @@
 	<a href="/hilfe"><strong>Familien helfen Familien</strong><span>Hilfe suchen oder anbieten</span></a>
 	<a href="/kompass"><strong>Lebenslagen-Kompass</strong><span>Geburt, Kita, Trennung, Geld knapp</span></a>
 	<a href="/einladungen"><strong>Einladungen</strong><span>Kindergeburtstag mit Zu- und Absagen</span></a>
+	<a href="/routen"><strong>Kinderwagenrouten</strong><span>Spazierwege mit Untergrund und Treppen</span></a>
 </nav>
 
 <section class="modules" aria-labelledby="mod-titel">

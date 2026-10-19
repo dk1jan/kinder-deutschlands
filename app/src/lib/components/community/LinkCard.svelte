@@ -12,7 +12,9 @@
 		ok: boolean;
 		imageId: string | null;
 	}
-	let { card, compact = false }: { card: Card; compact?: boolean } = $props();
+	import { AFFILIATE_NOTE, FOREIGN_NOTE, affiliateLink } from '$lib/affiliate';
+	let { card, compact = false, affiliateTag }: { card: Card; compact?: boolean; affiliateTag?: string | null } = $props();
+	const aff = $derived(affiliateTag !== undefined ? affiliateLink(card.url, affiliateTag) : { href: card.url, kind: 'keiner' as const });
 	let play = $state(false);
 	const PROVIDER: Record<string, string> = { youtube: 'YouTube', vimeo: 'Vimeo', instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', web: '' };
 	const src = $derived(
@@ -37,7 +39,8 @@
 	{/if}
 	<div class="txt">
 		<p class="src">{PROVIDER[card.provider] || card.site || card.host} · {card.host}</p>
-		<a href={card.url} rel="nofollow ugc noopener noreferrer" target="_blank" class="t">{card.title ?? card.url}<Icon name="extern" size={14} /></a>
+		<a href={aff.href} rel="{aff.kind === 'ergaenzt' ? 'sponsored ' : ''}nofollow ugc noopener noreferrer" target="_blank" class="t">{card.title ?? card.url}<Icon name="extern" size={14} /></a>
+		{#if aff.kind === 'ergaenzt'}<a class="aff" href="/partnerlinks" title={AFFILIATE_NOTE}>Partnerlink</a>{:else if aff.kind === 'fremd'}<a class="aff fremd" href="/partnerlinks" title={FOREIGN_NOTE}>fremder Partnerlink</a>{/if}
 		{#if card.description && !compact}<p class="d">{card.description}</p>{/if}
 		{#if !card.ok}<p class="d muted">Vorschau nicht verfügbar – der Inhalt ist evtl. privat, gelöscht oder lässt keine Vorschau zu.</p>{/if}
 		{#if card.embed && !play && !compact}
@@ -131,5 +134,10 @@
 	}
 	.compact .txt {
 		padding: var(--sp-2) var(--sp-3);
+	}
+	.aff {
+		font-size: var(--fs-xs);
+		font-weight: 700;
+		color: var(--ink-2);
 	}
 </style>

@@ -91,6 +91,11 @@ export async function clearChatIfLoggedOut() {
 	await dropStored(s);
 }
 
+/** Wurde der Chat auf diesem Gerät schon einmal geöffnet? Dann darf er im Hintergrund starten (für Anrufe und Zähler). */
+export function hasStoredChat(): boolean {
+	return typeof localStorage !== 'undefined' && !!readStored();
+}
+
 export function getClient() {
 	return client;
 }
@@ -210,6 +215,8 @@ async function doStart(): Promise<MatrixClient | null> {
 			}
 		});
 		await c.initRustCrypto({ cryptoDatabasePrefix: dbPrefix(stored) });
+		// Anrufe (Abschnitt 7): eingehende Anrufe im Direktchat
+		(await import('./calls.svelte')).initCalls(c, sdk);
 		c.on(sdk.HttpApiEvent.SessionLoggedOut, () => {
 			writeStored(null);
 			chat.status = 'fehler';
@@ -268,6 +275,7 @@ async function autoJoinDirect(room: Room) {
 }
 
 export async function stopChat() {
+	(await import('./calls.svelte')).hangup();
 	if (client) {
 		client.stopClient();
 		client.removeAllListeners();

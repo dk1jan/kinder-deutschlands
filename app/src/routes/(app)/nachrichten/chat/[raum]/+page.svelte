@@ -6,7 +6,8 @@
 	import Message from '$lib/components/chat/Message.svelte';
 	import Composer from '$lib/components/chat/Composer.svelte';
 	import FamilyMap from '$lib/components/FamilyMap.svelte';
-	import { api, chat, getClient, loadMeta, roomTitle, sendReceipt, startChat } from '$lib/chat/client.svelte';
+	import { api, chat, getClient, loadMeta, roomTitle, sdkRef, sendReceipt, startChat } from '$lib/chat/client.svelte';
+	import { call, callsSupported, startCall } from '$lib/chat/calls.svelte';
 	import { invite, isMuted, leaveRoom, reportMessage, setMuted } from '$lib/chat/actions';
 	import { livePoints, LIVE_TYPE } from '$lib/chat/live.svelte';
 	import { dayLabel, remaining } from '$lib/chat/format';
@@ -30,9 +31,21 @@
 	let reportConsent = $state(false);
 	let reportState = $state<'' | 'senden' | 'ok' | string>('');
 	let now = $state(Date.now());
+	let canCall = $state(false);
+	async function dial(video: boolean) {
+		notice = '';
+		const c = getClient(), sdk = sdkRef();
+		if (!c || !sdk) return;
+		try {
+			await startCall(c, sdk, roomId, video);
+		} catch (e) {
+			notice = (e as Error).message || 'Anruf nicht möglich.';
+		}
+	}
 
 	onMount(() => {
 		void startChat();
+		canCall = callsSupported();
 		const t = setInterval(() => (now = Date.now()), 30_000);
 		return () => clearInterval(t);
 	});
@@ -239,6 +252,10 @@
 		</div>
 		{#if lives.length}
 			<button class="btn small secondary livebtn" type="button" onclick={() => (showLive = !showLive)} aria-expanded={showLive}><span class="ldot" aria-hidden="true"></span> {lives.length} live</button>
+		{/if}
+		{#if canCall && kind === 'direkt' && membership === 'join' && members.length === 2 && !ended}
+			<button class="iconbtn" type="button" aria-label="Anrufen" title="Anrufen" disabled={call.view !== 'aus'} onclick={() => dial(false)}><Icon name="telefon" /></button>
+			<button class="iconbtn" type="button" aria-label="Videoanruf" title="Videoanruf" disabled={call.view !== 'aus'} onclick={() => dial(true)}><Icon name="video" /></button>
 		{/if}
 		<div class="more">
 			<button class="iconbtn" type="button" aria-label="Optionen" aria-expanded={menu} onclick={() => (menu = !menu)}><Icon name="mehr" /></button>

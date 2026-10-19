@@ -87,6 +87,22 @@ docker start kinder-deutschlands-synapse-1
 ```
 Chat-Medien (verschlüsselt): `chatmedien-*.tar.gz` analog zu den Bildern in das Volume `kinder-deutschlands_synapse-data` (Ordner `media_store`) entpacken.
 
+## Anrufe / TURN (ab Abschnitt 7)
+Der Stack enthält den Container `turn` (coturn, Host-Netz). Konfiguration schreibt die App ins Volume `synapse-config` (`turnserver.conf`), Neustart bei Änderung automatisch. Nötig ist nur, dass diese Ports am Server von außen erreichbar und frei sind:
+
+| Port | Protokoll | Zweck |
+|---|---|---|
+| 3479 | UDP + TCP | TURN (bewusst nicht 3478, falls Plesk/anderes dort lauscht) |
+| 49160–49200 | UDP | Medien-Relay |
+
+Prüfen auf dem Server:
+```bash
+ss -lunpt | grep -E ':3479|:4916|:4917|:4918|:4919|:4920' ; docker logs --tail 30 kinder-deutschlands-turn-1
+```
+Falls eine Firewall aktiv ist (ufw / IONOS-Cloud-Firewall), diese Ports freigeben, z. B. `ufw allow 3479 && ufw allow 49160:49200/udp`. Hostname = Host aus `APP_URL` (muss auf die öffentliche IP zeigen). Abschalten: `TURN_ENABLED=false`.
+
+Lokaler Anruftest (zwei Browser, künstliche Kamera), nach dem Rauchtest: `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`.
+
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.
 2. Plattform → **Verwaltung → Einstellungen** → E-Mail-Versand: Mailserver `jan-krueger.org`, Port `587`, Absender und Benutzername `noreply@jan-krueger.org`, Passwort → **Speichern und Verbindung prüfen**.
@@ -141,6 +157,9 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 | `ALLOW_INDEXING` | nein | `true` erst beim echten Start |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | nein | nur Rückfall – normal in Verwaltung → Einstellungen |
 | `SMTP_INSECURE_TLS` | nein | nur bei Zertifikatsfehler des Mailservers |
+| `TURN_ENABLED` | nein | Standard `true`; `false` schaltet den TURN-Server für Anrufe ab |
+| `TURN_HOST` | nein | Standard: Host aus `APP_URL` |
+| `TURN_EXTERNAL_IP` | nein | nur nötig, wenn der Server hinter NAT steht (öffentliche IP) |
 
 ## Domainwechsel später
 Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung. Chats bleiben erhalten (feste Chat-Serverkennung, D-035); Push-Abos melden sich auf der neuen Adresse neu an.
