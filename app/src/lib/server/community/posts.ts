@@ -110,7 +110,7 @@ async function autoCases(sql: Sql, type: 'post' | 'comment' | 'review', id: stri
 	}
 }
 
-export async function notify(sql: Sql, userId: string | null, kind: string, text: string, link: string | null, opts: { pushKind?: 'community' | 'erinnerung' | 'radar'; pushBody?: string; noPush?: boolean } = {}) {
+export async function notify(sql: Sql, userId: string | null, kind: string, text: string, link: string | null, opts: { pushKind?: 'community' | 'erinnerung' | 'radar' | 'markt'; pushBody?: string; noPush?: boolean } = {}) {
 	if (!userId) return;
 	await sql`insert into notifications (user_id, kind, text, link) values (${userId}, ${kind}, ${text.slice(0, 300)}, ${link})`;
 	// Push (falls gewünscht) ohne Inhalt, Fehler beim Senden stören den eigentlichen Vorgang nicht
@@ -523,6 +523,15 @@ export async function canSeeMedia(sql: Sql, viewerId: string | null, mediaId: st
 	if (m.purpose === 'ort') return m.status === 'sichtbar' || (!!viewerId && (m.owner_id === viewerId || (await userCan(sql, viewerId, 'content.moderate'))));
 	if (!viewerId) return false;
 	if (m.purpose === 'linkvorschau') return true;
+	if (m.purpose === 'markt') {
+		const [l] = await sql`select l.id, l.user_id, l.status from media x join market_listings l on l.id = x.listing_id where x.id = ${mediaId}`;
+		if (!l) return false;
+		if (l.user_id === viewerId) return true;
+		if (await userCan(sql, viewerId, 'content.moderate')) return true;
+		if (m.status !== 'sichtbar' || !['verfuegbar', 'reserviert', 'abgegeben', 'abgelaufen'].includes(l.status)) return false;
+		const [b] = await sql`select 1 as x from blocks where (blocker = ${l.user_id} and blocked = ${viewerId}) or (blocker = ${viewerId} and blocked = ${l.user_id})`;
+		return !b;
+	}
 	if (!m.post_id) return false;
 	try {
 		const p = await readablePost(sql, viewerId, m.post_id);

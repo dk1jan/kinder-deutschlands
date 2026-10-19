@@ -83,7 +83,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	});
 
 	response.headers.set('X-Content-Type-Options', 'nosniff');
-	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	if (!response.headers.has('Referrer-Policy')) response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	// Kamera (QR), Mikrofon (Sprachnachricht) und Standort (Karte, Treffpunkt) nur für die eigene Seite – der Browser fragt jeweils nach
 	response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), interest-cohort=()');
 	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');

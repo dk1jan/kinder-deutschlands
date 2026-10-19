@@ -109,6 +109,7 @@ Läuft von selbst im Web-Container, keine neuen Container oder Variablen.
 - Radar per E-Mail nur, wenn SMTP eingerichtet ist; sonst nur Übersicht im Portal und – falls gewählt – Push ohne Inhalt.
 - Einrichtungs-Kalender (ICS) erscheinen als Quelle `org-ics-…` unter **Verwaltung → Daten und Orte** (täglicher Abruf, „Jetzt abrufen“ möglich). Ausgehende Verbindung zur Kalender-Adresse der Einrichtung (gegen interne Adressen geschützt, max. 3 MB).
 - Einrichtungen prüfen: **Verwaltung → Einrichtungen**. Redaktionelle Hinweise: **Verwaltung → Hinweise**.
+- Abschnitt 6 (Marktplatz, Hilfe, Kompass, Einladungen): ebenfalls ohne neue Container/Variablen. Im selben Takt (alle 10 Min.): Suchaufträge, Ablauf von Anzeigen/Hilfe-Einträgen, Löschen vergangener Einladungen. Marktplatz-Bilder liegen im Volume `media` (Sicherung wie Community-Bilder). Kompass pflegen: **Verwaltung → Lebenslagen**.
 - Nur zum Testen (nie in Produktion setzen): `IMPORT_ALLOW_LOCAL=1`, `ANGEBOTE_JOBS=on`, `ANGEBOTE_JOBS_MS`.
 
 ## Falsches Zertifikat / „Nicht sicher“

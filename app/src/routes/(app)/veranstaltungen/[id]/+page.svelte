@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import FamilyMap from '$lib/components/FamilyMap.svelte';
@@ -22,6 +23,21 @@
 	const deadlinePassed = $derived(!!e.registrationDeadline && new Date(e.registrationDeadline).getTime() < Date.now());
 
 	let shareMsg = $state('');
+	let chatBusy = $state(false);
+	let chatErr = $state('');
+	async function createChat() {
+		if (!sel) return;
+		chatBusy = true;
+		chatErr = '';
+		try {
+			const { createTimedChat } = await import('$lib/chat/actions');
+			const roomId = await createTimedChat(`${e.title} · ${dateShort(sel.start)}`, '/api/veranstaltungen/chat', { eventId: e.id, occurrence: sel.date });
+			await goto(`/nachrichten/chat/${encodeURIComponent(roomId)}`);
+		} catch (x) {
+			chatErr = (x as Error).message || 'Chat konnte nicht angelegt werden.';
+		}
+		chatBusy = false;
+	}
 	async function share() {
 		const url = location.origin + `/veranstaltungen/${e.id}${sel ? `?am=${sel.date}` : ''}${e.visibility === 'privat' && e.shareToken ? `${sel ? '&' : '?'}t=${e.shareToken}` : ''}`;
 		try {
@@ -134,6 +150,36 @@
 				</form>
 				{#if data.who.length}
 					<ul class="who">{#each data.who as w}<li>{w.name}{w.me ? ' (du)' : ''}</li>{/each}</ul>
+				{/if}
+				{#if data.chat && (mine || data.editor)}
+					<div class="evchat">
+						<h3>Chat für diesen Tag</h3>
+						{#if chatErr}<p class="err" role="alert">{chatErr}</p>{/if}
+						{#if data.chat.roomId}
+							<form method="POST" action="?/chat" use:enhance={() => {
+								chatBusy = true;
+								chatErr = '';
+								return async ({ result, update }) => {
+									if (result.type === 'success' && result.data?.chatRoom) {
+										try {
+											const { joinTreffen } = await import('$lib/chat/actions');
+											await joinTreffen(String(result.data.chatRoom));
+											await goto(`/nachrichten/chat/${encodeURIComponent(String(result.data.chatRoom))}`);
+										} catch (x) {
+											chatErr = (x as Error).message || 'Beitritt fehlgeschlagen.';
+										}
+									} else await update();
+									chatBusy = false;
+								};
+							}}>
+								<input type="hidden" name="am" value={sel.date} />
+								<button class="btn small secondary" disabled={chatBusy}>{chatBusy ? 'Trete bei …' : 'Zum Chat'}</button>
+							</form>
+						{:else}
+							<button type="button" class="btn small secondary" onclick={createChat} disabled={chatBusy}>{chatBusy ? 'Lege an …' : 'Chat für diesen Tag anlegen'}</button>
+						{/if}
+						<p class="muted small">Verschlüsselt, nur für Personen mit „Ich komme“/„Interessiert“ an diesem Tag. Wird einen Tag nach dem Termin gelöscht.</p>
+					</div>
 				{/if}
 			</section>
 		{/if}
@@ -388,5 +434,17 @@
 		.cols > :first-child {
 			grid-row: span 2;
 		}
+	}
+	.evchat {
+		margin-top: var(--sp-4);
+		padding-top: var(--sp-3);
+		border-top: 1px solid var(--line);
+	}
+	.evchat h3 {
+		margin: 0 0 var(--sp-2);
+		font-size: var(--fs-m);
+	}
+	.err {
+		color: var(--danger);
 	}
 </style>

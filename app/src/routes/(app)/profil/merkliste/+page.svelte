@@ -5,10 +5,10 @@
 
 	let { data, form } = $props();
 	const d = (x: string) => new Date(x).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Berlin' });
-	const href = (i: (typeof data.items)[number]) => (i.kind === 'event' ? `/veranstaltungen/${i.id}${i.occurrence ? `?am=${i.occurrence}` : ''}` : i.kind === 'offer' ? `/angebote/${i.id}` : `/hinweise#h-${i.id}`);
+	const href = (i: (typeof data.items)[number]) => (i.kind === 'event' ? `/veranstaltungen/${i.id}${i.occurrence ? `?am=${i.occurrence}` : ''}` : i.kind === 'offer' ? `/angebote/${i.id}` : i.kind === 'listing' ? `/marktplatz/${i.id}` : `/hinweise#h-${i.id}`);
 	const upcoming = $derived(data.items.filter((i) => !i.past).sort((a, b) => (a.when ?? a.deadline ?? '9').localeCompare(b.when ?? b.deadline ?? '9')));
 	const past = $derived(data.items.filter((i) => i.past));
-	const KIND: Record<string, string> = { event: 'Termin', offer: 'Angebot', notice: 'Hinweis' };
+	const KIND: Record<string, string> = { event: 'Termin', offer: 'Angebot', notice: 'Hinweis', listing: 'Anzeige' };
 	let copied = $state(false);
 </script>
 
@@ -20,14 +20,14 @@
 	<p class="lead">Nur was du selbst gemerkt hast. Erinnerungen stellst du direkt am Termin oder Hinweis ein.</p>
 	{#if form && 'error' in form}<Notice kind="error">{form.error}</Notice>{/if}
 
-	{#if !data.items.length}<p class="empty">Noch nichts gemerkt. Tippe bei <a href="/veranstaltungen">Veranstaltungen</a>, <a href="/angebote">Angeboten</a> oder <a href="/hinweise">Hinweisen</a> auf „Merken“.</p>{/if}
+	{#if !data.items.length}<p class="empty">Noch nichts gemerkt. Tippe bei <a href="/veranstaltungen">Veranstaltungen</a>, <a href="/angebote">Angeboten</a>, <a href="/hinweise">Hinweisen</a> oder im <a href="/marktplatz">Marktplatz</a> auf „Merken“.</p>{/if}
 
 	{#if upcoming.length}
 		<ul class="items">
 			{#each upcoming as i (i.kind + i.id + (i.occurrence ?? ''))}
 				<li class:x={i.cancelled}>
 					<div>
-						<small>{KIND[i.kind]}{i.org ? ` · ${i.org}` : ''}{i.cancelled ? (i.kind === 'offer' ? ' · beendet' : ' · abgesagt') : ''}</small>
+						<small>{KIND[i.kind]}{i.org ? ` · ${i.org}` : ''}{i.cancelled ? (i.kind === 'offer' || i.kind === 'listing' ? ' · nicht mehr verfügbar' : ' · abgesagt') : ''}</small>
 						<a href={href(i)}><strong>{i.title}</strong></a>
 						<small>{#if i.when}{when(i.when, i.end, i.allDay)}{/if}{#if i.deadline}{i.when ? ' · ' : ''}{i.kind === 'event' ? 'Anmeldung bis' : 'Frist'} {d(i.deadline)}{/if}{#if i.remindAt} · <Icon name="glocke" size={12} /> {when(i.remindAt, null, false)}{/if}</small>
 					</div>

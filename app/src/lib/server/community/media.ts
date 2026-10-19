@@ -36,7 +36,7 @@ export async function processImage(input: Buffer, maxSide = 2000): Promise<{ dat
 export async function storeImage(
 	sql: Sql,
 	input: Buffer,
-	o: { ownerId: string | null; purpose: 'beitrag' | 'ort' | 'linkvorschau'; postId?: string | null; placeId?: string | null; alt?: string | null; status?: 'sichtbar' | 'pruefung'; maxSide?: number }
+	o: { ownerId: string | null; purpose: 'beitrag' | 'ort' | 'linkvorschau' | 'markt'; postId?: string | null; placeId?: string | null; alt?: string | null; status?: 'sichtbar' | 'pruefung'; maxSide?: number }
 ): Promise<string> {
 	const img = await processImage(input, o.maxSide);
 	const [m] = await sql`insert into media (owner_id, post_id, place_id, purpose, mime, width, height, bytes, alt, status)

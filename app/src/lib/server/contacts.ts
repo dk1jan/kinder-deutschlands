@@ -7,7 +7,7 @@ export class ContactError extends Error {}
 const pair = (a: string, b: string) => (a < b ? [a, b] : [b, a]);
 export const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
-export async function sendRequest(sql: Sql, from: string, to: string, message: string | null, via: 'id' | 'qr' | 'entdecken') {
+export async function sendRequest(sql: Sql, from: string, to: string, message: string | null, via: 'id' | 'qr' | 'entdecken' | 'markt' | 'hilfe', ref: { kind: 'listing' | 'help'; id: string } | null = null) {
 	if (from === to) throw new ContactError('Das ist deine eigene ID.');
 	if (await isBlockedEither(sql, from, to)) throw new ContactError('Keine Familie mit dieser ID gefunden.');
 	if (await areContacts(sql, from, to)) throw new ContactError('Ihr seid schon verbunden.');
@@ -19,8 +19,8 @@ export async function sendRequest(sql: Sql, from: string, to: string, message: s
 	}
 	const [{ n }] = await sql`select count(*)::int as n from contact_requests where from_user = ${from} and created_at > now() - interval '1 day'`;
 	if (n >= 30) throw new ContactError('Du hast heute schon viele Anfragen gestellt. Bitte morgen weitermachen.');
-	const [row] = await sql`insert into contact_requests (from_user, to_user, message, via)
-		values (${from}, ${to}, ${message}, ${via}) on conflict do nothing returning id`;
+	const [row] = await sql`insert into contact_requests (from_user, to_user, message, via, ref_kind, ref_id)
+		values (${from}, ${to}, ${message}, ${via}, ${ref?.kind ?? null}, ${ref?.id ?? null}) on conflict do nothing returning id`;
 	if (!row) throw new ContactError('Du hast dieser Familie schon eine Anfrage geschickt.');
 	await audit(sql, { actorId: from, action: 'contact.requested', targetType: 'request', targetId: row.id as string, meta: { via } });
 	return 'angefragt' as const;
@@ -80,8 +80,11 @@ export async function overview(sql: Sql, userId: string) {
 			join users u on u.id = p.user_id and u.status = 'active'
 			where c.user_a = ${userId} or c.user_b = ${userId}
 			order by coalesce(p.display_name, p.contact_id)`,
-		sql`select r.id, r.message, r.via, r.created_at, p.contact_id, p.display_name, p.visibility
+		sql`select r.id, r.message, r.via, r.created_at, p.contact_id, p.display_name, p.visibility, r.ref_kind, r.ref_id,
+				coalesce(ml.title, hp.title) as ref_title
 			from contact_requests r join user_profiles p on p.user_id = r.from_user
+			left join market_listings ml on r.ref_kind = 'listing' and ml.id = r.ref_id
+			left join help_posts hp on r.ref_kind = 'help' and hp.id = r.ref_id
 			join users u on u.id = r.from_user and u.status = 'active'
 			where r.to_user = ${userId} and r.status = 'offen' order by r.created_at desc`,
 		sql`select r.id, r.created_at, p.contact_id

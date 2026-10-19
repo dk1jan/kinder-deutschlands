@@ -681,6 +681,81 @@ try {
 	check(r.body.includes('/admin/einrichtungen') && r.body.includes('/admin/hinweise'), 'Verwaltung: Einrichtungen und Hinweise im Menü');
 	r = await X2.req('/');
 	check(r.body.includes('/veranstaltungen/heute') && r.body.includes('/angebote'), 'Startseite: Entdecken-Einstiege');
+
+	// ---------- Abschnitt 6: Marktplatz, Familien helfen Familien, Kompass, Einladungen ----------
+	r = await X2.req('/marktplatz');
+	check(r.status === 200 && r.body.includes('anmelden') && !r.body.includes('Smoke-Laufrad'), 'Marktplatz ohne Anmeldung: nur Hinweis');
+	const D = client();
+	// Registrierung ist je Adresse auf 5 pro Stunde begrenzt – Dora bekommt das Passwort-Hash von Cem (nur im Test)
+	await sqlT`insert into users (email, password_hash, email_verified_at) select 'dora@example.org', password_hash, now() from users where email = 'cem@example.org'`;
+	r = await D.req('/anmelden?/anmelden', { form: { email: 'dora@example.org', password: pwC } });
+	r = await D.req('/profil');
+	check(r.status === 200 && r.body.includes('Familien-ID'), 'Viertes Mitglied angemeldet');
+	r = await A.req('/marktplatz/neu', { form: { kind: 'verkaufen', category: 'fahrraeder', title: 'Smoke-Laufrad', description: 'Blau, 12 Zoll', price: '25', condition: 'gut', region_code: fdf.code, private: 'on' } });
+	const lPath = r.location.split('?')[0];
+	check(r.status === 303 && /^\/marktplatz\/[0-9a-f-]{36}$/.test(lPath), `Anzeige aufgegeben (${r.status})`);
+	r = await A.req('/marktplatz/neu', { form: { kind: 'verkaufen', category: 'kleidung', title: 'Gewerblich', price: '5', region_code: fdf.code } });
+	check(r.status === 400 && r.body.includes('privat'), 'Nur private Anzeigen');
+	r = await D.req('/marktplatz?q=Laufrad');
+	check(r.body.includes('Smoke-Laufrad') && r.body.includes('25'), 'Suche findet Anzeige mit Preis');
+	r = await D.req(lPath);
+	check(r.status === 200 && r.body.includes('Findorff') && !r.body.includes('anna@example.org'), 'Anzeige: nur grobe Gegend, keine Kontaktdaten');
+	r = await D.req(`${lPath}?/anfragen`, { form: { message: 'Ist das Laufrad noch zu haben?' } });
+	check(r.status === 200, 'Anfrage zur Anzeige gesendet');
+	r = await A.req('/nachrichten?ansicht=kontakte');
+	check(r.body.includes('über den Marktplatz') && r.body.includes('Smoke-Laufrad') && r.body.includes('Ist das Laufrad noch zu haben?'), 'Anfrage erscheint als Kontaktanfrage mit Bezug zur Anzeige');
+	const reqD = /name="id" value="([0-9a-f-]{36})"/.exec(r.body)?.[1];
+	r = await A.req('/nachrichten?ansicht=kontakte&/annehmen', { form: { id: reqD ?? '' } });
+	r = await D.req(lPath);
+	check(r.body.includes('Nachricht schreiben'), 'Nach Annahme: Chat mit der Anbieterin möglich');
+	r = await A.req(`${lPath}?/status`, { form: { status: 'reserviert' } });
+	r = await D.req('/marktplatz?q=Laufrad');
+	check(r.body.includes('Reserviert'), 'Status „reserviert“ sichtbar');
+	r = await D.req('/marktplatz?/suchauftrag', { form: { q: 'Kinderwagen', region: fdf.code } });
+	check(r.status === 200, 'Suchauftrag gespeichert');
+
+	r = await D.req('/hilfe/neu', { form: { kind: 'brauche', category: 'alltag', title: 'Babysitter gesucht', body: 'Freitag', region_code: fdf.code } });
+	check(r.status === 400 && r.body.includes('Kindertagespflege'), 'Fremdbetreuung wird nicht vermittelt, mit Hinweis auf geprüfte Wege');
+	r = await D.req('/hilfe/neu', { form: { kind: 'brauche', category: 'antraege', title: 'Smoke-Hilfe Elterngeldantrag', body: 'Wer hat Erfahrung?', region_code: fdf.code } });
+	const hPath = r.location.split('?')[0];
+	check(r.status === 303 && hPath.startsWith('/hilfe/'), 'Hilfe-Eintrag angelegt');
+	r = await A.req('/hilfe');
+	check(r.body.includes('Smoke-Hilfe Elterngeldantrag') && r.body.includes('keine Fachberatung'), 'Hilfe-Liste mit Hinweis auf private Erfahrung');
+	r = await A.req(`${hPath}?/antworten`, { form: { message: 'Habe ich letztes Jahr gemacht, helfe gern.' } });
+	check(r.status === 200, 'Antwort auf Hilfe-Eintrag');
+
+	r = await X2.req('/kompass');
+	check(r.status === 200 && r.body.includes('Geburt und erste Wochen') && r.body.includes('Trennung'), 'Lebenslagen-Kompass öffentlich');
+	r = await X2.req('/kompass/geburt');
+	check(r.body.includes('Kindergeld beantragen') && r.body.includes('Familienportal'), 'Kompass: Schritte mit Quelle');
+	r = await X2.req('/kompass/trennung');
+	check(r.body.includes('0800 111 0 550') && r.body.includes('Unterhaltsvorschuss'), 'Kompass Trennung: offizielle Krisennummern und Leistungen');
+	r = await req('/admin/kompass');
+	check(r.status === 200, 'Redaktion: Kompass pflegen');
+
+	const startInv = berlinDay(new Date(Date.now() + 12 * 86_400_000));
+	r = await A.req('/einladungen/neu', { form: { title: 'Smoke-Geburtstag', start: `${startInv}T15:00`, end: `${startInv}T18:00`, message: 'Schatzsuche!', place_text: 'Smokeweg 7', address_after_rsvp: 'on', max_guests: '5' } });
+	const invPath = r.location.split('?')[0];
+	check(r.status === 303 && invPath.startsWith('/einladungen/'), 'Einladung angelegt');
+	r = await A.req(invPath);
+	const invLink = /(\/e\/[A-Za-z0-9_-]{20,})/.exec(r.body)?.[1];
+	check(!!invLink, 'Einladungslink für die Gastgeberin');
+	const G = client();
+	r = await G.req(invLink ?? '/e/x');
+	check(r.status === 200 && r.body.includes('Smoke-Geburtstag') && !r.body.includes('Smokeweg 7') && r.body.includes('nach deiner Zusage') && r.headers.get('referrer-policy') === 'no-referrer', 'Gast ohne Konto: Einladung ohne Adresse, kein Referrer');
+	r = await G.req(`${invLink}?/antworten`, { form: { name: 'Lena mit Mama', answer: 'ja', kids: '1', adults: '1' } });
+	check(r.status === 200 && r.body.includes('Danke'), 'Zusage ohne Konto');
+	r = await G.req(invLink ?? '/e/x');
+	check(r.body.includes('Smokeweg 7') && r.body.includes('Du hast zugesagt'), 'Nach Zusage: Adresse sichtbar, eigene Antwort erkannt');
+	r = await A.req(invPath);
+	check(r.body.includes('Lena mit Mama') && r.body.includes('1</strong> Zusage'), 'Gastgeberin sieht die Antwort');
+	r = await D.req(invPath);
+	check(r.status === 404, 'Gästeliste nur für die Gastgeberin');
+	r = await A.req(`${invPath}?/erneuern`, { form: {} });
+	r = await G.req(invLink ?? '/e/x');
+	check(r.body.includes('Einladung nicht gefunden'), 'Alter Link nach Erneuern ungültig');
+	r = await X2.req('/');
+	check(r.body.includes('/marktplatz') && r.body.includes('/kompass') && r.body.includes('/einladungen'), 'Startseite: Einstiege Abschnitt 6');
 	await sqlT.end();
 	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
 
@@ -885,6 +960,35 @@ try {
 			check(expired && purged, 'Abgelaufenes Treffen samt Nachrichten vom Server gelöscht');
 			r = await A.req(`/t/${ttok}`);
 			check(r.body.includes('Treffen nicht gefunden'), 'Abgelaufener QR-Code zeigt nichts mehr');
+
+			// Abschnitt 6: Gäste-Chat einer Einladung (Beitritt nur mit Zusage) und Event-Chat (nur mit Teilnahme)
+			const HIST = { type: 'm.room.history_visibility', state_key: '', content: { history_visibility: 'joined' } };
+			r = await A.req(invPath);
+			const invLink2 = /(\/e\/[A-Za-z0-9_-]{20,})/.exec(r.body)?.[1] ?? '/e/x';
+			const { room_id: ir } = await ma.createRoom({ name: 'Gäste Smoke', preset: 'public_chat', visibility: 'private', initial_state: [ENC, HIST] });
+			r = await A.req('/api/einladungen/chat', { json: { invitationId: invPath.split('/').pop(), roomId: ir } });
+			check(r.status === 200, `Gäste-Chat zur Einladung angelegt (${r.body.slice(0, 80)})`);
+			r = await C.req(`${invLink2}?/chat`, { form: {}, headers: { accept: 'application/json', 'x-sveltekit-action': 'true' } });
+			check(!r.body.includes(ir), 'Ohne Zusage kein Ticket für den Gäste-Chat');
+			r = await C.req(`${invLink2}?/antworten`, { form: { name: 'Cem', answer: 'ja', kids: '1', adults: '1' } });
+			r = await C.req(`${invLink2}?/chat`, { form: {}, headers: { accept: 'application/json', 'x-sveltekit-action': 'true' } });
+			let invJoined = r.body.includes(ir);
+			try { await mc.joinRoom(ir); } catch { invJoined = false; }
+			check(invJoined, 'Nach Zusage dem Gäste-Chat beigetreten');
+			let admInv = '';
+			try { await madm.joinRoom(ir); } catch (e) { admInv = e.errcode; }
+			check(admInv === 'M_FORBIDDEN', 'Gäste-Chat ohne Ticket gesperrt');
+			const nextSat = berlinDay(new Date(satT.getTime() + 7 * 86_400_000));
+			r = await C.req(`${evPath}?/teilnahme`, { form: { am: nextSat, status: 'komme_mit' } });
+			const { room_id: er } = await mc.createRoom({ name: 'Flohmarkt Smoke', preset: 'public_chat', visibility: 'private', initial_state: [ENC, HIST] });
+			r = await C.req('/api/veranstaltungen/chat', { json: { eventId: evPath.split('/').pop(), occurrence: nextSat, roomId: er } });
+			check(r.status === 200, `Event-Chat angelegt (${r.body.slice(0, 80)})`);
+			r = await req(`${evPath}?/chat`, { form: { am: nextSat }, headers: { accept: 'application/json', 'x-sveltekit-action': 'true' } });
+			check(!r.body.includes(er), 'Ohne Teilnahme kein Event-Chat');
+			r = await A.req(`${evPath}?/chat`, { form: { am: nextSat }, headers: { accept: 'application/json', 'x-sveltekit-action': 'true' } });
+			let evJoined = r.body.includes(er);
+			try { await ma.joinRoom(er); } catch { evJoined = false; }
+			check(evJoined, 'Veranstalterin tritt dem Event-Chat bei');
 
 			// Geräte
 			r = await A.req('/api/chat/geraete');

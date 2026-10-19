@@ -2,6 +2,21 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-19 · Abschnitt 6: Marktplatz, Familien helfen Familien, Lebenslagen-Kompass, Einladungen, Event-Chat
+
+**Was**
+- Marktplatz `/marktplatz` (M09, nur Mitglieder): verkaufen, verschenken, tauschen, suchen; Kategorien, Bilder (ohne Personen, ohne Metadaten), Preis/VB, Zustand, Größe, Alter, nur grobe Gegend (Mittelpunkt der Region). Suche, Filter, Umkreis, Sortierung, Merken (Merkliste), Suchaufträge mit Mitteilung (Push nur mit neuem Schalter „Marktplatz“). Status verfügbar/reserviert/abgegeben, Ablauf nach 30 Tagen, verlängern, Bilder ergänzen/entfernen, löschen, melden. Anfrage = Kontaktanfrage mit Bezug zur Anzeige, danach verschlüsselter Chat. Nur private Anbieter, Grenzen gegen Massenanzeigen, Telefonnummern → Prüfung, Sicherheitshinweis bei Autositzen/Kinderwagen, Hinweis „kein Kauf über uns, nicht vorab überweisen“.
+- Familien helfen Familien `/hilfe` (M16): „Ich brauche Hilfe“/„Ich kann helfen“ nach Thema und Gegend, ausdrücklich Erfahrung statt Fachberatung, Fremdbetreuung wird nicht vermittelt, bei Krisenwörtern offizielle Notruf- und Krisennummern, Antwort als Kontaktanfrage mit Bezug, erledigt/wieder öffnen, Ablauf 30 Tage.
+- Lebenslagen-Kompass `/kompass` (M15): Schwangerschaft, Geburt, Kita-Start, Schule, Trennung, Geld knapp – Schritte und offizielle Links mit Quelle (Familienportal des BMFSFJ, geprüft 19.10.2026), Beratungsstellen = verifizierte Einrichtungen der Gegend, Wissen und Gruppen zum Thema, Krisennummern bei sensiblen Lagen. Nichts von der Auswahl wird gespeichert. Pflege unter Verwaltung → Lebenslagen.
+- Einladungen `/einladungen`, `/e/…` (M21): z. B. Kindergeburtstag mit geheimem Link (erneuern, abschalten), Antworten auch ohne Konto, Adresse erst nach Zusage, Höchstzahl, Antwortfrist, Gästeliste nur für die Gastgeberin, Änderungen/Absage mit Mitteilung an Gäste mit Konto, verschlüsselter Gäste-Chat, automatische Löschung 30 Tage nach dem Termin, Ideen aus Familienkarte und Veranstaltungen der eigenen Gegend.
+- Event-Chat zu „Wer kommt mit?“ (M12, offen aus Abschnitt 5): je Termin-Tag, nur Teilnehmende/Veranstalter, gelöscht einen Tag nach dem Termin.
+- Kontaktanfragen zeigen den Bezug (Anzeige/Hilfe-Eintrag). Startseite, Profil und Verwaltung mit neuen Einstiegen. Datenexport und Kontolöschung umfassen Anzeigen (samt Bildern), Suchaufträge, Hilfe-Einträge, Einladungen und Antworten. Moderation kennt Anzeigen, Hilfe-Einträge und Einladungen.
+- Korrektur: Seiten konnten keine eigene `Referrer-Policy` setzen (wurde immer überschrieben).
+**Warum** Bauabschnitt 6 laut ROADMAP; Grundsätze D-051 bis D-055.
+**Module** M09, M12 (Event-Chat), M15, M16, M21, M24 (Moderation, Kompass-Redaktion) · **DB-Migration** ja – `0008_alltag.sql` (Anzeigen, Suchaufträge, Hilfe-Einträge, Kontaktanfragen mit Bezug, Lebenslagen + erste Inhalte, Einladungen + Antworten, Event-Chats, Merken von Anzeigen, Push-Schalter Marktplatz, Recht compass.edit)
+**Offen (vorgesehen, nicht gestrichen)** Marktplatz-Ebene auf der Familienkarte (M10), Regeln für gewerbliche Anbieter (M09), weitere/regionale Kompass-Inhalte aus geprüften Quellen, Budget-Filter (M12).
+**Tests** svelte-check 0 Fehler; 177 Unit/DB-Tests (neu 3 Unit (Fremdbetreuung/Krise erkennen, Preise) und 10 DB (Anzeige-Pflichtangaben/grober Ort/Dubletten/Sicherheit, Prüfung bei Telefonnummer, Suche/Umkreis/Blockieren, Anfrage mit Bezug → Kontakt, Status/Ablauf/Verlängern/Suchauftrag, Hilfe ohne Fremdbetreuung + Krisenhinweis, Kompass-Rechte/Quellen, Einladung ohne Konto/Adresse nach Zusage/Höchstzahl/Link erneuern/abschalten, Löschung nach 30 Tagen, Kontolöschung)); Rauchtest 244 Prüfungen mit echtem Synapse (neu u. a. Anzeige → Anfrage → Annahme, Suchauftrag, Hilfe, Kompass, Einladung ohne Konto, Gäste-Chat nur nach Zusage, Event-Chat nur mit Teilnahme); Bildschirmfotos mobil/desktop hell/dunkel; Build
+
 ## 2026-10-19 · Abschnitt 5: Veranstaltungen, Einrichtungen, freie Plätze, Hinweise, Merkliste, Familienradar
 
 **Was**

@@ -30,6 +30,7 @@ export const load: PageServerLoad = async (event) => {
 			name: name(r as never, 'mitglied'),
 			message: r.message as string | null,
 			via: r.via as string,
+			ref: r.ref_kind && r.ref_title ? { href: r.ref_kind === 'listing' ? `/marktplatz/${r.ref_id}` : `/hilfe/${r.ref_id}`, title: r.ref_title as string, kind: r.ref_kind as string } : null,
 			at: fmtDate(r.created_at)
 		})),
 		outgoing: o.outgoing.map((r) => ({ id: r.id as string, contactId: formatContactId(r.contact_id as string), at: fmtDate(r.created_at) })),

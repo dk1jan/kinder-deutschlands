@@ -44,8 +44,9 @@
 			art: 'markt',
 			title: 'Marktplatz',
 			text: 'Kinderwagen, Kleidung und Spielzeug weitergeben. Kontakt über die Familien-ID, die Übergabe vereinbart ihr selbst.',
-			stage: 'Bauabschnitt 6',
-			theme: 'navy'
+			stage: 'Verkaufen, verschenken, tauschen, suchen',
+			theme: 'navy',
+			href: '/marktplatz'
 		},
 		{
 			art: 'nachrichten',
@@ -136,6 +137,10 @@
 	<a href="/hinweise"><strong>Hinweise & Fristen</strong><span>Absagen, Sperrungen, Leistungen</span></a>
 	<a href="/einrichtungen"><strong>Einrichtungen</strong><span>verifizierte Partner</span></a>
 	<a href="/radar"><strong>Familienradar</strong><span>Neues für deine Region</span></a>
+	<a href="/marktplatz"><strong>Marktplatz</strong><span>Kinderwagen, Kleidung, Spielzeug</span></a>
+	<a href="/hilfe"><strong>Familien helfen Familien</strong><span>Hilfe suchen oder anbieten</span></a>
+	<a href="/kompass"><strong>Lebenslagen-Kompass</strong><span>Geburt, Kita, Trennung, Geld knapp</span></a>
+	<a href="/einladungen"><strong>Einladungen</strong><span>Kindergeburtstag mit Zu- und Absagen</span></a>
 </nav>
 
 <section class="modules" aria-labelledby="mod-titel">

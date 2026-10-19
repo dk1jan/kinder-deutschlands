@@ -14,6 +14,7 @@
 			{ href: '/admin/wissen', label: 'Wissen', icon: 'protokoll', show: data.may.knowledge },
 			{ href: '/admin/einrichtungen', label: 'Einrichtungen', icon: 'ok', show: data.may.orgs },
 			{ href: '/admin/hinweise', label: 'Hinweise', icon: 'hinweis', show: data.may.notices },
+			{ href: '/admin/kompass', label: 'Lebenslagen', icon: 'entdecken', show: data.may.compass },
 			{ href: '/admin/daten', label: 'Daten und Orte', icon: 'daten', show: data.may.data },
 			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit },
 			{ href: '/admin/einstellungen', label: 'Einstellungen', icon: 'einstellungen', show: data.may.settings }

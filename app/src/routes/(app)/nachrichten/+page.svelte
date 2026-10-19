@@ -4,7 +4,7 @@
 	import Notice from '$lib/components/Notice.svelte';
 	import ChatList from '$lib/components/chat/ChatList.svelte';
 	let { data, form } = $props();
-	const via: Record<string, string> = { qr: 'über deinen QR-Code', id: 'über deine ID', entdecken: 'über „Familien entdecken“' };
+	const via: Record<string, string> = { qr: 'über deinen QR-Code', id: 'über deine ID', entdecken: 'über „Familien entdecken“', markt: 'über den Marktplatz', hilfe: 'über „Familien helfen Familien“' };
 </script>
 
 <svelte:head><title>Nachrichten – Kinder Deutschlands</title></svelte:head>
@@ -64,6 +64,7 @@
 							<div>
 								<a class="who" href={`/nachrichten/familie?id=${r.cid}`}>{r.name ?? 'Familie'} <span class="muted">{r.contactId}</span></a>
 								<p class="muted meta">{r.at}, {via[r.via] ?? ''}</p>
+								{#if r.ref}<p class="meta">{r.ref.kind === 'listing' ? 'Anzeige' : 'Eintrag'}: <a href={r.ref.href}>{r.ref.title}</a></p>{/if}
 								{#if r.message}<p class="msg">„{r.message}“</p>{/if}
 							</div>
 							<div class="acts">

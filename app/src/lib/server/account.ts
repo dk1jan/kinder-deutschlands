@@ -65,6 +65,13 @@ export async function exportAccount(sql: Sql, userId: string) {
 		eigene_termine: await sql`select title, description, starts_at, ends_at, rrule, visibility, status, created_at from events where created_by = ${userId} and origin = 'mitglied'`,
 		einrichtungen_folgen: await sql`select o.name, f.created_at from org_followers f join organizations o on o.id = f.org_id where f.user_id = ${userId}`,
 		einrichtungen_team: await sql`select o.name, m.role, m.created_at from org_members m join organizations o on o.id = m.org_id where m.user_id = ${userId}`,
+		marktplatz_anzeigen: await sql`select kind, category, title, description, price_cents, condition, region_code, status, created_at, expires_at from market_listings where user_id = ${userId} and status <> 'entfernt'`,
+		marktplatz_suchauftraege: await sql`select q, category, kinds, region_code, max_price_cents, created_at from market_searches where user_id = ${userId}`,
+		hilfe_eintraege: await sql`select kind, category, title, body, region_code, status, created_at from help_posts where user_id = ${userId} and status <> 'entfernt'`,
+		einladungen_eigene: await sql`select i.title, i.message, i.starts_at, i.place_text, i.status, i.created_at,
+			(select json_agg(json_build_object('name', r.name, 'antwort', r.answer, 'kinder', r.kids, 'erwachsene', r.adults, 'notiz', r.note)) from invitation_rsvps r where r.invitation_id = i.id) as antworten
+			from invitations i where i.organizer_id = ${userId}`,
+		einladungen_antworten: await sql`select i.title, i.starts_at, r.name, r.answer, r.kids, r.adults, r.note, r.updated_at from invitation_rsvps r join invitations i on i.id = r.invitation_id where r.user_id = ${userId}`,
 		chat: {
 			hinweis: 'Chatnachrichten sind Ende-zu-Ende-verschlüsselt. Der Server kann sie nicht lesen und deshalb nicht exportieren. Sie liegen nur auf deinen Geräten.',
 			chat_konto: (await sql`select created_at from chat_accounts where user_id = ${userId}`)[0] ?? null,
@@ -86,6 +93,7 @@ export async function exportAccount(sql: Sql, userId: string) {
  */
 export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: boolean } = {}) {
 	let mediaIds: string[] = [];
+	let invitationRooms: string[] = [];
 	await sql.begin(async (tx) => {
 		const [{ n }] = await tx`select count(*)::int as n from role_assignments
 			where user_id = ${userId} and role_key = 'superadmin' and revoked_at is null`;
@@ -118,7 +126,7 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from helpful_marks where user_id = ${userId}`;
 		await tx`delete from notifications where user_id = ${userId}`;
 		await tx`update mod_cases set reporter_id = null, message = null where reporter_id = ${userId} and status = 'erledigt'`;
-		mediaIds = (await tx`update media set status = 'entfernt' where owner_id = ${userId} returning id`).map((r) => r.id as string);
+		mediaIds.push(...(await tx`update media set status = 'entfernt' where owner_id = ${userId} returning id`).map((r) => r.id as string));
 		// Chat: Push-Abos, Einstellungen, Beitrittstickets weg; Direktchats enden
 		await tx`delete from push_subscriptions where user_id = ${userId}`;
 		await tx`delete from notification_settings where user_id = ${userId}`;
@@ -132,6 +140,13 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from org_followers where user_id = ${userId}`;
 		await tx`delete from org_members where user_id = ${userId}`;
 		await tx`update events set status = 'entfernt', description = '', address = null, location = null, updated_at = now() where created_by = ${userId} and origin = 'mitglied'`;
+		// Abschnitt 6: Anzeigen, Suchaufträge, Hilfe-Einträge, Einladungen (samt Antworten) und eigene Antworten
+		mediaIds.push(...(await tx`delete from media where listing_id in (select id from market_listings where user_id = ${userId}) returning id`).map((r) => r.id as string));
+		await tx`update market_listings set status = 'entfernt', title = '[gelöscht]', description = '', size_text = null where user_id = ${userId}`;
+		await tx`delete from market_searches where user_id = ${userId}`;
+		await tx`update help_posts set status = 'entfernt', title = '[gelöscht]', body = '' where user_id = ${userId}`;
+		invitationRooms = (await tx`delete from invitations where organizer_id = ${userId} returning chat_room_id`).map((r) => r.chat_room_id as string | null).filter((x): x is string => !!x);
+		await tx`delete from invitation_rsvps where user_id = ${userId}`;
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',
 			totp_secret_enc = null, totp_enabled_at = null, display_name = null where id = ${userId}`;
@@ -140,6 +155,9 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 	});
 	const { deleteImageFile } = await import('./community/media');
 	for (const id of mediaIds) await deleteImageFile(id).catch(() => {});
+	for (const room of invitationRooms) {
+		await deleteChatRoom(sql, room).catch(() => {});
+	}
 	// Chat-Konto auf dem Chat-Server stilllegen und Profil/Nachrichten-Metadaten löschen (erase)
 	const chat = await import('./chat/synapse');
 	try {
@@ -176,4 +194,10 @@ export async function reapplyDeletions(sql: Sql): Promise<number> {
 	for (const r of open) await deleteAccount(sql, r.id as string, { fromLog: true });
 	if (open.length) console.log(`Löschliste: ${open.length} Konto/Konten nach Wiederherstellung erneut gelöscht.`);
 	return open.length;
+}
+
+async function deleteChatRoom(sql: Sql, roomId: string) {
+	const { deleteRoom } = await import('./chat/synapse');
+	await deleteRoom(sql, roomId);
+	await sql`update chat_rooms set status = 'geloescht', ended_at = now() where room_id = ${roomId}`;
 }

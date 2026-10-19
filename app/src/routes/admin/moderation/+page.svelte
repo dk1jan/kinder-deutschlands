@@ -1,6 +1,6 @@
 <script lang="ts">
 	let { data } = $props();
-	const TYPE = { post: 'Beitrag', comment: 'Antwort', media: 'Bild', review: 'Bewertung', user: 'Konto', group: 'Gruppe', chat: 'Chat', event: 'Termin', offer: 'Angebot', org: 'Einrichtung' } as Record<string, string>;
+	const TYPE = { post: 'Beitrag', comment: 'Antwort', media: 'Bild', review: 'Bewertung', user: 'Konto', group: 'Gruppe', chat: 'Chat', event: 'Termin', offer: 'Angebot', org: 'Einrichtung', listing: 'Anzeige', help: 'Hilfe', invitation: 'Einladung' } as Record<string, string>;
 	const SRC = { meldung: 'Meldung', automatisch: 'Automatisch', einspruch: 'Einspruch' } as Record<string, string>;
 	const fmt = (d: string | Date) => new Date(d).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
 </script>

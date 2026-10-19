@@ -9,7 +9,7 @@ import { buildIcs, type IcsEvent } from './ics';
 import { expand } from './recurrence';
 import { getEvent, pgDate } from './events';
 
-export type SavedKind = 'event' | 'offer' | 'notice';
+export type SavedKind = 'event' | 'offer' | 'notice' | 'listing';
 const NONE = '1900-01-01';
 
 export const REMINDERS = {
@@ -80,8 +80,9 @@ export async function merkliste(sql: Sql, userId: string) {
 	const rows = await sql`select s.kind, s.item_id, s.occurrence, s.remind_at, s.created_at,
 			e.title as e_title, e.starts_at, e.ends_at, e.rrule, e.exdates, e.status as e_status, e.all_day, e.registration_deadline,
 			f.title as f_title, f.status as f_status, o.name as org_name,
-			n.title as n_title, n.deadline, n.kind as n_kind
+			n.title as n_title, n.deadline, n.kind as n_kind, ml.title as l_title, ml.status as l_status
 		from saved_items s left join events e on s.kind = 'event' and e.id = s.item_id
+			left join market_listings ml on s.kind = 'listing' and ml.id = s.item_id
 			left join offers f on s.kind = 'offer' and f.id = s.item_id left join organizations o on o.id = coalesce(e.org_id, f.org_id)
 			left join notices n on s.kind = 'notice' and n.id = s.item_id
 		where s.user_id = ${userId} order by s.created_at desc`;
@@ -102,6 +103,10 @@ export async function merkliste(sql: Sql, userId: string) {
 			if (r.kind === 'offer') {
 				if (!r.f_title) return null;
 				return { kind: 'offer' as const, id: r.item_id as string, occurrence: null, title: r.f_title as string, when: null, end: null, allDay: false, cancelled: r.f_status !== 'aktiv', past: false, deadline: null, org: r.org_name as string | null, remindAt: r.remind_at as Date | null };
+			}
+			if (r.kind === 'listing') {
+				if (!r.l_title || r.l_status === 'entfernt' || r.l_status === 'pruefung') return null;
+				return { kind: 'listing' as const, id: r.item_id as string, occurrence: null, title: r.l_title as string, when: null, end: null, allDay: false, cancelled: r.l_status !== 'verfuegbar' && r.l_status !== 'reserviert', past: false, deadline: null, org: null, remindAt: null };
 			}
 			if (!r.n_title) return null;
 			const dl = r.deadline ? new Date(`${pgDate(r.deadline)}T23:59:00Z`) : null;

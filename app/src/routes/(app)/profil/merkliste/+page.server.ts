@@ -23,7 +23,7 @@ export const actions: Actions = {
 		const kind = String(f.get('kind')) as SavedKind;
 		const id = String(f.get('id') ?? '');
 		const occ = String(f.get('am') ?? '') || null;
-		if (!['event', 'offer', 'notice'].includes(kind) || !isUuid(id)) return fail(400, { error: 'Ungültig.' });
+		if (!['event', 'offer', 'notice', 'listing'].includes(kind) || !isUuid(id)) return fail(400, { error: 'Ungültig.' });
 		try {
 			const on = await toggleSaved(db(), user.id, kind, id, occ);
 			// toggle hat wieder angelegt (Doppelklick) → nochmal entfernen

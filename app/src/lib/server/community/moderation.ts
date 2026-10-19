@@ -67,6 +67,18 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 		const [o] = await sql`select region_code from organizations where id = ${id}`;
 		return o ? { regionCode: o.region_code, topicKey: null, groupId: null, groupKind: null, authorId: null } : null;
 	}
+	if (type === 'listing') {
+		const [l] = await sql`select region_code, user_id from market_listings where id = ${id}`;
+		return l ? { regionCode: l.region_code, topicKey: null, groupId: null, groupKind: null, authorId: l.user_id } : null;
+	}
+	if (type === 'help') {
+		const [h] = await sql`select region_code, user_id from help_posts where id = ${id}`;
+		return h ? { regionCode: h.region_code, topicKey: null, groupId: null, groupKind: null, authorId: h.user_id } : null;
+	}
+	if (type === 'invitation') {
+		const [i] = await sql`select organizer_id from invitations where id = ${id}`;
+		return i ? { regionCode: null, topicKey: null, groupId: null, groupKind: null, authorId: i.organizer_id } : null;
+	}
 	if (type === 'chat') {
 		// Verschlüsselte Chats: Absender vom Server bestätigt, Inhalt nur aus der Meldung (freigegeben von der meldenden Person)
 		const [c] = await sql`select evidence->>'sender_user' as author from mod_cases where target_type = 'chat' and target_id = ${id} limit 1`;
@@ -76,7 +88,7 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 }
 
 /** Meldung durch ein Mitglied. Doppelte Meldungen derselben Person zum selben Inhalt werden zusammengefasst. */
-export async function report(sql: Sql, reporterId: string, type: 'post' | 'comment' | 'media' | 'review' | 'user' | 'event' | 'offer' | 'org', id: string, reason: string, message: string | null) {
+export async function report(sql: Sql, reporterId: string, type: 'post' | 'comment' | 'media' | 'review' | 'user' | 'event' | 'offer' | 'org' | 'listing' | 'help' | 'invitation', id: string, reason: string, message: string | null) {
 	if (!(REPORT_REASONS as readonly string[]).includes(reason)) throw new PostError('Bitte einen Grund wählen.');
 	const s = await scopeOf(sql, type, id);
 	if (!s) throw new PostError('Inhalt nicht gefunden.');
@@ -158,6 +170,9 @@ export async function queue(sql: Sql, userId: string, f: QueueFilter) {
 	if (ids('event').length) add(await sql`select id, title as t from events where id::text = any(${ids('event')})`);
 	if (ids('offer').length) add(await sql`select id, title as t from offers where id::text = any(${ids('offer')})`);
 	if (ids('org').length) add(await sql`select id, name as t from organizations where id::text = any(${ids('org')})`);
+	if (ids('listing').length) add(await sql`select id, title as t from market_listings where id::text = any(${ids('listing')})`);
+	if (ids('help').length) add(await sql`select id, title as t from help_posts where id::text = any(${ids('help')})`);
+	if (ids('invitation').length) add(await sql`select id, title as t from invitations where id::text = any(${ids('invitation')})`);
 	for (const r of out) if (r.target_type === 'chat') preview.set(String(r.target_id), String((r.evidence?.messages ?? []).find((m: { reported?: boolean }) => m.reported)?.body ?? '').replace(/\s+/g, ' ').slice(0, 90));
 	return out.map((r) => ({
 		preview: preview.get(String(r.target_id)) ?? null,
@@ -206,6 +221,16 @@ export async function caseDetail(sql: Sql, userId: string, id: string) {
 	} else if (c.target_type === 'org') {
 		const [o] = await sql`select slug, name, description, status from organizations where id = ${c.target_id}`;
 		if (o) content = { title: `Einrichtung: ${o.name}`, body: o.description, status: o.status, link: `/einrichtungen/${o.slug}` };
+	} else if (c.target_type === 'listing') {
+		const [l] = await sql`select id, title, description, status from market_listings where id = ${c.target_id}`;
+		const imgs = await sql`select id from media where listing_id = ${c.target_id} order by created_at limit 1`;
+		if (l) content = { title: `Anzeige: ${l.title}`, body: l.description, status: l.status, link: `/marktplatz/${l.id}`, image: imgs[0] ? `/medien/${imgs[0].id}` : undefined };
+	} else if (c.target_type === 'help') {
+		const [h] = await sql`select id, title, body, status from help_posts where id = ${c.target_id}`;
+		if (h) content = { title: `Hilfe: ${h.title}`, body: h.body, status: h.status, link: `/hilfe/${h.id}` };
+	} else if (c.target_type === 'invitation') {
+		const [i] = await sql`select title, message, status from invitations where id = ${c.target_id}`;
+		if (i) content = { title: `Einladung: ${i.title}`, body: i.message, status: i.status };
 	} else if (c.target_type === 'chat') {
 		const ev = (c.evidence ?? {}) as { messages?: { reported?: boolean; body?: string }[] };
 		content = { title: 'Gemeldete Chatnachricht', body: ev.messages?.find((m) => m.reported)?.body ?? '', status: 'gemeldet' };
@@ -264,6 +289,9 @@ export async function decide(
 		else if (type === 'review') await sql`update place_reviews set status = ${status} where id = ${c.target_id}`;
 		else if (type === 'event') await sql`update events set status = ${status === 'sichtbar' ? 'aktiv' : 'entfernt'}, mod_note = ${status === 'sichtbar' ? null : reason.trim()}, updated_at = now() where id = ${c.target_id}`;
 		else if (type === 'offer') await sql`update offers set status = ${status === 'sichtbar' ? 'aktiv' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
+		else if (type === 'listing') await sql`update market_listings set status = ${status === 'sichtbar' ? 'verfuegbar' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
+		else if (type === 'help') await sql`update help_posts set status = ${status === 'sichtbar' ? 'offen' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
+		else if (type === 'invitation' && status !== 'sichtbar') await sql`update invitations set status = 'abgesagt', token_hash = null, token_enc = null, cancel_note = ${reason.trim()}, updated_at = now() where id = ${c.target_id}`;
 		else if (type === 'org' && status !== 'sichtbar') await sql`update organizations set status = 'pausiert', decision_note = ${reason.trim()}, updated_at = now() where id = ${c.target_id} and status = 'verifiziert'`;
 	};
 	const postId = type === 'post' ? c.target_id : null;

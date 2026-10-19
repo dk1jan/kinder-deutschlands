@@ -71,6 +71,28 @@ export async function createGroup(name: string, mxids: string[]): Promise<string
 	return room_id;
 }
 
+/**
+ * Chat zu einer Einladung oder einem Termin: wie ein Treffen (verschlüsselt, mit Ablauf), Beitritt per Ticket
+ * der jeweiligen Seite. Die Anmeldung beim Server übernimmt `url` mit `{ ...payload, roomId }`.
+ */
+export async function createTimedChat(name: string, url: string, payload: Record<string, unknown>): Promise<string> {
+	const c = await need();
+	const { room_id } = await c.createRoom({
+		name: name.trim().slice(0, 80),
+		preset: 'public_chat' as never,
+		visibility: 'private' as never,
+		initial_state: [ENC, hist('joined'), { type: 'm.room.guest_access', state_key: '', content: { guest_access: 'forbidden' } }]
+	});
+	const r = await api(url, { json: { ...payload, roomId: room_id } });
+	if (r.error) {
+		await c.leave(room_id).catch(() => {});
+		throw new Error(r.error);
+	}
+	await loadMeta([room_id]);
+	await waitForRoom(c, room_id);
+	return room_id;
+}
+
 /** Treffen: Beitritt per QR, endet automatisch. Nachrichten sehen nur, wer beim Senden schon dabei war. */
 export async function createTreffen(name: string, hours: number, point: { lat: number; lon: number; label: string } | null): Promise<{ roomId: string; url: string }> {
 	const c = await need();

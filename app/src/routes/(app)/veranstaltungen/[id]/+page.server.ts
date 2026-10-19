@@ -10,6 +10,8 @@ import { isUuid } from '$lib/server/angebote/common';
 import { cancelEvent, getEvent, removeEvent, restoreOccurrence, setAttendance, whoComes } from '$lib/server/angebote/events';
 import { REMINDERS, isSaved, setReminder, toggleSaved } from '$lib/server/angebote/saved';
 import { tileState } from '$lib/server/import/tiles';
+import { eventChat, eventChatTicket } from '$lib/server/angebote/eventchat';
+import { chatEnabled, ChatError } from '$lib/server/chat/synapse';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -25,10 +27,11 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const upcoming = d.occurrences.filter((o) => (o.end ?? o.start).getTime() >= Date.now() - 3600_000);
 	const sel = (am && DAY.test(am) ? d.occurrences.find((o) => o.date === am) : null) ?? upcoming[0] ?? d.occurrences.at(-1) ?? null;
 	const occurrence = sel?.date ?? null;
-	const [saved, who, tiles] = await Promise.all([
+	const [saved, who, tiles, chatRoom] = await Promise.all([
 		viewer ? isSaved(sql, viewer, 'event', params.id, d.event.rrule ? occurrence : null) : null,
 		viewer && occurrence ? whoComes(sql, viewer, params.id, occurrence) : [],
-		d.event.lat !== null ? tileState(sql).catch(() => null) : null
+		d.event.lat !== null ? tileState(sql).catch(() => null) : null,
+		viewer && occurrence && chatEnabled() ? eventChat(sql, params.id, occurrence) : null
 	]);
 	return {
 		...d,
@@ -39,7 +42,8 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		member: !!viewer,
 		reminders: REMINDERS,
 		tiles: !!tiles?.present,
-		token: token ?? null
+		token: token ?? null,
+		chat: chatEnabled() ? { roomId: chatRoom } : null
 	};
 };
 
@@ -84,6 +88,19 @@ export const actions: Actions = {
 			await setAttendance(db(), user.id, event.params.id, o, s === 'interessiert' || s === 'komme_mit' ? s : null, f.get('show_me') === 'on');
 			return { attendance: true };
 		});
+	},
+	chat: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		const f = await event.request.formData();
+		const o = occ(f);
+		if (!o) return fail(400, { error: 'Ungültiges Datum.' });
+		try {
+			return { chatRoom: await eventChatTicket(db(), user.id, event.params.id, o) };
+		} catch (e) {
+			if (e instanceof PostError || e instanceof ChatError) return fail(400, { error: e.message });
+			throw e;
+		}
 	},
 	melden: async (event) => {
 		const user = requireMember(event);

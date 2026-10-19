@@ -82,6 +82,28 @@ export async function registerTreffen(sql: Sql, userId: string, roomId: string, 
 	return token;
 }
 
+/**
+ * Raum für Einladung oder Termin: wie ein Treffen (verschlüsselt, Ablauf, Beitritt nur per Ticket),
+ * aber ohne QR-Token – Tickets vergibt die Einladung/der Termin an berechtigte Personen.
+ */
+export async function registerTimedRoom(sql: Sql, userId: string, roomId: string, expiresAt: Date): Promise<void> {
+	const info = await ownRoom(sql, userId, roomId);
+	if (info.joinRules !== 'public') throw new ChatError('Raum braucht Beitritt per Ticket.');
+	if (expiresAt.getTime() > Date.now() + 400 * 86_400_000) throw new ChatError('Ablauf zu weit in der Zukunft.');
+	await sql`insert into chat_rooms (room_id, kind, created_by, expires_at) values (${roomId}, 'treffen', ${userId}, ${expiresAt})`;
+	await audit(sql, { actorId: userId, action: 'chat.timed.created', targetType: 'room', targetId: roomId });
+}
+
+/** Beitrittsticket (10 Minuten) für einen Raum mit Ablauf – Berechtigung prüft die aufrufende Stelle. */
+export async function grantTicket(sql: Sql, userId: string, roomId: string): Promise<void> {
+	const [r] = await sql`select created_by, status, expires_at from chat_rooms where room_id = ${roomId} and kind = 'treffen'`;
+	if (!r || r.status !== 'aktiv' || (r.expires_at && new Date(r.expires_at) < new Date())) throw new ChatError('Den Chat gibt es nicht mehr.');
+	if (r.created_by && (await isBlockedEither(sql, userId, r.created_by))) throw new ChatError('Den Chat gibt es nicht mehr.');
+	await ensureAccount(sql, userId);
+	await sql`insert into chat_join_tickets (user_id, room_id, expires_at) values (${userId}, ${roomId}, now() + interval '10 minutes')
+		on conflict (user_id, room_id) do update set expires_at = excluded.expires_at`;
+}
+
 /** Neues QR-Token (altes wird ungültig) – nur durch die Person, die das Treffen angelegt hat. */
 export async function renewToken(sql: Sql, userId: string, roomId: string): Promise<string> {
 	const token = randomToken(18);

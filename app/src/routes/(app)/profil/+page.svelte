@@ -59,6 +59,14 @@
 				<strong>Familienradar</strong>
 				<span>Neues aus deiner Region – wöchentlich, täglich oder nur hier</span>
 			</a>
+			<a href="/marktplatz?ansicht=meine" class="tile">
+				<strong>Meine Anzeigen</strong>
+				<span>Marktplatz: Anzeigen, Suchaufträge</span>
+			</a>
+			<a href="/einladungen" class="tile">
+				<strong>Einladungen</strong>
+				<span>Eigene Einladungen und Zusagen</span>
+			</a>
 			<a href="/einrichtungen/verwalten" class="tile">
 				<strong>Meine Einrichtungen</strong>
 				<span>Für Familienzentren, Vereine, Kursanbieter</span>
