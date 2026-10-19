@@ -51,6 +51,18 @@
 				<strong>Meine Orte</strong>
 				<span>Gemerkte Orte und eigene Vorschläge</span>
 			</a>
+			<a href="/profil/merkliste" class="tile">
+				<strong>Merkliste</strong>
+				<span>Gemerkte Termine, Plätze und Fristen, Erinnerungen, Kalender-Link</span>
+			</a>
+			<a href="/radar" class="tile">
+				<strong>Familienradar</strong>
+				<span>Neues aus deiner Region – wöchentlich, täglich oder nur hier</span>
+			</a>
+			<a href="/einrichtungen/verwalten" class="tile">
+				<strong>Meine Einrichtungen</strong>
+				<span>Für Familienzentren, Vereine, Kursanbieter</span>
+			</a>
 			<a href="/profil/qr" class="tile">
 				<strong>QR-Codes und Wimpel</strong>
 				<span>Drucken, befristete Codes, alte Codes sperren</span>

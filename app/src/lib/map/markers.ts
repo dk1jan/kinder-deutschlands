@@ -67,7 +67,7 @@ export function addMarkerImages(map: MlMap, theme: 'light' | 'dark') {
 	ctx.stroke();
 	map.addImage('m-me', ctx.getImageData(0, 0, c.width, c.height), { pixelRatio: R });
 	// Chat: Treffpunkt (roter Wimpel-Pin) und geteilte Live-Standorte (gelber Punkt)
-	for (const [name, fill, ink] of [['m-treffpunkt', '#d63d31', '#ffffff']] as const) {
+	for (const [name, fill, ink] of [['m-treffpunkt', '#d63d31', '#ffffff'], ['m-termin', '#ffc53d', '#0f2238']] as const) {
 		if (map.hasImage(name)) map.removeImage(name);
 		const t = document.createElement('canvas');
 		t.width = W * R;

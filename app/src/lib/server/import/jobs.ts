@@ -8,6 +8,7 @@ import { overpass, toRecords, buildQuery, type Selector } from './osm';
 import { importOsmDistricts, importVg250 } from './regions';
 import { refreshTiles } from './tiles';
 import { pruneAerialCache } from '../aerial';
+import { importIcs, type IcsSourceConfig } from '../angebote/icsimport';
 
 const LOCK_ID = 7_302_011; // beliebige feste Zahl für pg_advisory_lock
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -88,6 +89,9 @@ export async function runSource(sql: Sql, key: string, trigger: 'zeitplan' | 'ma
 				return await runSimple(sql, src, trigger, actorId, () =>
 					refreshTiles(sql, { bbox: String(src.config.bbox), maxzoom: Number(src.config.maxzoom ?? 15) }, force || trigger === 'manuell')
 				);
+			}
+			if (type === 'ics') {
+				return await runSimple(sql, src, trigger, actorId, () => importIcs(sql, src.key, src.config as unknown as IcsSourceConfig));
 			}
 			throw new Error(`Unbekannter Quellentyp: ${type}`);
 		} finally {

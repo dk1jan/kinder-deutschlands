@@ -55,6 +55,18 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 		return r ? { regionCode: r.region_code, topicKey: null, groupId: null, groupKind: null, authorId: r.user_id } : null;
 	}
 	if (type === 'user') return { regionCode: null, topicKey: null, groupId: null, groupKind: null, authorId: id };
+	if (type === 'event') {
+		const [e] = await sql`select region_code, created_by, origin from events where id = ${id}`;
+		return e ? { regionCode: e.region_code, topicKey: null, groupId: null, groupKind: null, authorId: e.origin === 'mitglied' ? e.created_by : null } : null;
+	}
+	if (type === 'offer') {
+		const [o] = await sql`select region_code from offers where id = ${id}`;
+		return o ? { regionCode: o.region_code, topicKey: null, groupId: null, groupKind: null, authorId: null } : null;
+	}
+	if (type === 'org') {
+		const [o] = await sql`select region_code from organizations where id = ${id}`;
+		return o ? { regionCode: o.region_code, topicKey: null, groupId: null, groupKind: null, authorId: null } : null;
+	}
 	if (type === 'chat') {
 		// Verschlüsselte Chats: Absender vom Server bestätigt, Inhalt nur aus der Meldung (freigegeben von der meldenden Person)
 		const [c] = await sql`select evidence->>'sender_user' as author from mod_cases where target_type = 'chat' and target_id = ${id} limit 1`;
@@ -64,7 +76,7 @@ async function scopeOf(sql: Sql, type: string, id: string): Promise<Scope | null
 }
 
 /** Meldung durch ein Mitglied. Doppelte Meldungen derselben Person zum selben Inhalt werden zusammengefasst. */
-export async function report(sql: Sql, reporterId: string, type: 'post' | 'comment' | 'media' | 'review' | 'user', id: string, reason: string, message: string | null) {
+export async function report(sql: Sql, reporterId: string, type: 'post' | 'comment' | 'media' | 'review' | 'user' | 'event' | 'offer' | 'org', id: string, reason: string, message: string | null) {
 	if (!(REPORT_REASONS as readonly string[]).includes(reason)) throw new PostError('Bitte einen Grund wählen.');
 	const s = await scopeOf(sql, type, id);
 	if (!s) throw new PostError('Inhalt nicht gefunden.');
@@ -143,6 +155,9 @@ export async function queue(sql: Sql, userId: string, f: QueueFilter) {
 	if (ids('comment').length) add(await sql`select id, body as t from comments where id::text = any(${ids('comment')})`);
 	if (ids('review').length) add(await sql`select id, stars || ' ★ ' || coalesce(body, '') as t from place_reviews where id::text = any(${ids('review')})`);
 	if (ids('media').length) add(await sql`select id, coalesce(alt, 'Bild') as t from media where id::text = any(${ids('media')})`);
+	if (ids('event').length) add(await sql`select id, title as t from events where id::text = any(${ids('event')})`);
+	if (ids('offer').length) add(await sql`select id, title as t from offers where id::text = any(${ids('offer')})`);
+	if (ids('org').length) add(await sql`select id, name as t from organizations where id::text = any(${ids('org')})`);
 	for (const r of out) if (r.target_type === 'chat') preview.set(String(r.target_id), String((r.evidence?.messages ?? []).find((m: { reported?: boolean }) => m.reported)?.body ?? '').replace(/\s+/g, ' ').slice(0, 90));
 	return out.map((r) => ({
 		preview: preview.get(String(r.target_id)) ?? null,
@@ -182,6 +197,15 @@ export async function caseDetail(sql: Sql, userId: string, id: string) {
 	} else if (c.target_type === 'review') {
 		const [v] = await sql`select stars, body, status, place_id from place_reviews where id = ${c.target_id}`;
 		if (v) content = { title: 'Bewertung eines Ortes', body: v.body ?? '', status: v.status, stars: v.stars, link: `/orte/${v.place_id}` };
+	} else if (c.target_type === 'event') {
+		const [e] = await sql`select id, title, description, status from events where id = ${c.target_id}`;
+		if (e) content = { title: `Termin: ${e.title}`, body: e.description, status: e.status, link: `/veranstaltungen/${e.id}` };
+	} else if (c.target_type === 'offer') {
+		const [o] = await sql`select id, title, description, status from offers where id = ${c.target_id}`;
+		if (o) content = { title: `Angebot: ${o.title}`, body: o.description, status: o.status, link: `/angebote/${o.id}` };
+	} else if (c.target_type === 'org') {
+		const [o] = await sql`select slug, name, description, status from organizations where id = ${c.target_id}`;
+		if (o) content = { title: `Einrichtung: ${o.name}`, body: o.description, status: o.status, link: `/einrichtungen/${o.slug}` };
 	} else if (c.target_type === 'chat') {
 		const ev = (c.evidence ?? {}) as { messages?: { reported?: boolean; body?: string }[] };
 		content = { title: 'Gemeldete Chatnachricht', body: ev.messages?.find((m) => m.reported)?.body ?? '', status: 'gemeldet' };
@@ -238,6 +262,9 @@ export async function decide(
 			}
 		} else if (type === 'media') await sql`update media set status = ${status === 'ausgeblendet' ? 'entfernt' : status} where id = ${c.target_id}`;
 		else if (type === 'review') await sql`update place_reviews set status = ${status} where id = ${c.target_id}`;
+		else if (type === 'event') await sql`update events set status = ${status === 'sichtbar' ? 'aktiv' : 'entfernt'}, mod_note = ${status === 'sichtbar' ? null : reason.trim()}, updated_at = now() where id = ${c.target_id}`;
+		else if (type === 'offer') await sql`update offers set status = ${status === 'sichtbar' ? 'aktiv' : 'entfernt'}, updated_at = now() where id = ${c.target_id}`;
+		else if (type === 'org' && status !== 'sichtbar') await sql`update organizations set status = 'pausiert', decision_note = ${reason.trim()}, updated_at = now() where id = ${c.target_id} and status = 'verifiziert'`;
 	};
 	const postId = type === 'post' ? c.target_id : null;
 	if (type === 'chat' && !['freigeben', 'verwarnen', 'stumm', 'sperren', 'eskalieren'].includes(action))

@@ -38,6 +38,7 @@ const env = {
 	PROTOMAPS_BUILD_BASE: 'http://127.0.0.1:3998/build/',
 	PMTILES_BIN: '/tmp/kd-smoke-pmtiles',
 	LGLN_WMS_URL: 'http://127.0.0.1:3998/lgln',
+	IMPORT_ALLOW_LOCAL: '1',
 	RETRY_WAIT_MS: '50'
 };
 
@@ -45,6 +46,7 @@ const env = {
 const FX = new URL('../tests/fixtures/', import.meta.url).pathname;
 const fx = (f) => readFileSync(join(FX, f), 'utf8');
 let mockMode = 'voll';
+let icsFeed = 'BEGIN:VCALENDAR\r\nEND:VCALENDAR';
 const mock = createServer((rq, rs) => {
 	let body = '';
 	rq.on('data', (c) => (body += c));
@@ -65,6 +67,7 @@ const mock = createServer((rq, rs) => {
 		}
 		if (u.pathname === '/vg250') return send(fx(`${u.searchParams.get('typeNames').replace('vg250:', '')}.json`));
 		if (u.pathname === '/lgln') { rs.writeHead(200, { 'content-type': 'image/jpeg' }); return rs.end(Buffer.alloc(4000, 7)); }
+		if (u.pathname === '/kalender.ics') return send(icsFeed, 'text/calendar');
 		if (u.pathname === '/builds.json') return send(JSON.stringify([{ key: '20261017.pmtiles' }, { key: '20261018.pmtiles' }]));
 		rs.writeHead(404); rs.end();
 	});
@@ -583,6 +586,101 @@ try {
 	check(r.status === 200, 'Wissensbereich erreichbar');
 	r = await C.req('/admin/moderation');
 	check(r.status === 403, 'Mitglied ohne Rolle: Moderation gesperrt');
+
+	// ---------- Abschnitt 5: Veranstaltungen, Einrichtungen, freie Plätze, Hinweise, Merkliste, Radar ----------
+	const [fdf] = await sqlT`select code from regions where name = 'Findorff' and level = 'stadtteil' limit 1`;
+	const berlinDay = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(t);
+	let satT = new Date(Date.now() + 8 * 86_400_000);
+	while (new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', weekday: 'short' }).format(satT) !== 'Sat') satT = new Date(satT.getTime() + 86_400_000);
+	const satDay = berlinDay(satT);
+	r = await X2.req('/veranstaltungen');
+	check(r.status === 200 && r.body.includes('Keine Termine gefunden') && r.body.includes('nichts Erfundenes'), 'Veranstaltungen öffentlich, ehrlich leer');
+	r = await A.req('/einrichtungen/antrag', { form: { name: 'Smoke-Familienzentrum', kind: 'familienzentrum', description: 'Offener Treff', region_code: fdf.code, role: 'Leitung', proof: 'Rückruf über die Nummer der Webseite', ok: 'on' } });
+	check(r.status === 200 && r.body.includes('Antrag eingegangen'), 'Einrichtung beantragt');
+	r = await X2.req('/einrichtungen');
+	check(r.status === 200 && !r.body.includes('Smoke-Familienzentrum'), 'Vor der Prüfung nicht öffentlich');
+	r = await req('/admin/einrichtungen');
+	const [orgRow] = await sqlT`select id, slug from organizations where name = 'Smoke-Familienzentrum'`;
+	check(r.status === 200 && r.body.includes('Rückruf über die Nummer der Webseite'), 'Verwaltung sieht Antrag mit Prüfweg');
+	r = await req('/admin/einrichtungen?/entscheiden', { form: { id: orgRow.id, decision: 'ja', note: 'Rückruf bestätigt' } });
+	check(r.status === 200 && r.body.includes('Verifiziert'), 'Einrichtung verifiziert');
+	r = await X2.req('/einrichtungen');
+	check(r.body.includes('Smoke-Familienzentrum'), 'Verifizierte Einrichtung öffentlich gelistet');
+	r = await A.req('/veranstaltungen/neu');
+	check(r.status === 200 && r.body.includes(`org:${orgRow.id}`), 'Termin eintragen: als Einrichtung möglich');
+	r = await A.req('/veranstaltungen/neu', { form: [['owner', `org:${orgRow.id}`], ['title', 'Smoke-Flohmarkt'], ['kind', 'flohmarkt'], ['start', `${satDay}T10:00`], ['end', `${satDay}T13:00`], ['repeat', 'woechentlich'], ['region_code', fdf.code], ['address', 'Bürgerhaus'], ['cost', 'frei'], ['visibility', 'oeffentlich'], ['topics', 'freizeit'], ['age_min', '0'], ['age_max', '10']] });
+	const evPath = r.location.split('?')[0];
+	check(r.status === 303 && /^\/veranstaltungen\/[0-9a-f-]{36}$/.test(evPath), `Einrichtungstermin angelegt (${r.status})`);
+	r = await X2.req('/veranstaltungen?zeitraum=30');
+	check(r.body.includes('Smoke-Flohmarkt') && r.body.includes('Smoke-Familienzentrum') && r.body.includes('kostenlos'), 'Termin öffentlich in der Liste, mit Veranstalter');
+	r = await X2.req(`/veranstaltungen?ansicht=kalender&monat=${satDay.slice(0, 7)}`);
+	check(r.status === 200 && r.body.includes('Smoke-Flohmarkt'), 'Kalenderansicht');
+	r = await X2.req('/veranstaltungen?ansicht=karte');
+	check(r.status === 200, 'Kartenansicht');
+	r = await X2.req(`${evPath}?am=${satDay}`);
+	check(r.status === 200 && r.body.includes('verifizierte Einrichtung') && r.body.includes('jeden Samstag'), 'Terminseite mit Herkunft und Wiederholung');
+	t = await fetch(`${BASE}${evPath}/ics`);
+	const evIcs = await t.text();
+	check(t.headers.get('content-type')?.startsWith('text/calendar') && evIcs.includes('RRULE:FREQ=WEEKLY') && evIcs.includes('TZID=Europe/Berlin'), 'Termin als Kalenderdatei (Reihe)');
+	r = await X2.req('/veranstaltungen/heute');
+	check(r.status === 200 && r.body.includes('Was machen wir heute?'), '„Was machen wir heute?“');
+	r = await C.req('/veranstaltungen/neu', { form: { owner: 'ich', title: 'Spielplatztreff Smoke', kind: 'treffen', start: `${satDay}T15:00`, region_code: fdf.code, visibility: 'oeffentlich' } });
+	const memberEv = r.location.split('?')[0];
+	check(r.status === 303, 'Mitglied trägt Termin ein');
+	r = await X2.req(memberEv);
+	check(r.status === 303 && r.location.startsWith('/anmelden'), 'Mitgliedstermin nicht öffentlich (nur angemeldet)');
+	r = await A.req(memberEv);
+	check(r.status === 200 && r.body.includes('Von einem Mitglied eingetragen'), 'Mitgliedstermin gekennzeichnet');
+	r = await C.req(`${evPath}?/merken`, { form: { am: satDay, serie: '1' } });
+	r = await C.req(`${evPath}?/teilnahme`, { form: { am: satDay, status: 'komme_mit', show_me: 'on' } });
+	r = await C.req('/profil/merkliste');
+	check(r.body.includes('Smoke-Flohmarkt'), 'Termin gemerkt, in der Merkliste');
+	r = await C.req('/profil/merkliste?/kalender', { form: {} });
+	const feedPath = /https?:\/\/[^"<\s]+(\/kalender\/[A-Za-z0-9_-]+\.ics)/.exec(r.body)?.[1];
+	t = await fetch(BASE + (feedPath ?? '/kalender/x.ics'));
+	check(t.status === 200 && (await t.text()).includes('SUMMARY:Smoke-Flohmarkt'), 'Persönlicher Kalender-Link liefert gemerkte Termine');
+	r = await A.req(`${evPath}?/absagen`, { form: { scope: 'tag', am: satDay, note: 'Regen' } });
+	check(r.status === 200 && r.body.includes('Abgesagt.'), 'Einzeltermin abgesagt');
+	r = await C.req('/profil/mitteilungen');
+	check(r.body.includes('Abgesagt: „Smoke-Flohmarkt“'), 'Wer gemerkt/zugesagt hat, wird benachrichtigt');
+	r = await X2.req('/hinweise');
+	check(r.body.includes('Abgesagt: Smoke-Flohmarkt') && r.body.includes('Anbieterinformation'), 'Absage erscheint als Hinweis mit Herkunft');
+
+	r = await A.req(`/einrichtungen/verwalten/${orgRow.slug}?/angebot`, { form: { title: 'Smoke-Babyschwimmen', kind: 'babyschwimmen', schedule_text: 'dienstags 10 Uhr', age_min: '0', age_max: '1' } });
+	check(r.status === 200 && r.body.includes('Angebot angelegt'), 'Angebot angelegt');
+	const [offer] = await sqlT`select id from offers where title = 'Smoke-Babyschwimmen'`;
+	r = await X2.req(`/angebote/${offer.id}`);
+	check(r.body.includes('Verfügbarkeit unbekannt'), 'Ohne Bestätigung: „Verfügbarkeit unbekannt“');
+	r = await A.req(`/einrichtungen/verwalten/${orgRow.slug}?/verfuegbarkeit`, { form: { id: offer.id, availability: 'frei', places: '2', days: '7' } });
+	r = await X2.req('/angebote?frei=1');
+	check(r.body.includes('Smoke-Babyschwimmen') && r.body.includes('Plätze frei') && r.body.includes('gilt bis'), 'Freie Plätze mit Stand und Gültigkeit');
+	r = await X2.req(`/angebote/${offer.id}?/verfuegbarkeit`, { form: { id: offer.id, availability: 'frei', days: '30' } });
+	check(r.status === 303 && r.location.startsWith('/anmelden'), 'Verfügbarkeit nur angemeldet');
+	r = await C.req(`/angebote/${offer.id}?/verfuegbarkeit`, { form: { availability: 'ausgebucht', days: '30' } });
+	check(r.status === 400, 'Fremde können Verfügbarkeit nicht ändern');
+
+	r = await req('/admin/hinweise?/neu', { form: { kind: 'frist', source_kind: 'redaktion', title: 'Smoke-Frist Kita-Anmeldung', body: 'Bis Monatsende.', region_code: '04011', deadline: berlinDay(new Date(Date.now() + 14 * 86_400_000)), topics: 'betreuung' } });
+	check(r.status === 200 && r.body.includes('Veröffentlicht'), 'Redaktion veröffentlicht Hinweis');
+	r = await X2.req(`/hinweise?region=${fdf.code}`);
+	check(r.body.includes('Smoke-Frist Kita-Anmeldung') && r.body.includes('Redaktion'), 'Stadt-Hinweis gilt auch im Stadtteil');
+	r = await C.req('/radar/neu?/speichern', { form: [['name', 'Findorff'], ['regions', fdf.code], ['include', 'veranstaltungen'], ['include', 'angebote'], ['include', 'hinweise'], ['frequency', 'woechentlich']] });
+	check(r.status === 303 && r.location.startsWith('/radar/'), 'Familienradar angelegt');
+	r = await C.req(r.location);
+	check(r.body.includes('Smoke-Flohmarkt') && r.body.includes('Smoke-Babyschwimmen') && r.body.includes('Smoke-Frist Kita-Anmeldung'), 'Radar zeigt Termine, Plätze und Fristen der Region');
+
+	icsFeed = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:smoke-1@fz', 'SUMMARY:Smoke-Elterncafé aus Kalender', `DTSTART;TZID=Europe/Berlin:${satDay.replace(/-/g, '')}T150000`, `DTEND;TZID=Europe/Berlin:${satDay.replace(/-/g, '')}T170000`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+	r = await A.req(`/einrichtungen/verwalten/${orgRow.slug}?/profil`, { form: { name: 'Smoke-Familienzentrum', kind: 'familienzentrum', description: 'Offener Treff', region_code: fdf.code, ics_url: 'https://fz.example.org/kalender.ics' } });
+	check(r.status === 200 && r.body.includes('Profil gespeichert'), 'Kalender-Adresse der Einrichtung gespeichert');
+	const icsKey = `org-ics-${orgRow.slug}`.slice(0, 60);
+	await sqlT`update data_sources set config = jsonb_set(config, '{url}', '"http://127.0.0.1:3998/kalender.ics"') where key = ${icsKey}`;
+	res = await runAndWait(icsKey);
+	check(res.run?.status === 'uebernommen' && res.run.counts.neu === 1, `Kalender der Einrichtung übernommen (${res.run?.message ?? res.run?.status})`);
+	r = await X2.req('/veranstaltungen?zeitraum=30');
+	check(r.body.includes('Smoke-Elterncafé aus Kalender'), 'Importierter Termin erscheint als Einrichtungstermin');
+	r = await req('/admin');
+	check(r.body.includes('/admin/einrichtungen') && r.body.includes('/admin/hinweise'), 'Verwaltung: Einrichtungen und Hinweise im Menü');
+	r = await X2.req('/');
+	check(r.body.includes('/veranstaltungen/heute') && r.body.includes('/angebote'), 'Startseite: Entdecken-Einstiege');
 	await sqlT.end();
 	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
 

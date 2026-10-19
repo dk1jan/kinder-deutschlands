@@ -59,6 +59,12 @@ export async function exportAccount(sql: Sql, userId: string) {
 		community_beitraege: beitraege,
 		community_antworten: antworten,
 		community_gruppen: gruppen,
+		familienradar: await sql`select name, regions, topics, include, age_groups, frequency, via_email, via_push, paused, created_at from radar_profiles where user_id = ${userId}`,
+		merkliste: await sql`select kind, item_id, occurrence, remind_at, created_at from saved_items where user_id = ${userId}`,
+		termine_teilnahme: await sql`select a.occurrence, a.status, a.show_me, e.title from event_attendance a join events e on e.id = a.event_id where a.user_id = ${userId}`,
+		eigene_termine: await sql`select title, description, starts_at, ends_at, rrule, visibility, status, created_at from events where created_by = ${userId} and origin = 'mitglied'`,
+		einrichtungen_folgen: await sql`select o.name, f.created_at from org_followers f join organizations o on o.id = f.org_id where f.user_id = ${userId}`,
+		einrichtungen_team: await sql`select o.name, m.role, m.created_at from org_members m join organizations o on o.id = m.org_id where m.user_id = ${userId}`,
 		chat: {
 			hinweis: 'Chatnachrichten sind Ende-zu-Ende-verschlüsselt. Der Server kann sie nicht lesen und deshalb nicht exportieren. Sie liegen nur auf deinen Geräten.',
 			chat_konto: (await sql`select created_at from chat_accounts where user_id = ${userId}`)[0] ?? null,
@@ -118,6 +124,14 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from notification_settings where user_id = ${userId}`;
 		await tx`delete from chat_join_tickets where user_id = ${userId}`;
 		await tx`update chat_rooms set status = 'abgelaufen', ended_at = now() where kind = 'direkt' and status = 'aktiv' and (dm_a = ${userId} or dm_b = ${userId})`;
+		// Abschnitt 5: Merkliste, Kalender-Link, Radar, Teilnahmen, Folgen, Team-Mitgliedschaften; eigene private Termine entfernen
+		await tx`delete from saved_items where user_id = ${userId}`;
+		await tx`delete from calendar_feeds where user_id = ${userId}`;
+		await tx`delete from radar_profiles where user_id = ${userId}`;
+		await tx`delete from event_attendance where user_id = ${userId}`;
+		await tx`delete from org_followers where user_id = ${userId}`;
+		await tx`delete from org_members where user_id = ${userId}`;
+		await tx`update events set status = 'entfernt', description = '', address = null, location = null, updated_at = now() where created_by = ${userId} and origin = 'mitglied'`;
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',
 			totp_secret_enc = null, totp_enabled_at = null, display_name = null where id = ${userId}`;

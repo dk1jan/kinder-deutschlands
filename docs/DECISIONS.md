@@ -124,3 +124,31 @@ Web-Apps dürfen im Hintergrund nicht orten. Live-Standort läuft nur, solange d
 
 ## D-041 · Erste Nachricht an Personen ohne Chat-Gerät (19.10.2026)
 Ende-zu-Ende-Verschlüsselung braucht Schlüssel des Empfängergeräts. Hat das Gegenüber den Chat noch nie geöffnet, wartet das Eingabefeld (statt unlesbar zu senden) und das Gegenüber bekommt einen Hinweis. Direktchat-Einladungen bestätigter Kontakte nimmt der Client automatisch an, damit Schlüssel sofort verfügbar sind. In Gruppen wird angezeigt, wer neue Nachrichten erst nach dem ersten Öffnen lesen kann.
+
+## D-042 · Termine: Herkunft und „öffentlich“ (19.10.2026)
+Jeder Termin zeigt seine Herkunft: verifizierte Einrichtung, Redaktion, aus einer Quelle übernommen oder „von einem Mitglied – nicht geprüft“. Drei Sichtbarkeiten: **öffentlich** (auch ohne Konto im Internet), **im Netzwerk** (nur angemeldete Mitglieder), **privat** (nur mit Link). Öffentlich dürfen nur Einrichtungen, Redaktion und übernommene Quellen veröffentlichen; Mitgliedstermine sind höchstens „im Netzwerk“. FreiKarte nur, wenn Einrichtung/Redaktion es bestätigt. Blockierte Personen sehen ihre Mitgliedstermine gegenseitig nicht. Telefonnummern u. Ä. halten Mitgliedstermine zur Prüfung zurück (wie Community).
+
+## D-043 · Wiederkehrende Termine (19.10.2026)
+Gespeichert wird eine Serie (Beginn + Regel nach iCalendar, Teilmenge: täglich/wöchentlich/monatlich, Abstand, Wochentage, n-ter Wochentag, bis/Anzahl) und Einzelabsagen als Datum. Berechnet wird in deutscher Ortszeit, damit 10 Uhr auch nach der Zeitumstellung 10 Uhr bleibt. Abgesagte Tage bleiben als „abgesagt“ sichtbar; wer gemerkt oder zugesagt hat, wird benachrichtigt, und es entsteht ein Hinweis „Absage“. Nicht abbildbare Regeln aus Importen bleiben beim Bearbeiten unverändert („wie bisher“).
+
+## D-044 · „Wer kommt mit?“ (19.10.2026)
+„Interessiert“/„Ich komme“ ist unverbindlich und ausdrücklich keine Anmeldung beim Anbieter. Namen erscheinen nur bei „Ich komme“ mit eigener Zustimmung („mich zeigen“), sonst nur Zahlen. Event-Chat dazu folgt (vorgesehen, nutzt die Treffen-Räume aus Abschnitt 4).
+
+## D-045 · Freie Plätze nur mit Gültigkeit (19.10.2026)
+Einrichtungen bestätigen die Verfügbarkeit für 3, 7, 14 oder 30 Tage. Danach – und ohne Bestätigung – steht dort „Verfügbarkeit unbekannt“, nie „frei“. Angezeigt werden immer Stand und Gültigkeit. Nach Ablauf bittet die App das Team einmal um erneute Bestätigung. Neu frei gewordene Plätze erzeugen einen Hinweis „Neu“ (fürs Radar), keinen Sofort-Push.
+
+## D-046 · Verifizierte Einrichtungen (19.10.2026)
+Verifizierung bestätigt nur die Zuordnung der Person zur Organisation (Prüfung über einen unabhängigen Weg, Begründung Pflicht), nicht die Qualität der Angebote – so steht es auch in der Oberfläche. Die Prüfangaben werden nach der Entscheidung gelöscht. Rollen im Team: Verwaltung (Team, Profil) und Redaktion (Inhalte); Personen kommen über ihre Familien-ID dazu; die letzte Verwaltung kann nicht gehen. Folgen ist privat: die Einrichtung sieht nur eine grobe Zahl (unter 10, 10–49, 50–199, 200+). Pausierte Einrichtungen verschwinden samt Terminen/Angeboten, ihr Kalenderabruf ruht.
+
+## D-047 · Regionale Hinweise (19.10.2026)
+Hinweise haben eine Art (neu, aktualisiert, Absage, Frist, Sperrung, Leistung, Information) und eine sichtbare Herkunft: amtlich bestätigt (nur mit Link zur amtlichen Quelle), Anbieterinformation, Redaktion, ungeprüfter Mitgliederhinweis (bisher nur bei Orten der Familienkarte). Ein Hinweis für die Stadt gilt auch in ihren Stadtteilen und umgekehrt sieht man Hinweise der Stadtteile beim Blick auf die Stadt. Nur die Redaktion kann „wichtig“ setzen; das schickt einen Push ohne Inhalt und nur an Personen, die „dringende Hinweise“ selbst eingeschaltet haben und deren Radar die Region umfasst.
+
+## D-048 · Merkliste und Kalender-Link statt Familienkalender (19.10.2026)
+Gespeichert wird nur, was man selbst merkt; Erinnerungen nur, wenn man sie am Eintrag einstellt (1 Std. bis 1 Woche vorher, bei Fristen vor der Frist). Kalender: Einzeltermin als .ics-Datei oder ein persönlicher Abo-Link mit allen gemerkten Terminen und Fristen. Der Link ist ein Geheimnis: gespeichert wird nur sein Hash, er wird einmal angezeigt und lässt sich erneuern oder abschalten.
+
+## D-049 · Familienradar (19.10.2026)
+Bis zu 5 private Profile (Regionen inkl. Unterregionen, Themen, Alter, Arten), pausier- und löschbar, mit Vorschau. Übersicht im Portal immer; E-Mail und Push nur, wenn gewählt (wöchentlich montags oder täglich, jeweils ab 7 Uhr). Nur Neues seit der letzten Zusammenfassung (Fassungsvergleich, keine Dubletten), mit Quelle, Datum, Frist und Link; leere Zusammenfassungen werden nicht verschickt. Betreff „Dein Familienradar“, Push „Dein Familienradar ist da“ – keine Themen auf dem Sperrbildschirm. Gefolgte Einrichtungen kommen unabhängig von Region und Thema dazu. Abonnieren einzelner Orte/Termine: vorgesehen (bis dahin über Merken).
+
+## D-050 · Kalender von Einrichtungen übernehmen (19.10.2026)
+Nur der eigene, öffentliche Kalender (ICS) einer verifizierten Einrichtung – sie trägt die Adresse selbst ein und bestätigt damit das Nutzungsrecht. Abruf täglich über die Datenzentrale, gegen interne Adressen geschützt, höchstens 3 MB. Abgleich über die Kennung des Kalendereintrags; von der Einrichtung in der App geänderte Felder werden gesperrt und nicht überschrieben; was aus dem Kalender verschwindet und noch nicht vorbei ist, wird archiviert, nicht gelöscht. Abweichungen einzelner Serientermine (RECURRENCE-ID) werden noch nicht übernommen.
+

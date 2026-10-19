@@ -20,22 +20,25 @@
 			art: 'treffen',
 			title: 'Treffen',
 			text: 'Kinderwagenrunde am Werdersee? Treffpunkt teilen und den Standort nur für 15, 30 oder 60 Minuten freigeben.',
-			stage: 'Bauabschnitt 4',
-			theme: 'yellow'
+			stage: 'Treffpunkt teilen, Standort auf Zeit',
+			theme: 'yellow',
+			href: '/nachrichten/treffen'
 		},
 		{
 			art: 'community',
 			title: 'Fragen und Gruppen',
 			text: 'Austausch nach Region und Thema. Geschützte Gruppen, zum Beispiel für Alleinerziehende, sind für Fremde unsichtbar.',
-			stage: 'Bauabschnitt 3',
-			theme: 'sky'
+			stage: 'Fragen, Gruppen, Wissen',
+			theme: 'sky',
+			href: '/community'
 		},
 		{
 			art: 'radar',
-			title: 'Familienradar',
-			text: 'Flohmärkte, Ferienprogramme, Kurse und neue Leistungen aus deiner Region, einmal pro Woche gesammelt.',
-			stage: 'Bauabschnitt 5',
-			theme: 'red'
+			title: 'Veranstaltungen und Familienradar',
+			text: 'Flohmärkte, Ferienprogramme, freie Kursplätze und neue Leistungen aus deiner Region – auf Wunsch einmal pro Woche gesammelt.',
+			stage: 'Termine, freie Plätze, Hinweise',
+			theme: 'red',
+			href: '/veranstaltungen'
 		},
 		{
 			art: 'markt',
@@ -47,9 +50,10 @@
 		{
 			art: 'nachrichten',
 			title: 'Schreiben und anrufen',
-			text: 'Kontaktanfragen über die Familien-ID gehen schon. Nachrichten, Gruppen-Chats und Anrufe folgen, Ende-zu-Ende-verschlüsselt.',
-			stage: 'Bauabschnitte 4 und 7',
-			theme: 'paper'
+			text: 'Nachrichten und Gruppen-Chats über die Familien-ID, Ende-zu-Ende-verschlüsselt. Anrufe folgen.',
+			stage: 'Chat verschlüsselt, Anrufe in Bauabschnitt 7',
+			theme: 'paper',
+			href: '/nachrichten'
 		}
 	]);
 
@@ -125,6 +129,15 @@
 	</div>
 </section>
 
+<nav class="quick container" aria-label="Entdecken">
+	<a href="/veranstaltungen/heute"><strong>Was machen wir heute?</strong><span>Termine und Orte für heute</span></a>
+	<a href="/veranstaltungen"><strong>Veranstaltungen</strong><span>Liste, Kalender, Karte</span></a>
+	<a href="/angebote"><strong>Freie Plätze & Kurse</strong><span>mit Stand und Gültigkeit</span></a>
+	<a href="/hinweise"><strong>Hinweise & Fristen</strong><span>Absagen, Sperrungen, Leistungen</span></a>
+	<a href="/einrichtungen"><strong>Einrichtungen</strong><span>verifizierte Partner</span></a>
+	<a href="/radar"><strong>Familienradar</strong><span>Neues für deine Region</span></a>
+</nav>
+
 <section class="modules" aria-labelledby="mod-titel">
 	<div class="container">
 		<div class="mod-head">
@@ -185,7 +198,7 @@
 	<div class="container final-inner">
 		<div>
 			<h2 id="los-titel">{data.mailOpen ? 'Mach mit.' : 'Mitmachen, sobald es losgeht.'}</h2>
-			<p>{data.mailOpen ? 'Konto anlegen, Familien-ID bekommen, Wimpel drucken. Karte und Gruppen folgen Schritt für Schritt.' : 'Die Registrierung öffnet, sobald der E-Mail-Versand eingerichtet ist. Wer schon einen Zugang hat, meldet sich hier an.'}</p>
+			<p>{data.mailOpen ? 'Konto anlegen, Familien-ID bekommen, Wimpel drucken – und los.' : 'Die Registrierung öffnet, sobald der E-Mail-Versand eingerichtet ist. Wer schon einen Zugang hat, meldet sich hier an.'}</p>
 		</div>
 		{#if data.user}
 			<a class="btn" href="/profil">Zu meinem Konto</a>
@@ -658,5 +671,27 @@
 		font-weight: 780;
 		font-stretch: 85%;
 		color: var(--ink);
+	}
+	.quick {
+		display: grid;
+		gap: var(--sp-2);
+		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+		margin-top: var(--sp-6);
+		margin-bottom: var(--sp-6);
+	}
+	.quick a {
+		display: grid;
+		gap: 2px;
+		padding: var(--sp-3) var(--sp-4);
+		background: var(--surface);
+		border-radius: var(--radius-m);
+		border-left: 6px solid var(--yellow);
+		color: var(--ink);
+		text-decoration: none;
+		box-shadow: var(--shadow);
+	}
+	.quick span {
+		font-size: var(--fs-s);
+		color: var(--ink-2);
 	}
 </style>

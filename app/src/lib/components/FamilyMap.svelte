@@ -38,6 +38,8 @@
 		onData?: (f: MapFeature[], state: 'ok' | 'zoom' | 'error' | 'truncated') => void;
 		onView?: (v: MapView) => void;
 		onPick?: (lon: number, lat: number) => void;
+		/** Mini-Karte: Klick auf einen Punkt (Index in points) */
+		onPoint?: (index: number) => void;
 	}
 	let {
 		mode = 'browse',
@@ -54,7 +56,8 @@
 		onSelect,
 		onData,
 		onView,
-		onPick
+		onPick,
+		onPoint
 	}: Props = $props();
 
 	let el: HTMLDivElement;
@@ -330,6 +333,14 @@
 						m.on('mouseenter', l, () => (m.getCanvas().style.cursor = 'pointer'));
 						m.on('mouseleave', l, () => (m.getCanvas().style.cursor = ''));
 					}
+				}
+				if (mode === 'mini' && onPoint) {
+					m.on('click', 'orte', (e) => {
+						const f = e.features?.[0] as MapGeoJSONFeature | undefined;
+						if (f) onPoint(Number((f.properties as Record<string, string>).id));
+					});
+					m.on('mouseenter', 'orte', () => (m.getCanvas().style.cursor = 'pointer'));
+					m.on('mouseleave', 'orte', () => (m.getCanvas().style.cursor = ''));
 				}
 				map = m;
 				currentBasemap = basemap;

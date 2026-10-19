@@ -31,6 +31,8 @@ export const actions: Actions = {
 		await saveSettings(db(), user.id, {
 			push_chat: f.get('push_chat') === 'on',
 			push_community: f.get('push_community') === 'on',
+			push_reminders: f.get('push_reminders') === 'on',
+			push_urgent: f.get('push_urgent') === 'on',
 			quiet_from: from,
 			quiet_to: to,
 			read_receipts: f.get('read_receipts') === 'on',

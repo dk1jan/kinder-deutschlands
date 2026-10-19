@@ -9,6 +9,7 @@ import { loadMailSettings, mailSettingsLoaded } from '$lib/server/mailsettings';
 import { startScheduler } from '$lib/server/import/jobs';
 import { loadAerial } from '$lib/server/aerial';
 import { startChatJobs } from '$lib/server/chat/jobs';
+import { startAngeboteJobs } from '$lib/server/angebote/jobs';
 import { proxyMatrix } from '$lib/server/chat/proxy';
 
 // Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
@@ -27,6 +28,7 @@ export const init: ServerInit = async () => {
 	// Datenquellen nach Zeitplan abrufen (Regionen, Kartenkacheln, Orte)
 	startScheduler().catch((e) => console.error('Zeitplan konnte nicht starten:', (e as Error).message));
 	startChatJobs();
+	startAngeboteJobs();
 };
 
 const THEMES = new Set(['system', 'light', 'dark']);

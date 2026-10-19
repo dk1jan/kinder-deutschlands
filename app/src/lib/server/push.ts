@@ -30,25 +30,30 @@ export async function vapidKeys(sql: Sql) {
 export interface Settings {
 	push_chat: boolean;
 	push_community: boolean;
+	/** Erinnerungen, die man selbst an einem Termin/einer Frist eingestellt hat */
+	push_reminders: boolean;
+	/** Sofort-Push nur für als dringend markierte Hinweise der Redaktion (M20) */
+	push_urgent: boolean;
 	quiet_from: number | null;
 	quiet_to: number | null;
 	read_receipts: boolean;
 	typing: boolean;
 }
-export const DEFAULTS: Settings = { push_chat: true, push_community: false, quiet_from: null, quiet_to: null, read_receipts: false, typing: false };
+export const DEFAULTS: Settings = { push_chat: true, push_community: false, push_reminders: true, push_urgent: false, quiet_from: null, quiet_to: null, read_receipts: false, typing: false };
 
 export async function getSettings(sql: Sql, userId: string): Promise<Settings> {
-	const [s] = await sql`select push_chat, push_community, quiet_from, quiet_to, read_receipts, typing from notification_settings where user_id = ${userId}`;
+	const [s] = await sql`select push_chat, push_community, push_reminders, push_urgent, quiet_from, quiet_to, read_receipts, typing from notification_settings where user_id = ${userId}`;
 	return s ? (s as unknown as Settings) : { ...DEFAULTS };
 }
 
 export async function saveSettings(sql: Sql, userId: string, s: Settings) {
 	const q = (n: number | null) => (n === null || !Number.isInteger(n) || n < 0 || n > 1439 ? null : n);
 	const from = q(s.quiet_from), to = q(s.quiet_to);
-	await sql`insert into notification_settings (user_id, push_chat, push_community, quiet_from, quiet_to, read_receipts, typing)
-		values (${userId}, ${s.push_chat}, ${s.push_community}, ${from}, ${from === null || to === null ? null : to}, ${s.read_receipts}, ${s.typing})
-		on conflict (user_id) do update set push_chat = excluded.push_chat, push_community = excluded.push_community, quiet_from = excluded.quiet_from,
-			quiet_to = excluded.quiet_to, read_receipts = excluded.read_receipts, typing = excluded.typing, updated_at = now()`;
+	await sql`insert into notification_settings (user_id, push_chat, push_community, push_reminders, push_urgent, quiet_from, quiet_to, read_receipts, typing)
+		values (${userId}, ${s.push_chat}, ${s.push_community}, ${s.push_reminders ?? true}, ${s.push_urgent ?? false}, ${from}, ${from === null || to === null ? null : to}, ${s.read_receipts}, ${s.typing})
+		on conflict (user_id) do update set push_chat = excluded.push_chat, push_community = excluded.push_community, push_reminders = excluded.push_reminders,
+			push_urgent = excluded.push_urgent, quiet_from = excluded.quiet_from, quiet_to = excluded.quiet_to, read_receipts = excluded.read_receipts,
+			typing = excluded.typing, updated_at = now()`;
 }
 
 /** Minuten seit Mitternacht in Deutschland (Sommer-/Winterzeit). */
@@ -131,11 +136,16 @@ async function deliver(sql: Sql, sub: { id: string; endpoint: string; p256dh: st
 }
 
 /** Community-Mitteilung als Push (nur wenn gewünscht, nicht in Ruhezeiten, ohne Inhalt). */
-export async function pushNotice(sql: Sql, userId: string, link: string | null) {
+/**
+ * Mitteilung als Push (nie mit Inhalt). Art bestimmt die Einstellung: community (Antworten, Moderation),
+ * erinnerung (selbst gesetzte Erinnerungen), radar (Radar-Profil mit Push), force (dringende Hinweise, vorher geprüft).
+ */
+export async function pushNotice(sql: Sql, userId: string, link: string | null, opts: { force?: boolean; body?: string; kind?: 'community' | 'erinnerung' | 'radar' } = {}) {
 	const s = await getSettings(sql, userId);
-	if (!s.push_community || inQuietHours(s, berlinMinutes())) return;
+	const allowed = opts.force || (opts.kind === 'erinnerung' ? s.push_reminders : opts.kind === 'radar' ? true : s.push_community);
+	if (!allowed || inQuietHours(s, berlinMinutes())) return;
 	const subs = await sql`select id, endpoint, p256dh, auth from push_subscriptions where user_id = ${userId}`;
-	for (const sub of subs) await deliver(sql, sub as never, { t: 'mitteilung', title: 'Kinder Deutschlands', body: 'Neue Mitteilung', url: link || '/profil/mitteilungen', tag: 'mitteilung' });
+	for (const sub of subs) await deliver(sql, sub as never, { t: 'mitteilung', title: 'Kinder Deutschlands', body: opts.body ?? 'Neue Mitteilung', url: link || '/profil/mitteilungen', tag: opts.kind ?? 'mitteilung' });
 }
 
 export async function pushTest(sql: Sql, userId: string): Promise<number> {

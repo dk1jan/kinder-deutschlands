@@ -12,6 +12,8 @@
 			{ href: '/admin/moderation', label: 'Moderation', icon: 'flagge', show: data.may.moderation },
 			{ href: '/admin/gruppen', label: 'Gruppen', icon: 'community', show: data.may.groups },
 			{ href: '/admin/wissen', label: 'Wissen', icon: 'protokoll', show: data.may.knowledge },
+			{ href: '/admin/einrichtungen', label: 'Einrichtungen', icon: 'ok', show: data.may.orgs },
+			{ href: '/admin/hinweise', label: 'Hinweise', icon: 'hinweis', show: data.may.notices },
 			{ href: '/admin/daten', label: 'Daten und Orte', icon: 'daten', show: data.may.data },
 			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit },
 			{ href: '/admin/einstellungen', label: 'Einstellungen', icon: 'einstellungen', show: data.may.settings }

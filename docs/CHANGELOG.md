@@ -2,6 +2,25 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-19 · Abschnitt 5: Veranstaltungen, Einrichtungen, freie Plätze, Hinweise, Merkliste, Familienradar
+
+**Was**
+- Veranstaltungen `/veranstaltungen` (M12): Liste nach Tagen, Monatskalender, Karte; Filter Zeitraum (heute, Wochenende, 7/30/90 Tage), Region, Art, Alter, kostenlos, drinnen/draußen, FreiKarte, Suche – alles auch ohne JavaScript. Detailseite mit Herkunft, Zeit, Ort, Alter, Kosten, Ermäßigung, Zugänglichkeit, Kapazität, Anmeldeschluss/-link, Quelle und Aktualität, weitere Termine der Reihe, Hinweg, Teilen, Kalenderdatei, Melden.
+- Termine eintragen/bearbeiten: als verifizierte Einrichtung, Redaktion oder Mitglied. Wiederholung (wöchentlich, 14-täglich, monatlich am Tag/Wochentag, täglich, bis Datum), Einzeltag oder ganze Reihe absagen (bleibt als „abgesagt“ sichtbar, Betroffene werden benachrichtigt, Absage erscheint als Hinweis), Absage zurücknehmen, entfernen. Sichtbarkeit öffentlich/im Netzwerk/privat per Link; Mitglieder höchstens „im Netzwerk“, keine FreiKarte-Angabe; Telefonnummern u. Ä. → Prüfung.
+- „Interessiert“/„Ich komme“ (unverbindlich, keine Buchung), „Wer kommt mit?“ nur mit Zustimmung. „Was machen wir heute/morgen?“: Termine plus passende Orte der Familienkarte nach Region oder Standort, Alter, drinnen/draußen, kostenlos.
+- Einrichtungen `/einrichtungen` (M22): Antrag, Prüfung unter Verwaltung → Einrichtungen (Begründung Pflicht, Prüfangaben danach gelöscht), öffentliches Profil mit Angeboten, Terminen, Hinweisen, Folgen (Einrichtung sieht nur grobe Zahl), Verwaltungsbereich mit Team (Verwaltung/Redaktion über Familien-ID, letzte Verwaltung geschützt), Profil, Angebote, Hinweise, Termine, eigener Kalender (ICS) mit täglichem Abruf über die Datenzentrale. Pausieren durch die Verwaltung.
+- Freie Plätze & Kurse `/angebote` (M17): Verfügbarkeit nur mit Bestätigung für 3/7/14/30 Tage, sonst „Verfügbarkeit unbekannt“; Stand und Gültigkeit immer sichtbar; Erinnerung an das Team nach Ablauf; neu frei → Hinweis „Neu“.
+- Hinweise & Fristen `/hinweise` (M20): Art und Herkunft (amtlich nur mit Quelle, Anbieter, Redaktion, ungeprüft) sichtbar, Region nach oben/unten, Ortshinweise der Karte integriert, Merken und Erinnern an Fristen. Redaktion unter Verwaltung → Hinweise; „wichtig“ = Push ohne Inhalt nur bei Opt-in.
+- Merkliste `/profil/merkliste` (M18): Termine, Angebote, Hinweise; Erinnerungen 1 Std. bis 1 Woche vor Beginn/Frist (Mitteilung + Push, abschaltbar); persönlicher Kalender-Abo-Link (einmal angezeigt, erneuer-/abschaltbar).
+- Familienradar `/radar` (M05): bis 5 private Profile, Vorschau der nächsten 30 Tage mit „neu“-Markierung, pausieren/löschen; Zusammenfassung wöchentlich (Mo) oder täglich per E-Mail und/oder Push, nur Neues, mit Quellen/Fristen/Links, neutraler Betreff; gefolgte Einrichtungen zählen mit.
+- Benachrichtigungen: neue Schalter „Erinnerungen“ und „dringende Hinweise“. Startseite: Entdecken-Einstiege, Bauabschnitt-Kacheln aktualisiert. Profil: Merkliste, Radar, Meine Einrichtungen.
+- Datenexport und Kontolöschung umfassen Radar, Merkliste, Kalender-Link, Teilnahmen, Folgen, Teams und eigene Termine. Moderation kennt Termine, Angebote, Einrichtungen.
+- Korrektur: Dringende Hinweise erreichten Radar-Profile mit Stadtteil nicht, wenn der Hinweis für die ganze Stadt galt.
+**Warum** Bauabschnitt 5 laut ROADMAP; Grundsätze D-042 bis D-050.
+**Module** M05, M12, M17, M18, M20, M22, M24 (Prüfung, Hinweise, Meldungen), M23 (ICS-Quellen) · **DB-Migration** ja – `0007_angebote.sql` (Einrichtungen, Team, Folgende, Termine, Teilnahme, Angebote, Hinweise, Merkliste, Kalender-Links, Radar-Profile/-Versand, Rechte orgs.verify/notices.edit/events.edit)
+**Offen (vorgesehen, nicht gestrichen)** Event-Chat zu „Wer kommt mit?“, Abo einzelner Orte/Termine im Radar, Hinweise von Mitgliedern außerhalb der Karte, Übernahme importierter Einrichtungseinträge, Budget-Filter über „kostenlos“ hinaus, abweichende Einzeltermine aus ICS (RECURRENCE-ID).
+**Tests** svelte-check 0 Fehler; 164 Unit/DB-Tests (neu 13 Unit: Ortszeit/Zeitumstellung, Wiederholungen, ICS hin/zurück; 13 DB: Antrag/Prüfung/Team/Folgen, Sichtbarkeit Mitglied/öffentlich/privat/blockiert, Reihe mit Einzelabsage + Benachrichtigung, „Wer kommt mit?“, Gültigkeit freier Plätze + Erinnerung, Hinweis-Rechte/Regionen, Erinnerung + Kalender-Link, Radar-Auswahl/Dubletten/Fälligkeit, ICS-Import mit Sperren/Archiv/Pause, Export/Löschung); Rauchtest 209 Prüfungen mit echtem Synapse (neu u. a. Antrag → Verifizierung, Termin als Einrichtung, Liste/Kalender/Karte, .ics, Mitgliedstermin nicht öffentlich, Merkliste + Kalender-Link, Absage + Benachrichtigung, Angebot unbekannt → frei mit Gültigkeit, Redaktionshinweis im Stadtteil, Radar, ICS-Abruf der Einrichtung); Bildschirmfotos mobil/desktop hell/dunkel; Build
+
 ## 2026-10-19 · Abschnitt 4: Ende-zu-Ende-verschlüsselter Chat, Push, Treffen per QR, Live-Standort
 
 **Was**

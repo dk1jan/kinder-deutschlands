@@ -93,6 +93,8 @@
 		{#if form?.error}<Notice kind="error">{form.error}</Notice>{/if}
 		<label class="check"><input type="checkbox" name="push_chat" checked={data.s.push_chat} /> Neue Chatnachrichten</label>
 		<label class="check"><input type="checkbox" name="push_community" checked={data.s.push_community} /> Community-Mitteilungen (Antworten, Moderation)</label>
+		<label class="check"><input type="checkbox" name="push_reminders" checked={data.s.push_reminders} /> Erinnerungen, die ich an Terminen oder Fristen selbst eingestellt habe</label>
+		<label class="check"><input type="checkbox" name="push_urgent" checked={data.s.push_urgent} /> Wichtige Hinweise für meine Radar-Regionen sofort (nur von der Redaktion als dringend markiert)</label>
 		<label class="check"><input type="checkbox" name="quiet" bind:checked={quiet} /> Ruhezeit (keine Push-Hinweise)</label>
 		{#if quiet}
 			<div class="times">

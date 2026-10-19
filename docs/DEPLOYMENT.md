@@ -103,6 +103,14 @@ Läuft von selbst. Nach dem ersten Ausrollen holt die App nacheinander: Regionen
 - Abruffehler prüfen: Meldung in Verwaltung → Daten und Orte. Netz testen: `docker exec kinder-deutschlands-web-1 wget -qO- "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities" | head -c 200`
 - Nur zum Testen (nie in Produktion setzen): `SCHEDULER=off`, `OVERPASS_URL`, `VG250_URL`, `PROTOMAPS_BUILDS_URL`, `PROTOMAPS_BUILD_BASE`, `PMTILES_BIN`.
 
+## Veranstaltungen, Einrichtungen, Radar (ab Abschnitt 5)
+Läuft von selbst im Web-Container, keine neuen Container oder Variablen.
+- Zeitplan (jede Minute): fällige Erinnerungen; alle 10 Minuten: Familienradar (wöchentlich Mo ab 7 Uhr, täglich ab 7 Uhr) und Bitte um erneute Bestätigung abgelaufener Platzangaben.
+- Radar per E-Mail nur, wenn SMTP eingerichtet ist; sonst nur Übersicht im Portal und – falls gewählt – Push ohne Inhalt.
+- Einrichtungs-Kalender (ICS) erscheinen als Quelle `org-ics-…` unter **Verwaltung → Daten und Orte** (täglicher Abruf, „Jetzt abrufen“ möglich). Ausgehende Verbindung zur Kalender-Adresse der Einrichtung (gegen interne Adressen geschützt, max. 3 MB).
+- Einrichtungen prüfen: **Verwaltung → Einrichtungen**. Redaktionelle Hinweise: **Verwaltung → Hinweise**.
+- Nur zum Testen (nie in Produktion setzen): `IMPORT_ALLOW_LOCAL=1`, `ANGEBOTE_JOBS=on`, `ANGEBOTE_JOBS_MS`.
+
 ## Falsches Zertifikat / „Nicht sicher“
 Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):
 ```bash
