@@ -179,3 +179,6 @@ Nur amazon.de, nur in Community-Beiträgen und Antworten außerhalb geschützter
 
 ## D-059 · Kinderwagenrouten (19.10.2026)
 Routen entstehen nur durch Einzeichnen auf der Karte (oder später Import mit geklärter Lizenz) – kein GPS-Aufzeichnen, keine Bewegungsverläufe. Wer einzeichnet, bestätigt, dass Start und Ziel öffentliche Orte sind; Mitgliederrouten werden vor der Veröffentlichung von der Redaktion (Recht `routes.edit`) geprüft. Angaben sind Erfahrungen, keine Garantie für Sicherheit oder Barrierefreiheit (steht auf jeder Route). Hindernisse erscheinen sofort als ungeprüfter Hinweis ohne Namen und öffnen einen Fall; Hinweise älter als 180 Tage verschwinden. Bei Kontolöschung werden eigene Routen gelöscht.
+
+## D-060 · E-Mail-Adresse für niemanden einsehbar (20.10.2026)
+Entscheidung Jan: Die E-Mail-Adresse bleibt in der Datenbank (Anmeldung, Bestätigung, Passwort zurücksetzen, Radar-Mails), aber keine Rolle – auch Betreiber nicht – kann sie in der App, Verwaltung, Export, Protokoll oder Moderation sehen. Nur das Mitglied sieht und ändert die eigene Adresse. Identifikation im Admin-Board nur über die Familien-ID. Präzisiert D-016. Werbeaussage nur als „für niemanden einsehbar“, nicht als „unbekannt“, solange die Adresse gespeichert ist. Umsetzung im nächsten Sammel-Update (F-006).

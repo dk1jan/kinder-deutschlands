@@ -19,10 +19,9 @@ Regeln
 | F-003 | Dazu | Kopfleiste, Mitteilungen-Glocke („!“) | Neue Chat-Nachrichten sollen in der Glocke erscheinen, mit kleinem Zähler-Punkt bei Neuem. Nur Anzahl, nie Inhalt. | P2 | neu |
 | F-004 | Frage | M02 Nachrichten, Chat-Einrichtung | Der Wiederherstellungsschlüssel/Schlüsselcode ist Nutzern nicht zumutbar (Jan verliert selbst bei 3–4 Testgeräten den Überblick). Verschlüsselung soll bleiben, aber ohne Code von Hand, wie bei WhatsApp/Apple/Telegram. Grundsatzentscheidung, betrifft D-008/D-034. Jan denkt nach; Optionen erarbeite ich auf Zuruf. | P1 | neu |
 | F-005 | Ändern | M11 Spielplatz-Detail (vermutlich auch M13 Orte) | „Quelle, Import, Aktualität“ ganz nach unten. Oben stehen: Infos ergänzen, Fotos hochladen, bewerten – gut sichtbar, damit auch normale Mitglieder beitragen. Bewerten gibt es schon, Jan hat es übersehen → Auffindbarkeit verbessern. | P2 | neu |
-| F-006 | Ändern | Verwaltung → Nutzer, M24, Datenschutz | E-Mail-Adresse darf dem Betreiber nicht angezeigt werden (Familien-ID bleibt als einziges Kennzeichen). Jan will damit werben, die E-Mail nicht zu kennen; will sie auch aus der Datenbank heraushaben. Siehe Details: Anzeige entfernen ist einfach, gar nicht speichern hat Folgen. | P1 | neu |
+| F-006 | Ändern | Verwaltung → Nutzer, Export, Protokoll, M24 | **Entschieden (D-060):** E-Mail bleibt in der Datenbank (Versand, Anmeldung, Reset) und ist für niemand einsehbar – weder Betreiber noch Verwaltung noch Redaktion noch in Export/Protokoll/Meldungen. Nur das Mitglied sieht und ändert die eigene Adresse in Mein Konto. Familien-ID bleibt das einzige Kennzeichen im Admin-Board. | P1 | geplant |
 | F-007 | Dazu | Verwaltung → Nutzer, M24 | Vom Admin-Board aus einem Nutzer über die Familien-ID eine Nachricht schicken können (ohne E-Mail), z. B. bei Moderationsfällen. | P2 | neu |
 | F-008 | Dazu | M01 Profil/QR, Kontakte | Partner/Familie verbinden: Familien-ID des Partners per QR scannen, Beziehung „Partnerschaft“ oder „Familie“ wählen, damit erkennbar ist, wer zusammengehört. Wer so ein Paar/eine Familie sieht, soll beiden gemeinsam schreiben können. | P2 | neu |
-| F-009 | Frage | unklar (Diktat) | „Schlusssatz … muss weg“ – im Diktat nicht zuzuordnen. Welcher Satz, auf welcher Seite? | P3 | neu |
 
 ## Details und offene Fragen
 
@@ -32,7 +31,7 @@ Regeln
 
 **F-004 (Schlüssel).** Ist-Zustand: Ende-zu-Ende über Matrix, Wiederherstellungsschlüssel muss vom Nutzer aufbewahrt werden. Jede Lösung ohne Code ändert, wer Schlüssel verwahrt (Gerät, Nutzerpasswort/Passkey, Server). Das ist eine Datenschutz-Entscheidung und gehört mit Begründung in DECISIONS.md. Nichts wird umgesetzt, bevor Jan entschieden hat. Bis dahin bleibt der heutige Weg.
 
-**F-006 (E-Mail).** Gesichert: Die E-Mail wird heute für Anmeldung, Bestätigung (D-016), „Passwort vergessen“ und Radar-Mails gebraucht. Folgen, wenn sie gar nicht gespeichert wird: kein Passwort-Reset per Mail, keine Radar-Mails per E-Mail, keine Hinweis-Mails (Alternativen: Passkey/Wiederherstellungscode, nur Push/In-App). Einfacher Teil: E-Mail in Verwaltung → Nutzer nicht mehr anzeigen und nicht in Export/Protokoll für Betreiber sichtbar machen; Zugriff nur technisch (Versand). Wichtig für die Werbeaussage: „Betreiber kennt die E-Mail nicht“ nur verwenden, wenn es technisch stimmt; Formulierung vor Veröffentlichung abstimmen (rechtliche Prüfung empfohlen, DSGVO/Wettbewerbsrecht). Entscheidung Jan: (1) nur ausblenden, (2) verschlüsselt/gehasht ablegen mit Einschränkungen, (3) gar nicht speichern.
+**F-006 (E-Mail).** Entschieden von Jan: nur nicht sehen, nicht „nicht speichern“ (D-060). Umsetzung: Anzeige und jede Ausgabe der Adresse in Verwaltung, Export für Betreiber, Protokoll, Moderationsfälle und Suche entfernen (auch Suche nach E-Mail in Nutzerliste); Mitglied ändert die eigene Adresse in Mein Konto mit Bestätigung der neuen Adresse (D-016). Prüfkriterium: Test, dass keine Verwaltungsseite und keine Antwort der Verwaltungs-Schnittstellen die Adresse enthält. Hinweis zur Werbeaussage: „In der App und Verwaltung für niemanden sichtbar“ ist belegbar; „Wir kennen deine E-Mail nicht“ wäre nicht korrekt, solange sie in der Datenbank liegt und der Server sie für den Versand nutzt. Offen, falls gewünscht: Adresse zusätzlich verschlüsselt ablegen (Suche dann nur über Hash) – nur auf Zuruf.
 
 **F-007 (Nachricht an Nutzer).** Vorschlag: Mitteilung im App-Postfach des Nutzers (Glocke), mit Protokolleintrag, ohne Zugriff auf private Inhalte.
 
@@ -48,7 +47,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
-| – | – | – |
+| F-009 | verworfen: Jan weiß nicht mehr, was gemeint war („kann ignoriert werden“) | – |
 
 ## Ablauf Sammel-Update
 
