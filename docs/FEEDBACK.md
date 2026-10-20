@@ -22,6 +22,7 @@ Regeln
 | F-006 | Ändern | Verwaltung → Nutzer, Export, Protokoll, M24 | **Entschieden (D-060):** E-Mail bleibt in der Datenbank (Versand, Anmeldung, Reset) und ist für niemand einsehbar – weder Betreiber noch Verwaltung noch Redaktion noch in Export/Protokoll/Meldungen. Nur das Mitglied sieht und ändert die eigene Adresse in Mein Konto. Familien-ID bleibt das einzige Kennzeichen im Admin-Board. | P1 | geplant |
 | F-007 | Dazu | Verwaltung → Nutzer, M24 | Vom Admin-Board aus einem Nutzer über die Familien-ID eine Nachricht schicken können (ohne E-Mail), z. B. bei Moderationsfällen. | P2 | neu |
 | F-008 | Dazu | M01 Profil/QR, Kontakte | Partner/Familie verbinden: Familien-ID des Partners per QR scannen, Beziehung „Partnerschaft“ oder „Familie“ wählen, damit erkennbar ist, wer zusammengehört. Wer so ein Paar/eine Familie sieht, soll beiden gemeinsam schreiben können. | P2 | neu |
+| F-010 | Ändern | Karte, Luftbild, Verwaltung → Einstellungen | Luftbild soll ohne Schlüssel, Anmeldung und Einrichtung laufen („OpenStreetMap-Satellit“). Recherche: OSM hat kein eigenes Satellitenbild, es gibt nur externe Quellen (siehe Details). Entscheidung Jan offen. | P2 | neu |
 
 ## Details und offene Fragen
 
@@ -36,6 +37,8 @@ Regeln
 **F-007 (Nachricht an Nutzer).** Vorschlag: Mitteilung im App-Postfach des Nutzers (Glocke), mit Protokolleintrag, ohne Zugriff auf private Inhalte.
 
 **F-008 (Partner/Familie).** Vorschlag, nicht entschieden: Verbindung nur mit beidseitiger Bestätigung; Art wählbar (Partnerschaft/Familie); Sichtbarkeit je Profilfeld (D-015) bleibt bestimmend; gemeinsame Nachricht als Gruppe aus beiden Konten. Offen: Sehen Dritte die Verbindung, oder nur die Beteiligten und Kontakte?
+
+**F-010 (Luftbild).** Gesichert: Die Esri-Eingabe steht nur in Verwaltung → Einstellungen; Mitglieder sehen keine Anmeldung. Ohne Eintrag zeigt die Karte das offene Luftbild des LGLN (nur Niedersachsen), Bremen bleibt ohne Luftbild (STATUS: Luftbild). OpenStreetMap selbst betreibt keine Satellitenkarte; der OSM-Wiki-Eintrag „Luftbilder“ nennt nur Landesdaten und Fremdquellen, für Bremen ohne Angabe. Hinweis der BKG-Seite: Ab 01.01.2027 sollen Länder-Geobasisdaten (AdV-GR 4.1) unter offener Lizenz (Datenlizenz Deutschland 2.0 oder CC BY 4.0) nutzbar werden; ob das Bremer Luftbild und einen Webdienst ohne Schlüssel einschließt, ist **nicht bestätigt**. Nicht geprüft: Esri-Bilder ohne Schlüssel einzubinden (Nutzungsbedingungen von Esri unklar, nicht empfohlen). Wege (Vorschläge): (1) Bremen bleibt bis Anfang 2027 ohne Luftbild, danach Prüfung der offenen Bremer Daten; Esri-Feld wandert eingeklappt unter „Erweitert“. (2) Esri-Schlüssel einmalig durch Jan anlegen (kostenlos laut Esri, Bedingungen vorher prüfen); Mitglieder merken nichts. (3) Esri ohne Schlüssel: nur nach Prüfung der Esri-Bedingungen.
 
 ## Testnotizen (was geprüft wurde, ohne Befund)
 
