@@ -2,6 +2,26 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Sammel-Update F-001 bis F-015 + Stadtteile Niedersachsen
+
+**Was**
+- **F-001/F-002 Navigation (D-069):** Leiste Entdecken · Karte · Community · Nachrichten · **Mehr**; „Profil“ entfällt (oben bleibt „Mein Konto“). „Mehr“ (`/mehr`) zeigt alle Bereiche als Kacheln plus Konto/Rechtstexte. Entdecken zeigt die Bereiche als große Kacheln – für Mitglieder ganz oben, für Gäste unter der Einleitung (Mitgliederbereiche führen zur Anmeldung).
+- **F-003 Glocke:** zählt neue Mitteilungen **und** Unterhaltungen mit ungelesenen Nachrichten (nur Anzahl, aus dem Gerät; stumm geschaltete zählen nicht). Zähler zusätzlich am Reiter „Nachrichten“, Hinweis mit Link in den Mitteilungen.
+- **F-004 Chat-Schlüssel aus dem Passwort (D-066):** kein Wiederherstellungscode mehr. Anmeldung mit Passwort → im Browser wird ein Geheimnis abgeleitet → der Chat richtet die verschlüsselte Sicherung damit ein bzw. entsperrt neue Geräte selbst. Passkey/ohne JavaScript: einmal Passwort im Chat eingeben. Passwort ändern unter Sicherheit: Sicherung wird neu verpackt. Passwort zurückgesetzt: das nächste freigeschaltete Gerät verpackt neu; ist keins online, „vorheriges Passwort“ eingeben oder „Neu beginnen“. Alter Wiederherstellungsschlüssel bleibt als Übergang nutzbar. Abmelden löscht das Geheimnis im Browser. Passwortregel zusätzlich: offensichtliche Muster abgelehnt. Chat-Kennung als Salz über `/api/chat/salz` (auch im 2FA-Zwischenschritt).
+- **F-005 Ortsseite:** Kasten „Mitmachen“ oben (Bewerten, Foto hochladen, Infos ergänzen – öffnen das jeweilige Formular), „Quelle und Aktualität“ ganz unten; neue Meldeart „Ich kann etwas ergänzen“.
+- **F-006 E-Mail für niemanden sichtbar (D-060):** Verwaltung (Nutzer, Rechte, Protokoll, Freigaben, Einrichtungsanträge, Kopfzeile), zweite Freigabe und Partnerlink-Prüfvermerk zeigen nur die Familien-ID; alte Vermerke per Migration umgestellt. Mitglied sieht die eigene Adresse unter Sicherheit und ändert sie selbst (Passwort + Bestätigungslink an die neue Adresse, Hinweis an die alte; ob eine Adresse vergeben ist, wird nicht verraten).
+- **F-007 Nachricht der Verwaltung:** Verwaltung → Nutzer „Nachricht an ein Mitglied“ über die Familien-ID und im Moderationsfall „Nachricht an die Person“ – als Mitteilung in der Glocke, ohne E-Mail; Protokoll mit Länge, nicht Text.
+- **F-008 Partnerschaft & Familie (D-070):** `/profil/familie` – verbinden per Familien-ID (auch aus der gescannten Kontaktkarte), beidseitig bestätigt, lösbar. Sichtbarkeit als neues Profilfeld „Verbindung Partnerschaft/Familie“ (jede Person selbst; gezeigt nur, wenn beide es erlauben). Kontaktkarte zeigt „Gehört zusammen mit“; wer mit beiden Kontakt hat, kann „Gemeinsam schreiben“ (Gruppe vorausgewählt).
+- **F-011 Luftbild ganz Deutschland:** Gebiet auf DE erweitert (Esri-Schlüssel vorhanden, Abrufgrenze je Adresse bleibt).
+- **F-013 VG250/DNS:** Abrufe wiederholen bei DNS-Aussetzern zwei Mal zusätzlich mit längerer Pause.
+- **F-014 Umzug:** `deploy/umzug.sh export|import` – Datenbank, Chat-Datenbank, Bilder, Chat-Medien, Geheimnisse; legt den Stack auf dem neuen Server per Portainer-API an (wenn Token vorhanden). Anleitung in DEPLOYMENT.md. Im Stack-Test (CI) mit echtem Export → Änderung → Import geprüft.
+- **F-015 Orte ganz Deutschland:** Spielplätze, Toiletten, Wickeln, Indoor, Ausflüge für alle 16 Länder (Pause zwischen den Ländern, ein Fehler bricht den Lauf ab); VG250 lädt alle Länder, damit Orte Gemeinden zugeordnet werden.
+- **Stadtteile Niedersachsen:** neue Quelle „Stadt- und Ortsteile Niedersachsen“ (OSM admin_level 10, Zuordnung über die amtliche Gemeindegrenze); läuft automatisch nach VG250.
+- **Mehrsprachigkeit:** nicht umgesetzt – Entscheidung Jan (D-071).
+**Warum** Sammel-Update aus `docs/FEEDBACK.md` (Jan: „Sammel-Update ja“, Entscheidungen zu F-001, F-008, F-011, F-015 am 20.10.), Stadtteile Niedersachsen auf Wunsch Jan.
+**Module** M01, M02, M04, M10, M11, M13, M23, M24, Querschnitt (Navigation, Betrieb) · **DB-Migration** ja – `0012_sammel.sql` (Meldeart ergaenzung, E-Mail-Wechsel-Token, family_links, Vermerke ohne E-Mail, Orte/VG250 DE, Quelle Stadtteile NI)
+**Tests** svelte-check 0 Fehler; 202 Unit/DB-Tests (neu u. a. Luftbild DE, Stadtteile NI Zuordnung, Familie verbinden + Sichtbarkeit, Nachricht der Verwaltung, Familien-ID statt E-Mail); Rauchtest 313 Prüfungen mit echtem Synapse (neu: Navigation/Mehr/Kacheln, keine E-Mail in 9 Verwaltungsseiten, Nachricht an Familien-ID, eigene Adresse + Wechsel mit Bestätigung, Ortsseite Reihenfolge + Ergänzung, Familie verbinden, Chat-Salz im 2FA-Schritt); **Browsertest `chatkey-check.py` (D-066-Machbarkeit) bestanden:** Einrichtung ohne Code, neues Gerät liest frühere Nachricht, Passwortwechsel, Passkey-Fall mit einmaliger Passwortabfrage, Zurücksetzen mit vorherigem Passwort, Neu beginnen; Anruftest; Barrierefreiheit (axe) ohne schwere Verstöße; Bildschirmfotos; Build. **Nicht getestet:** Umzugsskript auf echtem Server (nur im CI-Stack), Orte-/VG250-Abruf für ganz Deutschland gegen die echten Dienste (läuft auf dem Server automatisch).
+
 ## 2026-10-20 · Abschnitt 8.3: Impressum/Datenschutz pflegbar, Barrierefreiheit automatisch geprüft, Geräteliste getestet
 
 **Was**

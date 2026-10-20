@@ -3,6 +3,8 @@
 	import AuthShell from '$lib/components/AuthShell.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import { passkeyLogin, passkeySupported } from '$lib/passkey';
+	import { enhance } from '$app/forms';
+	import { rememberPassword } from '$lib/chat/secret';
 	let { form, data } = $props();
 	const unverified = $derived(!!form && 'unverified' in form && !!form.unverified);
 	let supported = $state(false);
@@ -43,7 +45,14 @@
 		<p class="or"><span>oder mit Passwort</span></p>
 	{/if}
 
-	<form method="POST" action={`?/anmelden${q}`}>
+	<!-- Mit JavaScript: nach erfolgreicher Anmeldung den Chat-Schlüssel aus dem Passwort ableiten (D-066). Ohne JS geht alles weiter wie gewohnt. -->
+	<form method="POST" action={`?/anmelden${q}`} use:enhance={({ formData }) => {
+		const pw = String(formData.get('password') ?? '');
+		return async ({ result, update }) => {
+			if (result.type === 'redirect') await rememberPassword(pw);
+			await update();
+		};
+	}}>
 		<div class="field">
 			<label for="email">E-Mail-Adresse</label>
 			<input id="email" name="email" type="email" autocomplete="username webauthn" required value={form?.email ?? ''}

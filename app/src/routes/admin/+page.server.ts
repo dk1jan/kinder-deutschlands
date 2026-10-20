@@ -33,6 +33,6 @@ export const actions: Actions = {
 			return fail(500, { mailError: `Versand fehlgeschlagen: ${describeMailError(e)}` });
 		}
 		await audit(db(), { actorId: user.id, action: 'mail.test' });
-		return { mailOk: `Test-E-Mail an ${user.email} verschickt. Bitte Posteingang und Spam-Ordner prüfen.` };
+		return { mailOk: 'Test-E-Mail an deine eigene Adresse verschickt. Bitte Posteingang und Spam-Ordner prüfen.' };
 	}
 };

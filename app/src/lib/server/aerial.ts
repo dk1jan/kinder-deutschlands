@@ -10,7 +10,8 @@ import { tilesDir } from './import/tiles';
 
 export const LGLN_WMS = process.env.LGLN_WMS_URL || 'https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms';
 export const ESRI_TILES = 'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile';
-export const AREA = { w: 6.5, s: 51.2, e: 11.8, n: 54.1 }; // Bremen + Niedersachsen
+// F-011 (Entscheidung Jan 20.10.): ganz Deutschland, passend zur Grundkarte (D-068). Abrufgrenze je Adresse bleibt.
+export const AREA = { w: 5.8, s: 47.2, e: 15.1, n: 55.1 };
 
 let esriKey: string | null = null;
 let loaded = false;

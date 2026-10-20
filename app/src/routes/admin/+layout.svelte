@@ -36,7 +36,7 @@
 				<a href={i.href} aria-current={isActive(i.href) ? 'page' : undefined}><Icon name={i.icon} size={20} /><span>{i.label}</span></a>
 			{/each}
 		</nav>
-		<p class="who muted">{data.adminEmail}</p>
+		<p class="who muted">Familien-ID {data.adminId}</p>
 		<a class="back" href="/"><Icon name="zurueck" size={18} />Zur Plattform</a>
 	</aside>
 	<main id="inhalt">

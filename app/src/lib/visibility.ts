@@ -3,7 +3,7 @@
 
 export type Relation = 'extern' | 'mitglied' | 'gruppe' | 'kontakt' | 'selbst';
 export type Level = 'alle' | 'mitglieder' | 'gruppen' | 'kontakte' | 'niemand';
-export type Field = 'display_name' | 'can_help' | 'looking_for' | 'interests' | 'child_ages' | 'region';
+export type Field = 'display_name' | 'can_help' | 'looking_for' | 'interests' | 'child_ages' | 'region' | 'family';
 export type Visibility = Record<Field, Level>;
 export type Preset = 'zurueckhaltend' | 'offen' | 'individuell';
 
@@ -13,7 +13,8 @@ export const FIELDS: { key: Field; label: string }[] = [
 	{ key: 'looking_for', label: 'Ich suche' },
 	{ key: 'interests', label: 'Interessen' },
 	{ key: 'child_ages', label: 'Altersgruppen der Kinder' },
-	{ key: 'region', label: 'Region' }
+	{ key: 'region', label: 'Region' },
+	{ key: 'family', label: 'Verbindung Partnerschaft/Familie' }
 ];
 
 export const LEVELS: { key: Level; label: string }[] = [
@@ -31,7 +32,8 @@ export const PRESETS: Record<Exclude<Preset, 'individuell'>, Visibility> = {
 		looking_for: 'kontakte',
 		interests: 'kontakte',
 		child_ages: 'kontakte',
-		region: 'kontakte'
+		region: 'kontakte',
+		family: 'kontakte'
 	},
 	offen: {
 		display_name: 'alle',
@@ -39,7 +41,8 @@ export const PRESETS: Record<Exclude<Preset, 'individuell'>, Visibility> = {
 		looking_for: 'mitglieder',
 		interests: 'mitglieder',
 		child_ages: 'kontakte',
-		region: 'mitglieder'
+		region: 'mitglieder',
+		family: 'mitglieder'
 	}
 };
 
@@ -77,6 +80,8 @@ export interface PublicCard {
 	interests: string[];
 	childAges: string[];
 	regionName: string | null;
+	/** Bestätigte Verbindungen (F-008) – nur, wenn beide Seiten sie für diese Person freigeben (Server füllt) */
+	family?: { kind: string; name: string | null; contactIdFormatted: string; contactId: string; isContact: boolean }[];
 }
 
 export interface ProfileRow {

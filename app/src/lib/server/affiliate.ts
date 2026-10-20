@@ -37,12 +37,13 @@ export async function saveAffiliate(sql: Sql, actorId: string, i: { enabled: boo
 	if (tag && !validTag(tag)) throw new AffiliateError('Die Partnerkennung hat ein ungültiges Format.');
 	if (i.enabled && !tag) throw new AffiliateError('Zum Einschalten bitte die Partnerkennung eintragen.');
 	if (i.enabled && !i.termsChecked && !cur.terms_checked_at) throw new AffiliateError('Bitte zuerst bestätigen, dass die aktuellen Teilnahmebedingungen geprüft sind.');
-	const [u] = await sql`select email from users where id = ${actorId}`;
+	const [u] = await sql`select substr(contact_id,1,3) || '-' || substr(contact_id,4,3) || '-' || substr(contact_id,7,3) as cid from user_profiles where user_id = ${actorId}`;
 	const v: AffiliateSettings = {
 		enabled: i.enabled,
 		amazon_tag: tag,
 		terms_checked_at: i.termsChecked ? new Date().toISOString() : cur.terms_checked_at,
-		terms_checked_by: i.termsChecked ? ((u?.email as string) ?? null) : cur.terms_checked_by,
+		// Familien-ID statt E-Mail (D-060)
+		terms_checked_by: i.termsChecked ? ((u?.cid as string) ?? null) : cur.terms_checked_by,
 		terms_note: i.termsChecked ? (i.note?.trim().slice(0, 500) ?? null) : cur.terms_note
 	};
 	await sql`insert into settings (key, value) values ('affiliate', ${sql.json(v as never)}) on conflict (key) do update set value = excluded.value, updated_at = now()`;

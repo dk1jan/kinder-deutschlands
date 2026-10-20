@@ -1,11 +1,16 @@
 // Chat im Browser: Matrix-Client mit Ende-zu-Ende-Verschlüsselung (Rust-Krypto als WebAssembly).
 // Ein Client je Seite (bleibt beim Navigieren innerhalb der App bestehen). Zugangsdaten nur in diesem Browser.
 import type { MatrixClient, MatrixEvent, Room } from 'matrix-js-sdk';
+import { clearSecret, deriveChatSecret, readSecret, rememberPassword, storeSecret } from './secret';
 
 type Sdk = typeof import('matrix-js-sdk');
 export type Status = 'aus' | 'laedt' | 'bereit' | 'fehler' | 'nicht_eingerichtet';
-/** neu: noch kein Wiederherstellungsschlüssel · gesperrt: es gibt einen, dieses Gerät ist noch nicht freigeschaltet · ok */
-export type KeyState = 'unbekannt' | 'neu' | 'gesperrt' | 'ok';
+/**
+ * Schlüssel aus dem Passwort (D-066): ok · arbeitet · passwort (einmal Passwort eingeben, z. B. nach Passkey-Anmeldung)
+ * · abweichend (Passwort hat sich geändert und kein freigeschaltetes Gerät hat neu verpackt: altes Passwort oder neu beginnen)
+ * · neu/gesperrt nur kurz während der Prüfung.
+ */
+export type KeyState = 'unbekannt' | 'neu' | 'gesperrt' | 'ok' | 'arbeitet' | 'passwort' | 'abweichend';
 
 export interface ChatContact {
 	contactId: string;
@@ -98,6 +103,13 @@ export function hasStoredChat(): boolean {
 
 export function getClient() {
 	return client;
+}
+
+/** Anzahl Unterhaltungen mit ungelesenen Nachrichten (nur aus diesem Gerät, F-003). Stumm geschaltete zählen nicht. */
+export function unreadChats(): number {
+	void chat.version;
+	if (!client || chat.status !== 'bereit') return 0;
+	return client.getRooms().filter((r) => r.getMyMembership() === 'join' && (r.getUnreadNotificationCount('total' as never) ?? 0) > 0).length;
 }
 
 function deviceName() {
@@ -246,6 +258,7 @@ async function doStart(): Promise<MatrixClient | null> {
 		});
 		client = c;
 		await Promise.all([refreshKeyState(), loadContacts(), loadMeta()]);
+		await autoKeys().catch((e) => console.warn('Schlüssel', e));
 		for (const r of c.getRooms()) void autoJoinDirect(r);
 		chat.status = 'bereit';
 		bump();
@@ -299,28 +312,128 @@ export async function refreshKeyState() {
 	chat.keys = local.masterKey && local.selfSigningKey && local.userSigningKey ? 'ok' : 'gesperrt';
 }
 
-/** Erstes Einrichten: Kreuzsignierung, Schlüsselsicherung, Wiederherstellungsschlüssel (wird nur einmal angezeigt). */
-export async function setupKeys(): Promise<string> {
-	const c = client!;
-	const crypto = c.getCrypto()!;
-	const key = await crypto.createRecoveryKeyFromPassphrase();
+// Schlüssel aus dem Passwort (D-066): kein Code von Hand. Ablauf beim Chat-Start:
+// keine Sicherung → mit Passwort-Geheimnis einrichten · Sicherung, Gerät gesperrt → mit Geheimnis entsperren
+// · Gerät frei, Sicherung noch mit altem Passwort verpackt → neu verpacken (Passwortwechsel/-reset).
+async function passphraseInfo() {
+	const tuple = await client!.secretStorage.getKey();
+	if (!tuple) return null;
+	const info = tuple[1] as { passphrase?: { salt: string; iterations: number; bits?: number } };
+	return { id: tuple[0], info };
+}
+
+async function keyFromSecret(secret: string): Promise<Uint8Array<ArrayBuffer> | null> {
+	const p = await passphraseInfo();
+	if (!p?.info.passphrase) return null;
+	const { deriveRecoveryKeyFromPassphrase } = await import('matrix-js-sdk/lib/crypto-api/key-passphrase.js');
+	const k = await deriveRecoveryKeyFromPassphrase(secret, p.info.passphrase.salt, p.info.passphrase.iterations, p.info.passphrase.bits ?? 256);
+	return (await client!.secretStorage.checkKey(k, p.info as never)) ? k : null;
+}
+
+async function setupWithSecret(secret: string) {
+	const crypto = client!.getCrypto()!;
+	const key = await crypto.createRecoveryKeyFromPassphrase(secret);
 	ssKey = key.privateKey;
 	await crypto.bootstrapCrossSigning({ authUploadDeviceSigningKeys: async (make) => void (await make(null)) });
 	await crypto.bootstrapSecretStorage({ createSecretStorageKey: async () => key, setupNewSecretStorage: true, setupNewKeyBackup: true });
-	await refreshKeyState();
-	return key.encodedPrivateKey!;
 }
 
-/** Neuer Wiederherstellungsschlüssel (alter wird ungültig) – nur auf einem freigeschalteten Gerät. */
-export async function newRecoveryKey(): Promise<string> {
+async function unlockWith(k: Uint8Array<ArrayBuffer>) {
+	ssKey = k;
 	const crypto = client!.getCrypto()!;
-	const key = await crypto.createRecoveryKeyFromPassphrase();
+	await crypto.bootstrapCrossSigning({});
+	await crypto.loadSessionBackupPrivateKeyFromSecretStorage().catch(() => {});
+	await crypto.checkKeyBackupAndEnable();
+	void crypto.restoreKeyBackup().then(bump).catch(() => {});
+}
+
+/** Freigeschaltetes Gerät: Sicherung mit dem aktuellen Passwort-Geheimnis neu verpacken (lokale Schlüssel bleiben). */
+async function rewrap(secret: string) {
+	const crypto = client!.getCrypto()!;
+	const key = await crypto.createRecoveryKeyFromPassphrase(secret);
 	ssKey = key.privateKey;
 	await crypto.bootstrapSecretStorage({ createSecretStorageKey: async () => key, setupNewSecretStorage: true });
-	return key.encodedPrivateKey!;
 }
 
-/** Dieses Gerät mit dem Wiederherstellungsschlüssel freischalten und ältere Nachrichten entschlüsseln. */
+let keysBusy: Promise<void> | null = null;
+export function autoKeys(): Promise<void> {
+	return (keysBusy ??= doAutoKeys().finally(() => (keysBusy = null)));
+}
+async function doAutoKeys() {
+	if (!client) return;
+	await refreshKeyState();
+	const secret = readSecret(chat.userId);
+	const st = chat.keys;
+	if (st === 'ok') {
+		if (secret && !(await keyFromSecret(secret))) {
+			chat.keys = 'arbeitet';
+			await rewrap(secret);
+			await refreshKeyState();
+		}
+		return;
+	}
+	if (!secret) {
+		chat.keys = 'passwort';
+		return;
+	}
+	chat.keys = 'arbeitet';
+	if (st === 'neu') {
+		await setupWithSecret(secret);
+		await refreshKeyState();
+		return;
+	}
+	const k = await keyFromSecret(secret);
+	if (k) {
+		await unlockWith(k);
+		await refreshKeyState();
+	} else chat.keys = 'abweichend';
+}
+
+/** Passwort einmal eingeben (z. B. nach Anmeldung mit Passkey oder ohne JavaScript). */
+export async function enterPassword(password: string): Promise<boolean> {
+	if (!client) return false;
+	const s = await deriveChatSecret(password, chat.userId);
+	const p = await passphraseInfo();
+	// Gibt es schon eine Sicherung, muss das Passwort dazu passen – sonst ist es vertippt oder ein früheres Passwort
+	if (p?.info.passphrase && !(await keyFromSecret(s))) return false;
+	storeSecret(chat.userId, s);
+	await autoKeys();
+	return chat.keys === 'ok';
+}
+
+/** Passwort wurde geändert/zurückgesetzt und kein Gerät hat neu verpackt: mit dem vorherigen Passwort entsperren. */
+export async function useOldPassword(oldPassword: string): Promise<boolean> {
+	if (!client) return false;
+	const old = await deriveChatSecret(oldPassword, chat.userId);
+	const k = await keyFromSecret(old);
+	if (!k) return false;
+	chat.keys = 'arbeitet';
+	await unlockWith(k);
+	const now = readSecret(chat.userId);
+	if (now) await rewrap(now);
+	await refreshKeyState();
+	return true;
+}
+
+/** Altes Passwort unbekannt: Verschlüsselung neu beginnen. Frühere Nachrichten bleiben auf neuen Geräten unlesbar. */
+export async function startFresh(): Promise<void> {
+	const c = client!;
+	const crypto = c.getCrypto()!;
+	const secret = readSecret(chat.userId);
+	if (!secret) throw new Error('Bitte zuerst dein Passwort eingeben.');
+	chat.keys = 'arbeitet';
+	const t = await api<{ token: string }>('/api/chat/bestaetigung', { json: {} });
+	if (t.error) throw new Error(t.error);
+	await crypto.resetEncryption(async (make) => {
+		await make({ type: 'de.kinder.reauth', token: t.token, identifier: { type: 'm.id.user', user: c.getUserId()! } } as never);
+	});
+	const key = await crypto.createRecoveryKeyFromPassphrase(secret);
+	ssKey = key.privateKey;
+	await crypto.bootstrapSecretStorage({ createSecretStorageKey: async () => key, setupNewSecretStorage: true, setupNewKeyBackup: true });
+	await refreshKeyState();
+}
+
+/** Übergang: Konten mit altem Wiederherstellungsschlüssel (vor D-066) einmal entsperren, danach mit Passwort verpackt. */
 export async function unlockKeys(input: string): Promise<boolean> {
 	const c = client!;
 	const { decodeRecoveryKey } = await import('matrix-js-sdk/lib/crypto-api/recovery-key.js');
@@ -333,30 +446,23 @@ export async function unlockKeys(input: string): Promise<boolean> {
 	const tuple = await c.secretStorage.getKey();
 	if (!tuple) return false;
 	if (!(await c.secretStorage.checkKey(priv, tuple[1] as never))) return false;
-	ssKey = priv;
-	const crypto = c.getCrypto()!;
-	await crypto.bootstrapCrossSigning({});
-	await crypto.loadSessionBackupPrivateKeyFromSecretStorage().catch(() => {});
-	await crypto.checkKeyBackupAndEnable();
-	void crypto.restoreKeyBackup().then(bump).catch(() => {});
+	chat.keys = 'arbeitet';
+	await unlockWith(priv);
+	const now = readSecret(chat.userId);
+	if (now) await rewrap(now);
 	await refreshKeyState();
 	return true;
 }
 
-/** Schlüssel verloren: Verschlüsselung neu einrichten. Ältere Nachrichten bleiben auf Geräten ohne Schlüssel unlesbar. */
-export async function resetKeys(): Promise<string> {
-	const c = client!;
-	const crypto = c.getCrypto()!;
-	const t = await api<{ token: string }>('/api/chat/bestaetigung', { json: {} });
-	if (t.error) throw new Error(t.error);
-	await crypto.resetEncryption(async (make) => {
-		await make({ type: 'de.kinder.reauth', token: t.token, identifier: { type: 'm.id.user', user: c.getUserId()! } } as never);
-	});
-	const key = await crypto.createRecoveryKeyFromPassphrase();
-	ssKey = key.privateKey;
-	await crypto.bootstrapSecretStorage({ createSecretStorageKey: async () => key, setupNewSecretStorage: true, setupNewKeyBackup: true });
-	await refreshKeyState();
-	return key.encodedPrivateKey!;
+/** Nach einem Passwortwechsel auf diesem Gerät: neues Geheimnis ablegen und Sicherung gleich neu verpacken. */
+export async function passwordChanged(newPassword: string) {
+	if (chat.userId) storeSecret(chat.userId, await deriveChatSecret(newPassword, chat.userId));
+	else await rememberPassword(newPassword);
+	if (client && chat.status === 'bereit') await autoKeys();
+}
+
+export function forgetChatSecret() {
+	clearSecret();
 }
 
 // ---------- Push ----------

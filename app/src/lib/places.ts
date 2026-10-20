@@ -113,6 +113,7 @@ export const CONFIRMATION: Record<string, { label: string; text: string }> = {
 };
 
 export const REPORT_KINDS: Record<string, string> = {
+	ergaenzung: 'Ich kann etwas ergänzen (z. B. Ausstattung, Öffnungszeiten)',
 	falsche_angabe: 'Angabe stimmt nicht',
 	existiert_nicht: 'Gibt es nicht mehr',
 	defekt: 'Etwas ist kaputt',

@@ -410,3 +410,14 @@ export async function stats(sql: Sql) {
 		from mod_cases`;
 	return r;
 }
+
+/** F-007: Nachricht der Moderation an die Person, um deren Inhalt es im Fall geht (nur mit Zugriff auf den Fall). */
+export async function messageCaseAuthor(sql: Sql, actorId: string, caseId: string, text: string) {
+	const [c] = await sql`select * from mod_cases where id = ${caseId}`;
+	if (!c || !(await (await checker(sql, actorId))(c))) throw new PostError('Fall nicht gefunden.');
+	const s = await scopeOf(sql, c.target_type, c.target_id);
+	if (!s?.authorId) throw new PostError('Für diesen Fall ist keine Person zugeordnet.');
+	const { messageUser } = await import('../adminmsg');
+	await messageUser(sql, actorId, { userId: s.authorId }, text, { caseId });
+}
+

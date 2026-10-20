@@ -205,3 +205,12 @@ Impressum und Datenschutzerklärung pflegt der Betreiber in der Verwaltung. Clau
 
 ## D-068 · Grundkarte für ganz Deutschland, Zoom 15 (20.10.2026)
 Entscheidung Jan: Die eigenen Kartenkacheln (D-021) decken ganz Deutschland bis Zoom 15 ab (Gebiet `5.8,47.2,15.1,55.1`, grobe Grenzen). Umsetzung als Einstellung in Verwaltung → Daten, nicht im Code; Platz auf dem Server geprüft (313 GB frei bei 33 % belegt). Direkter Abruf von OSM-Rasterdiensten verworfen (Nutzungsrichtlinie: ohne Zusage, kommerziell jederzeit widerrufbar, kein Vorabladen, IP an Dritte); OpenFreeMap als Alternative geprüft, aber verworfen (anderes Kartenschema, Umbau des Stils, spendenfinanziert ohne SLA). Offen: Luftbild-Gebiet (F-011), Orte-Bestand (F-015). Ablauf: erst testen, dann schnell ausrollen, danach nachbessern.
+
+## D-069 · Navigation: vier Ziele + „Mehr“ (20.10.2026) – ersetzt D-007
+Entscheidung Jan (F-001/F-002): Leiste Entdecken · Karte · Community · Nachrichten · Mehr. „Profil“ entfällt als Ziel, das Konto erreicht man oben über „Mein Konto“. „Mehr“ listet alle Bereiche; Entdecken zeigt sie als große Kacheln (für Mitglieder ganz oben). Bereiche, die eine Anmeldung brauchen, führen Gäste zur Anmeldung.
+
+## D-070 · Partnerschaft und Familie verbinden (20.10.2026)
+Verbindung zwischen zwei Konten nur mit Bestätigung beider, Art „Partnerschaft“ oder „Familie“, jederzeit von einer Seite lösbar, höchstens 10. Wer sie sieht, entscheidet jede Person selbst über das Profilfeld „Verbindung Partnerschaft/Familie“ (Stufen wie bei allen Feldern, D-015/D-063); angezeigt wird sie nur, wenn beide es für die betrachtende Person erlauben, nie ohne Anmeldung, nie bei Blockierung. „Gemeinsam schreiben“ nur für Kontakte beider (Chat-Regeln wie bei Gruppen).
+
+## D-071 · Keine Mehrsprachigkeit (20.10.2026)
+Entscheidung Jan: Die Oberfläche bleibt Deutsch; weitere Sprachen werden nicht umgesetzt (REQUIREMENTS: „weitere Sprachen sinnvoll vorbereiten“ – bewusst zurückgestellt, nicht stillschweigend gestrichen). Einfache Sprache bleibt vorgesehen.

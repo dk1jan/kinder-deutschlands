@@ -8,7 +8,17 @@
 	let picked = $state<string[]>([]);
 	let busy = $state(false);
 	let error = $state('');
-	onMount(() => void startChat());
+	onMount(() => {
+		void startChat();
+	});
+	// „Gemeinsam schreiben“ (F-008): Kontakte aus ?mit= vorauswählen
+	let prefilled = false;
+	$effect(() => {
+		if (prefilled || chat.status !== 'bereit' || !chat.contacts.length) return;
+		prefilled = true;
+		const want = (new URL(location.href).searchParams.get('mit') ?? '').split(',').filter(Boolean);
+		if (want.length) picked = chat.contacts.filter((c) => want.includes(c.contactId)).map((c) => c.mxid);
+	});
 	async function submit(e: Event) {
 		e.preventDefault();
 		busy = true;

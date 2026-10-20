@@ -101,7 +101,7 @@ ss -lunpt | grep -E ':3479|:4916|:4917|:4918|:4919|:4920' ; docker logs --tail 3
 ```
 Falls eine Firewall aktiv ist (ufw / IONOS-Cloud-Firewall), diese Ports freigeben, z. B. `ufw allow 3479 && ufw allow 49160:49200/udp`. Hostname = Host aus `APP_URL` (muss auf die öffentliche IP zeigen). Abschalten: `TURN_ENABLED=false`.
 
-Lokale Browsertests nach dem Rauchtest – Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`.
+Lokale Browsertests nach dem Rauchtest – Chat-Schlüssel aus dem Passwort: `… python3 scripts/chatkey-check.py`; Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`.
 
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.
@@ -127,6 +127,29 @@ Läuft von selbst im Web-Container, keine neuen Container oder Variablen.
 - Einrichtungen prüfen: **Verwaltung → Einrichtungen**. Redaktionelle Hinweise: **Verwaltung → Hinweise**.
 - Abschnitt 6 (Marktplatz, Hilfe, Kompass, Einladungen): ebenfalls ohne neue Container/Variablen. Im selben Takt (alle 10 Min.): Suchaufträge, Ablauf von Anzeigen/Hilfe-Einträgen, Löschen vergangener Einladungen. Marktplatz-Bilder liegen im Volume `media` (Sicherung wie Community-Bilder). Kompass pflegen: **Verwaltung → Lebenslagen**.
 - Nur zum Testen (nie in Produktion setzen): `IMPORT_ALLOW_LOCAL=1`, `ANGEBOTE_JOBS=on`, `ANGEBOTE_JOBS_MS`.
+
+## Umzug auf einen anderen Server (F-014)
+
+Alter Server (als root):
+```bash
+curl -fsSL https://raw.githubusercontent.com/dk1jan/kinder-deutschlands/main/deploy/umzug.sh -o /root/umzug.sh
+bash /root/umzug.sh export
+scp /root/kd-umzug-*.tar root@NEUER-SERVER:/root/
+```
+Neuer Server (Docker + Portainer laufen; am besten vorher den Portainer-Token wie bei `update.sh` in `/opt/kinder-deutschlands/portainer.env` ablegen – dann legt das Skript den Stack selbst an):
+```bash
+curl -fsSL https://raw.githubusercontent.com/dk1jan/kinder-deutschlands/main/deploy/umzug.sh -o /root/umzug.sh
+bash /root/umzug.sh import /root/kd-umzug-<Datum>.tar
+```
+Danach: DNS der Domain auf die neue IP, Plesk-Subdomain + nginx-Block (`deploy/plesk-nginx.conf`) + TLS, TURN-Ports 3479 UDP/TCP und 49160–49200 UDP, Verwaltung → Daten → Kartenhintergrund „Jetzt abrufen“. Alten Stack erst stoppen, wenn der neue läuft. Die Umzugsdatei enthält `APP_SECRET` und Passwörter: nur per scp, danach auf beiden Servern `rm -f /root/kd-umzug-*.tar`.
+
+## Datenabruf: „DNS vorübergehend nicht erreichbar“ (F-013)
+Die Abrufe wiederholen sich bei DNS-Aussetzern automatisch (bis zu 5 Versuche, danach nächster Lauf mit wachsender Pause). Hält der Fehler an, prüfen:
+```bash
+docker exec kinder-deutschlands-web-1 node -e "require('dns').lookup('sgx.geodatenzentrum.de',(e,a)=>console.log(e?e.code:a))"
+cat /etc/resolv.conf
+```
+Kommt dort ein Fehler, liegt es am DNS des Servers (nicht an der App).
 
 ## Falsches Zertifikat / „Nicht sicher“
 Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):

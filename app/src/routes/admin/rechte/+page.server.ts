@@ -16,23 +16,23 @@ export const load: PageServerLoad = async (event) => {
 	const [roles, perms, assignments, users, regions] = await Promise.all([
 		sql`select key, name, description from roles order by name`,
 		loadPermissions(sql),
-		sql`select ra.id, ra.role_key, ra.scope_type, ra.scope_id, ra.granted_at, ra.expires_at, ra.note, u.email, u.id as user_id
-			from role_assignments ra join users u on u.id = ra.user_id
-			where ra.revoked_at is null order by u.email, ra.granted_at`,
-		sql`select id, email from users where status = 'active' order by email limit 500`,
+		sql`select ra.id, ra.role_key, ra.scope_type, ra.scope_id, ra.granted_at, ra.expires_at, ra.note, (case when pf.contact_id is null then 'gelöscht' else substr(pf.contact_id,1,3) || '-' || substr(pf.contact_id,4,3) || '-' || substr(pf.contact_id,7,3) end) as cid, u.id as user_id
+			from role_assignments ra join users u on u.id = ra.user_id left join user_profiles pf on pf.user_id = u.id
+			where ra.revoked_at is null order by pf.contact_id, ra.granted_at`,
+		sql`select u.id, (case when pf.contact_id is null then 'gelöscht' else substr(pf.contact_id,1,3) || '-' || substr(pf.contact_id,4,3) || '-' || substr(pf.contact_id,7,3) end) as cid from users u left join user_profiles pf on pf.user_id = u.id where u.status = 'active' order by pf.contact_id limit 2000`,
 		sql`select code, name, level from regions order by code`
 	]);
 	const selected = event.url.searchParams.get('nutzer');
 	let preview = null;
 	if (selected && users.some((u) => u.id === selected)) {
 		const a = await loadAssignments(sql, selected);
-		preview = { email: users.find((u) => u.id === selected)!.email as string, rows: effectivePermissions(a, perms) };
+		preview = { cid: users.find((u) => u.id === selected)!.cid as string, rows: effectivePermissions(a, perms) };
 	}
 	return {
 		roles: roles.map((r) => ({ key: r.key as string, name: r.name as string, description: r.description as string, actions: [...(perms.get(r.key) ?? [])].sort() })),
 		assignments: assignments.map((a) => ({
 			id: a.id as string,
-			email: a.email as string,
+			cid: a.cid as string,
 			userId: a.user_id as string,
 			role: a.role_key as string,
 			scope: a.scope_type === 'global' ? 'überall' : `${a.scope_type}: ${a.scope_id}`,
@@ -40,7 +40,7 @@ export const load: PageServerLoad = async (event) => {
 			expired: !!a.expires_at && new Date(a.expires_at) <= new Date(),
 			note: a.note as string | null
 		})),
-		users: users.map((u) => ({ id: u.id as string, email: u.email as string })),
+		users: users.map((u) => ({ id: u.id as string, cid: u.cid as string })),
 		regions: regions.map((r) => ({ code: r.code as string, name: r.name as string, level: r.level as string })),
 		preview,
 		selected
@@ -64,10 +64,10 @@ export const actions: Actions = {
 		const sql = db();
 		try {
 			if (CRITICAL_ROLES.includes(roleKey)) {
-				const [u] = await sql`select email from users where id = ${userId}`;
+				const [u] = await sql`select (case when pf.contact_id is null then 'gelöscht' else substr(pf.contact_id,1,3) || '-' || substr(pf.contact_id,4,3) || '-' || substr(pf.contact_id,7,3) end) as cid from users u left join user_profiles pf on pf.user_id = u.id where u.id = ${userId}`;
 				if (!u) return fail(400, { error: 'Person nicht gefunden.' });
 				const r = await requestApproval(sql, actor.id, 'role.assign', { userId, roleKey, scopeType, scopeId: scopeType === 'global' ? null : scopeIdRaw || null, expiresAt: expiresAt?.toISOString() ?? null, note },
-					`Rolle „${roleKey}“ an ${u.email} vergeben`, note ?? '', ip);
+					`Rolle „${roleKey}“ an Familien-ID ${u.cid} vergeben`, note ?? '', ip);
 				return { ok: r === 'beantragt' ? 'Beantragt – eine zweite berechtigte Person muss unter Verwaltung → Freigaben zustimmen.' : 'Rolle vergeben (keine zweite berechtigte Person vorhanden – im Protokoll vermerkt).' };
 			}
 			await assignRole(sql, { actorId: actor.id, userId, roleKey, scopeType, scopeId: scopeType === 'global' ? null : scopeIdRaw || null, expiresAt, note, ipHash: ip });
@@ -85,10 +85,10 @@ export const actions: Actions = {
 		const ip = ipHash(event.getClientAddress(), key('ip'));
 		const sql = db();
 		try {
-			const [a] = /^[0-9a-f-]{36}$/i.test(id) ? await sql`select ra.role_key, u.email from role_assignments ra join users u on u.id = ra.user_id where ra.id = ${id} and ra.revoked_at is null` : [];
+			const [a] = /^[0-9a-f-]{36}$/i.test(id) ? await sql`select ra.role_key, (case when pf.contact_id is null then 'gelöscht' else substr(pf.contact_id,1,3) || '-' || substr(pf.contact_id,4,3) || '-' || substr(pf.contact_id,7,3) end) as cid from role_assignments ra join users u on u.id = ra.user_id left join user_profiles pf on pf.user_id = u.id where ra.id = ${id} and ra.revoked_at is null` : [];
 			if (!a) return fail(400, { error: 'Zuweisung nicht gefunden.' });
 			if (CRITICAL_ROLES.includes(a.role_key)) {
-				const r = await requestApproval(sql, actor.id, 'role.revoke', { assignmentId: id }, `Rolle „${a.role_key}“ von ${a.email} entziehen`, reason ?? '', ip);
+				const r = await requestApproval(sql, actor.id, 'role.revoke', { assignmentId: id }, `Rolle „${a.role_key}“ von Familien-ID ${a.cid} entziehen`, reason ?? '', ip);
 				return { ok: r === 'beantragt' ? 'Beantragt – eine zweite berechtigte Person muss unter Verwaltung → Freigaben zustimmen.' : 'Rolle entzogen (keine zweite berechtigte Person vorhanden – im Protokoll vermerkt).' };
 			}
 			await revokeAssignment(sql, actor.id, id, reason, ip);

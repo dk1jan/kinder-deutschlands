@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Verschlüsselung und Geräte: Wiederherstellungsschlüssel, angemeldete Chat-Geräte abmelden.
+	// Verschlüsselung und Geräte: Schlüssel aus dem Passwort (D-066), angemeldete Chat-Geräte abmelden.
 	import { onMount } from 'svelte';
 	import KeyCard from '$lib/components/chat/KeyCard.svelte';
 	import { api, chat, getClient, startChat } from '$lib/chat/client.svelte';
@@ -35,7 +35,7 @@
 <div class="container page narrow">
 	<p><a href="/nachrichten">← Nachrichten</a></p>
 	<h1>Geräte und Schlüssel</h1>
-	<p class="lead">Deine Chats sind Ende-zu-Ende-verschlüsselt: Nur die Geräte der Beteiligten können sie lesen – nicht der Betreiber, nicht die Moderation. Darum gibt es den Wiederherstellungsschlüssel.</p>
+	<p class="lead">Deine Chats sind Ende-zu-Ende-verschlüsselt: Nur die Geräte der Beteiligten können sie lesen – nicht der Betreiber, nicht die Moderation. Der Schlüssel dafür entsteht aus deinem Passwort, direkt auf deinem Gerät.</p>
 	{#if chat.status === 'bereit'}
 		<KeyCard full />
 	{:else}
@@ -63,8 +63,9 @@
 	<section class="card info">
 		<h2>Was du wissen solltest</h2>
 		<ul>
-			<li>Neues Handy: Anmelden, Wiederherstellungsschlüssel eingeben – dann sind frühere Nachrichten wieder lesbar.</li>
-			<li>Ohne Schlüssel funktionieren neue Nachrichten, frühere bleiben auf dem neuen Gerät unlesbar. Wiederherstellen kann sie niemand, auch wir nicht.</li>
+			<li>Neues Handy: einfach mit Passwort anmelden – frühere Nachrichten sind dann auch dort lesbar. Mit Passkey angemeldet? Dann fragt der Chat einmal nach dem Passwort.</li>
+			<li>Passwort ändern: am besten unter „Mein Konto → Sicherheit“ – dann bleibt alles lesbar.</li>
+			<li>Passwort vergessen und kein Gerät mehr angemeldet: Neue Nachrichten funktionieren, frühere bleiben unlesbar. Wiederherstellen kann sie niemand, auch wir nicht. Ein starkes Passwort schützt die Sicherung.</li>
 			<li>Suche in Chats ist nur auf deinem Gerät möglich, nicht auf dem Server.</li>
 			<li>Melden: Du gibst dabei selbst frei, welche Nachrichten die Moderation sehen darf.</li>
 			<li>Benachrichtigungen zeigen nur „Neue Nachricht“, nie den Inhalt. <a href="/profil/benachrichtigungen">Einstellungen</a></li>

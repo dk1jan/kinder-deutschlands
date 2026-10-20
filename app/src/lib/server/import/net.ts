@@ -27,7 +27,8 @@ export function netError(e: unknown, host: string): string {
 export async function fetchRetry(url: string | URL, init: RequestInit & { timeoutMs?: number } = {}, tries = 3, waitMs = 20000, fetchImpl: typeof fetch = fetch): Promise<Response> {
 	const host = new URL(url).host;
 	let last = '';
-	for (let i = 0; i < tries; i++) {
+	let max = tries;
+	for (let i = 0; i < max; i++) {
 		try {
 			const res = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(init.timeoutMs ?? 120000) });
 			if (res.ok) return res;
@@ -35,8 +36,10 @@ export async function fetchRetry(url: string | URL, init: RequestInit & { timeou
 			if (res.status < 500 && res.status !== 429) break;
 		} catch (e) {
 			last = netError(e, host);
+			// DNS-Aussetzer (F-013) halten oft ein paar Minuten an – zwei Versuche mehr mit längerer Pause
+			if (/DNS/.test(last) && max === tries) max = tries + 2;
 		}
-		if (i < tries - 1) await new Promise((r) => setTimeout(r, waitMs * (i + 1)));
+		if (i < max - 1) await new Promise((r) => setTimeout(r, waitMs * (i + 1)));
 	}
 	throw new Error(last);
 }

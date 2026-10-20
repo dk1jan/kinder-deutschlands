@@ -37,6 +37,15 @@
 	const noticeWord = { defekt: 'Etwas ist defekt', gesperrt: 'Gesperrt' } as Record<string, string>;
 
 	let shareMsg = $state('');
+	let kindPick = $state('');
+	function openDetails(id: string) {
+		if (!data.member) return;
+		const d = document.getElementById(id) as HTMLDetailsElement | null;
+		if (d) d.open = true;
+	}
+	function pickKind(k: string) {
+		if (data.member) kindPick = k;
+	}
 	async function share() {
 		const url = location.origin + `/orte/${p.id}`;
 		try {
@@ -109,6 +118,15 @@
 		</div>
 	{/each}
 
+	<section class="join" aria-labelledby="mitmachen">
+		<h2 id="mitmachen">Mitmachen</h2>
+		<div class="joinrow">
+			<a class="jbtn" href={data.member ? '#bewerten' : `/anmelden?weiter=/orte/${p.id}%23erfahrungen`} onclick={() => openDetails('bewerten')}><Icon name="stern" size={22} /><span>{data.exp.mine ? 'Bewertung ändern' : 'Bewerten'}</span></a>
+			<a class="jbtn" href={data.member ? '#foto' : `/anmelden?weiter=/orte/${p.id}%23erfahrungen`} onclick={() => openDetails('foto')}><Icon name="bild" size={22} /><span>Foto hochladen</span></a>
+			<a class="jbtn" href={data.member ? '#melden' : `/anmelden?weiter=/orte/${p.id}%23melden`} onclick={() => pickKind('ergaenzung')}><Icon name="plus" size={22} /><span>Infos ergänzen</span></a>
+		</div>
+	</section>
+
 	<div class="mini">
 		<FamilyMap mode="mini" tiles={data.tiles} center={[p.lon, p.lat]} zoom={16} points={[{ lon: p.lon, lat: p.lat, kind: p.kind }]} label="Lage von {p.name}" />
 	</div>
@@ -159,25 +177,6 @@
 			<p><a href="/community/neu?ort={p.id}&art=frage">Frage zu diesem Ort in der Community stellen</a></p>
 		</section>
 
-		<section class="card src" aria-labelledby="quelle">
-			<h2 id="quelle">Quelle und Aktualität</h2>
-			<p><span class="conf">{CONFIRMATION[p.confirmation]?.label ?? p.confirmation}</span> {CONFIRMATION[p.confirmation]?.text ?? ''}</p>
-			{#each p.sources as s}
-				<div class="source">
-					<p><strong>{s.name}</strong> · {s.operator}</p>
-					<p class="muted small">
-						Lizenz: {#if s.licenseUrl}<a href={s.licenseUrl} rel="noopener" target="_blank">{s.license}</a>{:else}{s.license}{/if} · {s.attribution}<br />
-						Zuerst übernommen {fmt(s.firstSeen)} · zuletzt abgeglichen {fmt(s.lastSeen)} · Datensatz geändert {fmt(s.changed)}
-						{#if s.gone}<br /><strong>In der Quelle nicht mehr vorhanden seit {fmt(s.gone)}.</strong>{/if}
-					</p>
-					{#if s.url}<a class="small" href={s.url} rel="noopener" target="_blank">Eintrag in der Quelle ansehen <Icon name="extern" size={14} /></a>{/if}
-				</div>
-			{:else}
-				<p class="muted small">Von einem Mitglied eingetragen{p.checkedAt ? `, zuletzt geprüft ${fmt(p.checkedAt)}` : ''}.</p>
-			{/each}
-			<p class="muted small">Alle Angaben ohne Gewähr. Wir prüfen keine Sicherheit von Spielgeräten – Bewertungen und Hinweise sind keine Sicherheitszertifikate.</p>
-			{#if data.editor}<p><a class="btn small secondary" href="/admin/daten/ort/{p.id}">In der Datenzentrale bearbeiten</a></p>{/if}
-		</section>
 	</div>
 
 
@@ -205,7 +204,7 @@
 		{#if form && 'photo' in form}<Notice kind="ok">Danke! Dein Foto erscheint nach kurzer Prüfung.</Notice>{/if}
 		{#if form && 'expReported' in form}<Notice kind="ok">Danke, die Moderation schaut es sich an.</Notice>{/if}
 		{#if data.member}
-			<details class="give" open={!!form && 'expError' in form}>
+			<details class="give" id="bewerten" open={!!form && 'expError' in form}>
 				<summary>{data.exp.mine ? 'Deine Bewertung ändern' : 'Bewerten'}</summary>
 				<form method="POST" action="?/bewerten" class="rform">
 					<fieldset class="starpick"><legend>Sterne</legend>
@@ -216,7 +215,7 @@
 				</form>
 				{#if data.exp.mine}<form method="POST" action="?/bewertungLoeschen"><button class="btn small secondary">Meine Bewertung löschen</button></form>{/if}
 			</details>
-			<details class="give">
+			<details class="give" id="foto">
 				<summary>Foto hinzufügen{data.exp.pendingPhotos ? ` (${data.exp.pendingPhotos} in Prüfung)` : ''}</summary>
 				<form method="POST" action="?/foto" enctype="multipart/form-data" class="rform">
 					<input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/avif" required />
@@ -232,7 +231,7 @@
 	</section>
 
 	<section class="card report" id="melden" aria-labelledby="melden-h">
-		<h2 id="melden-h">Etwas stimmt nicht?</h2>
+		<h2 id="melden-h">Infos ergänzen oder korrigieren</h2>
 		{#if form && 'reported' in form && form.reported}
 			<Notice kind="ok" title="Danke!">Deine Meldung ist bei der Redaktion. Defekte und Sperrungen zeigen wir sofort als unbestätigten Hinweis an.</Notice>
 		{:else if data.member}
@@ -242,7 +241,7 @@
 					<legend>Was ist los?</legend>
 					<div class="radios">
 						{#each Object.entries(REPORT_KINDS) as [key, label]}
-							<label class="radio"><input type="radio" name="kind" value={key} required /><span>{label}</span></label>
+							<label class="radio"><input type="radio" name="kind" value={key} required checked={kindPick === key} /><span>{label}</span></label>
 						{/each}
 					</div>
 				</fieldset>
@@ -257,9 +256,57 @@
 			<p>Zum Melden bitte <a href="/anmelden?weiter=/orte/{p.id}%23melden">anmelden</a>. So können wir Missbrauch vermeiden.</p>
 		{/if}
 	</section>
+
+	<section class="card src" aria-labelledby="quelle">
+		<h2 id="quelle">Quelle und Aktualität</h2>
+		<p><span class="conf">{CONFIRMATION[p.confirmation]?.label ?? p.confirmation}</span> {CONFIRMATION[p.confirmation]?.text ?? ''}</p>
+		{#each p.sources as s}
+			<div class="source">
+				<p><strong>{s.name}</strong> · {s.operator}</p>
+				<p class="muted small">
+					Lizenz: {#if s.licenseUrl}<a href={s.licenseUrl} rel="noopener" target="_blank">{s.license}</a>{:else}{s.license}{/if} · {s.attribution}<br />
+					Zuerst übernommen {fmt(s.firstSeen)} · zuletzt abgeglichen {fmt(s.lastSeen)} · Datensatz geändert {fmt(s.changed)}
+					{#if s.gone}<br /><strong>In der Quelle nicht mehr vorhanden seit {fmt(s.gone)}.</strong>{/if}
+				</p>
+				{#if s.url}<a class="small" href={s.url} rel="noopener" target="_blank">Eintrag in der Quelle ansehen <Icon name="extern" size={14} /></a>{/if}
+			</div>
+		{:else}
+			<p class="muted small">Von einem Mitglied eingetragen{p.checkedAt ? `, zuletzt geprüft ${fmt(p.checkedAt)}` : ''}.</p>
+		{/each}
+		<p class="muted small">Alle Angaben ohne Gewähr. Wir prüfen keine Sicherheit von Spielgeräten – Bewertungen und Hinweise sind keine Sicherheitszertifikate.</p>
+		{#if data.editor}<p><a class="btn small secondary" href="/admin/daten/ort/{p.id}">In der Datenzentrale bearbeiten</a></p>{/if}
+	</section>
 </article>
 
 <style>
+	.join {
+		margin: var(--sp-3) 0;
+	}
+	.join h2 {
+		margin: 0 0 var(--sp-2);
+		font-size: var(--fs-m);
+	}
+	.joinrow {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--sp-2);
+	}
+	.jbtn {
+		display: grid;
+		justify-items: center;
+		gap: 4px;
+		padding: var(--sp-3) var(--sp-2);
+		background: var(--yellow);
+		color: var(--navy);
+		border-radius: var(--radius-m);
+		font-weight: 700;
+		font-size: var(--fs-s);
+		text-align: center;
+		text-decoration: none;
+	}
+	.jbtn:hover span {
+		text-decoration: underline;
+	}
 	.ort {
 		max-width: var(--wide);
 		margin: 0 auto;

@@ -125,6 +125,21 @@ export const mails = {
 		subject: 'Neues Passwort festlegen',
 		text: `Hallo,\n\nüber diesen Link legst du ein neues Passwort fest:\n\n${link}\n\nDer Link gilt 1 Stunde und funktioniert nur einmal. Danach werden alle angemeldeten Geräte abgemeldet.\n\nHast du das nicht angefordert, ignoriere diese E-Mail. Dein Passwort bleibt dann unverändert.${SIGN}`
 	}),
+	changeConfirm: (to: string, link: string): Mail => ({
+		to,
+		subject: 'Neue E-Mail-Adresse bestätigen',
+		text: `Hallo,\n\ndu möchtest diese Adresse für dein Konto bei Kinder Deutschlands verwenden. Bitte bestätige das hier:\n\n${link}\n\nDer Link gilt 24 Stunden. Warst du das nicht, ignoriere diese E-Mail – es ändert sich nichts.${SIGN}`
+	}),
+	changeTaken: (to: string): Mail => ({
+		to,
+		subject: 'Diese Adresse gehört schon zu einem Konto',
+		text: `Hallo,\n\njemand wollte diese E-Mail-Adresse für ein Konto bei Kinder Deutschlands eintragen. Sie gehört aber schon zu einem Konto, deshalb ändert sich nichts.\n\nWarst du das nicht, musst du nichts tun.${SIGN}`
+	}),
+	changeNotice: (to: string): Mail => ({
+		to,
+		subject: 'Deine E-Mail-Adresse wurde geändert',
+		text: `Hallo,\n\ndie E-Mail-Adresse deines Kontos bei Kinder Deutschlands wurde soeben geändert. Diese Adresse wird nicht mehr verwendet.\n\nWarst du das nicht? Melde dich sofort an (${appUrl()}/anmelden), ändere dein Passwort und melde alle Geräte ab – oder schreib an das Impressum.${SIGN}`
+	}),
 	test: (to: string): Mail => ({
 		to,
 		subject: 'Test: E-Mail-Versand funktioniert',

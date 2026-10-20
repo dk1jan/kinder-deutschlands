@@ -50,7 +50,7 @@ export const actions: Actions = {
 			return fail(500, { error: `Versand fehlgeschlagen: ${describeMailError(e)}` });
 		}
 		await audit(db(), { actorId: user.id, action: 'mail.test' });
-		return { ok: `Test-E-Mail an ${user.email} verschickt. Bitte Posteingang und Spam-Ordner prüfen.` };
+		return { ok: "Test-E-Mail an deine eigene Adresse verschickt. Bitte Posteingang und Spam-Ordner prüfen." };
 	},
 	luftbild: async (event) => {
 		const user = await requireAction(event, 'settings.manage');

@@ -1,98 +1,81 @@
 <script lang="ts">
-	// Wiederherstellungsschlüssel: einrichten (erstes Gerät), Gerät freischalten, oder bei Verlust neu einrichten.
+	// Chat-Schlüssel aus dem Passwort (D-066): Normalerweise unsichtbar – das Gerät entsperrt sich beim Anmelden selbst.
+	// Sichtbar nur, wenn einmal das Passwort nötig ist (z. B. nach Passkey-Anmeldung) oder es sich geändert hat.
 	import Icon from '$lib/components/Icon.svelte';
-	import { chat, newRecoveryKey, resetKeys, setupKeys, unlockKeys } from '$lib/chat/client.svelte';
+	import { chat, enterPassword, startFresh, unlockKeys, useOldPassword } from '$lib/chat/client.svelte';
 
 	let { full = false }: { full?: boolean } = $props();
 	let busy = $state(false);
 	let error = $state('');
-	let shown = $state<string | null>(null);
-	let saved = $state(false);
-	let input = $state('');
-	let confirmReset = $state(false);
-	let copied = $state(false);
+	let pw = $state('');
+	let oldPw = $state('');
+	let legacy = $state('');
+	let confirmFresh = $state(false);
+	let showLegacy = $state(false);
 
-	async function run(fn: () => Promise<string | boolean>) {
+	async function run(fn: () => Promise<boolean | void>, wrong: string) {
 		busy = true;
 		error = '';
 		try {
 			const r = await fn();
-			if (typeof r === 'string') {
-				shown = r;
-				saved = false;
-			} else if (!r) error = 'Der Schlüssel passt nicht. Bitte genau so eingeben, wie er notiert ist (Leerzeichen sind egal).';
+			if (r === false) error = wrong;
 		} catch (e) {
 			error = (e as Error).message || 'Das hat nicht geklappt.';
 		} finally {
 			busy = false;
 		}
 	}
-
-	async function copy() {
-		if (!shown) return;
-		await navigator.clipboard?.writeText(shown);
-		copied = true;
-		setTimeout(() => (copied = false), 2000);
-	}
-	function download() {
-		if (!shown) return;
-		const text = `Kinder Deutschlands – Wiederherstellungsschlüssel für deine Chats\nErstellt am ${new Date().toLocaleString('de-DE')}\n\n${shown}\n\nGut aufbewahren (z. B. ausgedruckt oder im Passwort-Manager). Nicht weitergeben.\n`;
-		const a = document.createElement('a');
-		a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-		a.download = 'kinder-deutschlands-chat-schluessel.txt';
-		a.click();
-		setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-	}
 </script>
 
-{#if shown}
+{#if chat.keys === 'arbeitet'}
+	<p class="working" role="status"><Icon name="schloss" size={18} /> Verschlüsselung wird eingerichtet …</p>
+{:else if chat.keys === 'passwort'}
 	<section class="keycard card" aria-labelledby="kc-t">
-		<h2 id="kc-t"><Icon name="schloss" /> Dein Wiederherstellungsschlüssel</h2>
-		<p>Damit liest du deine Chats auf einem neuen Gerät. Er wird <strong>nur jetzt</strong> angezeigt. Wir können ihn nicht wiederherstellen.</p>
-		<p class="key" aria-label="Wiederherstellungsschlüssel">{shown}</p>
-		<div class="acts">
-			<button class="btn small" type="button" onclick={copy}>{copied ? 'Kopiert' : 'Kopieren'}</button>
-			<button class="btn small secondary" type="button" onclick={download}>Als Datei speichern</button>
-			<button class="btn small secondary" type="button" onclick={() => print()}>Drucken</button>
-		</div>
-		<label class="check"><input type="checkbox" bind:checked={saved} /> Ich habe den Schlüssel sicher aufbewahrt.</label>
-		<button class="btn signal" type="button" disabled={!saved} onclick={() => (shown = null)}>Fertig</button>
-	</section>
-{:else if chat.keys === 'neu'}
-	<section class="keycard card" aria-labelledby="kc-t">
-		<h2 id="kc-t"><Icon name="schloss" /> Chats auf allen Geräten lesen</h2>
-		<p>Deine Nachrichten sind Ende-zu-Ende-verschlüsselt. Erstelle einmal einen Wiederherstellungsschlüssel – damit kannst du sie auch auf einem neuen Handy lesen.</p>
-		{#if error}<p class="err" role="alert">{error}</p>{/if}
-		<button class="btn" type="button" disabled={busy} onclick={() => run(setupKeys)}>{busy ? 'Einen Moment …' : 'Schlüssel erstellen'}</button>
-	</section>
-{:else if chat.keys === 'gesperrt'}
-	<section class="keycard card" aria-labelledby="kc-t">
-		<h2 id="kc-t"><Icon name="schloss" /> Dieses Gerät freischalten</h2>
-		<p>Gib deinen Wiederherstellungsschlüssel ein, um frühere Nachrichten hier zu lesen. Neue Nachrichten funktionieren auch ohne.</p>
-		<form onsubmit={(e) => { e.preventDefault(); run(() => unlockKeys(input)); }}>
-			<label for="kc-in" class="visually-hidden">Wiederherstellungsschlüssel</label>
-			<input id="kc-in" bind:value={input} autocomplete="off" spellcheck="false" placeholder="EsTc 1234 …" required />
+		<h2 id="kc-t"><Icon name="schloss" /> Chat entsperren</h2>
+		<p>Gib einmal dein Passwort für Kinder Deutschlands ein. Damit entschlüsselt dieses Gerät deine Chats – auch ältere Nachrichten. Danach musst du es hier nicht mehr eingeben.</p>
+		<form onsubmit={(e) => { e.preventDefault(); run(() => enterPassword(pw), 'Das Passwort passt nicht. Hast du es kürzlich geändert? Dann das neue nehmen.'); }}>
+			<label for="kc-pw">Passwort</label>
+			<input id="kc-pw" type="password" bind:value={pw} autocomplete="current-password" required />
 			{#if error}<p class="err" role="alert">{error}</p>{/if}
-			<button class="btn" type="submit" disabled={busy || input.trim().length < 20}>{busy ? 'Prüfe …' : 'Freischalten'}</button>
+			<button class="btn" type="submit" disabled={busy || !pw}>{busy ? 'Einen Moment …' : 'Entsperren'}</button>
 		</form>
-		{#if !confirmReset}
-			<button class="link" type="button" onclick={() => (confirmReset = true)}>Schlüssel verloren?</button>
+		<p class="muted small">Dein Passwort verlässt dabei das Gerät nicht – daraus wird hier nur der Schlüssel berechnet.</p>
+	</section>
+{:else if chat.keys === 'abweichend'}
+	<section class="keycard card" aria-labelledby="kc-t">
+		<h2 id="kc-t"><Icon name="schloss" /> Passwort geändert – ältere Nachrichten behalten?</h2>
+		<p>Deine Chat-Sicherung ist noch mit deinem <strong>vorherigen</strong> Passwort geschützt (kein anderes Gerät war seitdem online). Gib es einmal ein, dann ist alles wieder da.</p>
+		<form onsubmit={(e) => { e.preventDefault(); run(() => useOldPassword(oldPw), 'Das passt nicht zu deiner Chat-Sicherung.'); }}>
+			<label for="kc-old">Vorheriges Passwort</label>
+			<input id="kc-old" type="password" bind:value={oldPw} autocomplete="off" required />
+			{#if error}<p class="err" role="alert">{error}</p>{/if}
+			<button class="btn" type="submit" disabled={busy || !oldPw}>{busy ? 'Prüfe …' : 'Entsperren'}</button>
+		</form>
+		{#if !confirmFresh}
+			<button class="link" type="button" onclick={() => (confirmFresh = true)}>Ich weiß es nicht mehr</button>
 		{:else}
 			<div class="warn">
-				<p><strong>Neu einrichten?</strong> Frühere Nachrichten bleiben auf diesem und neuen Geräten unlesbar. Auf Geräten, die schon freigeschaltet sind, bleiben sie lesbar. Deine Kontakte sehen, dass sich deine Sicherheitsschlüssel geändert haben.</p>
+				<p><strong>Neu beginnen?</strong> Ältere Nachrichten bleiben auf neuen Geräten unlesbar. Neue Nachrichten funktionieren sofort. Deine Kontakte sehen, dass sich deine Sicherheitsschlüssel geändert haben.</p>
 				<div class="acts">
-					<button class="btn small danger" type="button" disabled={busy} onclick={() => run(resetKeys)}>Neu einrichten</button>
-					<button class="btn small secondary" type="button" onclick={() => (confirmReset = false)}>Abbrechen</button>
+					<button class="btn small danger" type="button" disabled={busy} onclick={() => run(startFresh, '')}>Neu beginnen</button>
+					<button class="btn small secondary" type="button" onclick={() => (confirmFresh = false)}>Abbrechen</button>
 				</div>
 			</div>
+		{/if}
+		{#if !showLegacy}
+			<button class="link" type="button" onclick={() => (showLegacy = true)}>Ich habe noch einen Wiederherstellungsschlüssel (frühere Version)</button>
+		{:else}
+			<form onsubmit={(e) => { e.preventDefault(); run(() => unlockKeys(legacy), 'Der Schlüssel passt nicht.'); }}>
+				<label for="kc-in">Wiederherstellungsschlüssel</label>
+				<input id="kc-in" class="mono" bind:value={legacy} autocomplete="off" spellcheck="false" placeholder="EsTc 1234 …" required />
+				<button class="btn small secondary" type="submit" disabled={busy || legacy.trim().length < 20}>Freischalten</button>
+			</form>
 		{/if}
 	</section>
 {:else if full && chat.keys === 'ok'}
 	<section class="keycard card ok" aria-labelledby="kc-t">
 		<h2 id="kc-t"><Icon name="ok" /> Verschlüsselung eingerichtet</h2>
-		<p>Dieses Gerät ist freigeschaltet. Mit deinem Wiederherstellungsschlüssel kannst du weitere Geräte freischalten.</p>
-		{#if error}<p class="err" role="alert">{error}</p>{/if}
-		<button class="btn small secondary" type="button" disabled={busy} onclick={() => run(newRecoveryKey)}>Neuen Schlüssel erstellen (alter wird ungültig)</button>
+		<p>Geschützt mit deinem Passwort. Neue Geräte entsperren sich beim Anmelden selbst – ohne Code. Ändere dein Passwort am besten unter „Mein Konto → Sicherheit“, dann bleibt alles lesbar.</p>
 	</section>
 {/if}
 
@@ -116,33 +99,26 @@
 	p {
 		margin: 0;
 	}
-	.key {
-		font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-		font-size: var(--fs-l);
-		letter-spacing: 0.04em;
-		word-spacing: 0.3em;
-		padding: var(--sp-4);
-		border-radius: var(--radius-s);
-		background: var(--surface-2);
-		user-select: all;
-		line-height: 1.6;
+	.working {
+		display: flex;
+		gap: var(--sp-2);
+		align-items: center;
+		color: var(--ink-2);
+		margin-bottom: var(--sp-4);
 	}
 	.acts {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--sp-2);
 	}
-	.check {
-		display: flex;
-		gap: var(--sp-2);
-		align-items: center;
-		min-height: 44px;
-	}
 	form {
 		display: grid;
-		gap: var(--sp-3);
+		gap: var(--sp-2);
 	}
-	input {
+	label {
+		font-weight: 650;
+	}
+	.mono {
 		font-family: ui-monospace, Menlo, monospace;
 	}
 	.err {
@@ -165,5 +141,8 @@
 		padding-left: var(--sp-3);
 		display: grid;
 		gap: var(--sp-2);
+	}
+	.small {
+		font-size: var(--fs-s);
 	}
 </style>

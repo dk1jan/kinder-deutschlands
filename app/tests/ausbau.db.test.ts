@@ -149,7 +149,7 @@ d('Ausbau (Datenbank)', async () => {
 		expect(await F.tagFor(sql, { protectedGroup: false })).toBe('kd-21');
 		expect(await F.tagFor(sql, { protectedGroup: true })).toBeNull();
 		const v = await F.getAffiliate(sql);
-		expect(v.terms_checked_by).toBe('op1@example.org');
+		expect(v.terms_checked_by).toMatch(/^[0-9A-Z]{3}-[0-9A-Z]{3}-[0-9A-Z]{3}$/); // Familien-ID, nie E-Mail (D-060)
 	});
 
 	it('Rechtevergabe ohne kritische Rolle bleibt direkt', async () => {

@@ -71,6 +71,7 @@ export async function exportAccount(sql: Sql, userId: string) {
 		einladungen_eigene: await sql`select i.title, i.message, i.starts_at, i.place_text, i.status, i.created_at,
 			(select json_agg(json_build_object('name', r.name, 'antwort', r.answer, 'kinder', r.kids, 'erwachsene', r.adults, 'notiz', r.note)) from invitation_rsvps r where r.invitation_id = i.id) as antworten
 			from invitations i where i.organizer_id = ${userId}`,
+		familie: await sql`select kind, status, created_at, confirmed_at from family_links where ${userId} in (user_a, user_b)`,
 		hinweise_vorgeschlagen: await sql`select kind, title, body, region_code, status, created_at from notices where created_by = ${userId} and source_kind = 'mitglied' and status <> 'entfernt'`,
 		kinderwagenrouten: await sql`select title, description, distance_m, status, created_at from stroller_routes where created_by = ${userId} and status <> 'entfernt'`,
 		routen_erfahrungen: await sql`select r.title, x.kind, x.text, x.created_at from route_reports x join stroller_routes r on r.id = x.route_id where x.user_id = ${userId}`,
@@ -113,6 +114,7 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from sessions where user_id = ${userId}`;
 		await tx`delete from email_tokens where user_id = ${userId}`;
 		await tx`delete from place_favorites where user_id = ${userId}`;
+		await tx`delete from family_links where ${userId} in (user_a, user_b)`;
 		// Noch nicht freigegebene Vorschläge verschwinden, freigegebene Orte bleiben ohne Personenbezug
 		await tx`delete from places where created_by = ${userId} and status = 'pruefung'`;
 		await tx`update places set created_by = null where created_by = ${userId}`;

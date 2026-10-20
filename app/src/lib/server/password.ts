@@ -14,10 +14,15 @@ function scrypt(pw: string, salt: Buffer, opts: ScryptOptions): Promise<Buffer> 
 }
 
 export const PASSWORD_MIN = 12;
+const WEAK = ['passwort', 'password', '123456', 'qwertz', 'qwerty', 'abcdef', 'kinder', 'deutschland', 'hallo', 'geheim'];
 
 export function passwordProblem(pw: string): string | null {
 	if (pw.length < PASSWORD_MIN) return `Das Passwort braucht mindestens ${PASSWORD_MIN} Zeichen.`;
 	if (pw.length > 256) return 'Das Passwort darf höchstens 256 Zeichen lang sein.';
+	// Es schützt auch die Chat-Sicherung (D-066) – offensichtliche Muster ablehnen
+	if (new Set(pw.toLowerCase()).size < 5) return 'Das Passwort ist zu einfach (zu wenige verschiedene Zeichen).';
+	const lower = pw.toLowerCase();
+	if (WEAK.some((w) => lower.includes(w)) && new Set(lower.replace(new RegExp(WEAK.join('|'), 'g'), '')).size < 4) return 'Das Passwort ist zu leicht zu erraten. Nimm z. B. drei, vier zufällige Wörter.';
 	return null;
 }
 

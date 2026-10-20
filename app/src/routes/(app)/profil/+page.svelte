@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { clearSecret } from '$lib/chat/secret';
 	import IdTag from '$lib/components/IdTag.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import Pram from '$lib/components/art/Pram.svelte';
@@ -71,13 +72,17 @@
 				<strong>Meine Einrichtungen</strong>
 				<span>Für Familienzentren, Vereine, Kursanbieter</span>
 			</a>
+			<a href="/profil/familie" class="tile">
+				<strong>Partnerschaft & Familie</strong>
+				<span>Konten verbinden, gemeinsam erreichbar</span>
+			</a>
 			<a href="/profil/qr" class="tile">
 				<strong>QR-Codes und Wimpel</strong>
 				<span>Drucken, befristete Codes, alte Codes sperren</span>
 			</a>
 			<a href="/profil/sicherheit" class="tile">
 				<strong>Sicherheit</strong>
-				<span>{m.counts.passkeys ? `${m.counts.passkeys} Passkey${m.counts.passkeys > 1 ? 's' : ''}` : 'Passkey einrichten'}{m.counts.totp ? ', Zwei-Faktor an' : ''}, Geräte</span>
+				<span>E-Mail-Adresse, {m.counts.passkeys ? `${m.counts.passkeys} Passkey${m.counts.passkeys > 1 ? 's' : ''}` : 'Passkey einrichten'}{m.counts.totp ? ', Zwei-Faktor an' : ''}, Geräte</span>
 			</a>
 			<a href="/profil/benachrichtigungen" class="tile">
 				<strong>Benachrichtigungen</strong>
@@ -85,7 +90,7 @@
 			</a>
 			<a href="/nachrichten/sicherheit" class="tile">
 				<strong>Chat-Verschlüsselung</strong>
-				<span>Wiederherstellungsschlüssel, Chat-Geräte</span>
+				<span>Verschlüsselung, Chat-Geräte</span>
 			</a>
 			<a href="/profil/darstellung" class="tile">
 				<strong>Darstellung</strong>
@@ -103,7 +108,7 @@
 			{/if}
 		</nav>
 
-		<form method="POST" action="?/abmelden">
+		<form method="POST" action="?/abmelden" onsubmit={() => clearSecret()}>
 			<button class="btn secondary" type="submit">Abmelden</button>
 		</form>
 	</div>

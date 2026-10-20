@@ -3,6 +3,8 @@
 	import { invalidateAll } from '$app/navigation';
 	import Notice from '$lib/components/Notice.svelte';
 	import { passkeyRegister, passkeySupported } from '$lib/passkey';
+	import { enhance } from '$app/forms';
+	import { passwordChanged } from '$lib/chat/client.svelte';
 	let { data, form } = $props();
 	let supported = $state(false);
 	let pkName = $state('');
@@ -106,10 +108,30 @@
 		{/if}
 	</section>
 
+	<section class="block" aria-labelledby="em">
+		<h2 id="em">E-Mail-Adresse</h2>
+		<p>Aktuell: <strong>{data.email}</strong></p>
+		<p class="muted small">Nur du siehst deine Adresse – auch die Verwaltung nicht. Wir nutzen sie für Anmeldung, Bestätigungen und – wenn du willst – den Familienradar.</p>
+		{#if form?.mailError}<Notice kind="error">{form.mailError}</Notice>{/if}
+		{#if form?.mailOk}<Notice kind="ok">{form.mailOk}</Notice>{/if}
+		<form method="POST" action="?/emailAendern" class="pwform">
+			<div class="field"><label for="newmail">Neue E-Mail-Adresse</label><input id="newmail" name="email" type="email" autocomplete="email" required /></div>
+			<div class="field"><label for="mailpw">Passwort zur Bestätigung</label><input id="mailpw" name="current" type="password" autocomplete="current-password" required /></div>
+			<button class="btn secondary" type="submit">Adresse ändern</button>
+		</form>
+	</section>
+
 	<section class="block" aria-labelledby="pw">
 		<h2 id="pw">Passwort ändern</h2>
 		{#if form?.pwError}<Notice kind="error">{form.pwError}</Notice>{/if}
-		<form method="POST" action="?/passwort" class="pwform">
+		<!-- Nach dem Wechsel die Chat-Sicherung gleich mit dem neuen Passwort verpacken (D-066) -->
+		<form method="POST" action="?/passwort" class="pwform" use:enhance={({ formData }) => {
+			const next = String(formData.get('password') ?? '');
+			return async ({ result, update }) => {
+				if (result.type === 'success' && result.data && 'ok' in result.data) await passwordChanged(next).catch(() => {});
+				await update();
+			};
+		}}>
 			<div class="field"><label for="current">Aktuelles Passwort</label><input id="current" name="current" type="password" autocomplete="current-password" required /></div>
 			<div class="field"><label for="password">Neues Passwort</label><span class="hint">Mindestens {data.passwordMin} Zeichen.</span><input id="password" name="password" type="password" autocomplete="new-password" required /></div>
 			<div class="field"><label for="password2">Neues Passwort wiederholen</label><input id="password2" name="password2" type="password" autocomplete="new-password" required /></div>

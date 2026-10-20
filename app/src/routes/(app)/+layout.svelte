@@ -4,6 +4,8 @@
 	import Pennant from '$lib/components/Pennant.svelte';
 	import CallOverlay from '$lib/components/chat/CallOverlay.svelte';
 	import { onMount } from 'svelte';
+	import { unreadChats } from '$lib/chat/client.svelte';
+	import { inArea } from '$lib/areas';
 
 	let { children, data } = $props();
 
@@ -18,20 +20,27 @@
 		else setTimeout(() => void go(), 1500);
 	});
 
-	// Fünf Hauptziele (DECISIONS D-007). Veranstaltungen, Marktplatz und Hilfe laufen über „Entdecken“.
+	// Hauptziele (D-069, ersetzt D-007): vier feste Ziele + „Mehr“ mit allen Bereichen. Konto oben über „Mein Konto“.
 	const nav = [
 		{ href: '/', label: 'Entdecken', icon: 'entdecken' },
 		{ href: '/karte', label: 'Karte', icon: 'karte' },
 		{ href: '/community', label: 'Community', icon: 'community' },
 		{ href: '/nachrichten', label: 'Nachrichten', icon: 'nachrichten' },
-		{ href: '/profil', label: 'Profil', icon: 'profil' }
+		{ href: '/mehr', label: 'Mehr', icon: 'liste' }
 	];
+	const chats = $derived(unreadChats());
+	const bellCount = $derived((data.unread ?? 0) + chats);
+	const bellLabel = $derived(
+		bellCount ? [data.unread ? `${data.unread} neue Mitteilungen` : '', chats ? `${chats} ungelesene Chats` : ''].filter(Boolean).join(', ') : 'Mitteilungen'
+	);
 
 	// Vollflächige Seiten (Karte, Unterhaltung) ohne Fußzeile
 	const fullscreen = $derived(page.url.pathname === '/karte' || page.url.pathname.startsWith('/nachrichten/chat/'));
 
 	function active(href: string) {
 		const p = page.url.pathname;
+		if (href === '/mehr') return inArea(p);
+		if (href === '/nachrichten' && p.startsWith('/nachrichten/treffen')) return false;
 		return href === '/' ? p === '/' : p === href || p.startsWith(href + '/');
 	}
 </script>
@@ -54,8 +63,8 @@
 				<a class="admin" href="/admin"><Icon name="schild" size={18} /><span>Verwaltung</span></a>
 			{/if}
 			{#if data.user}
-				<a class="bell" href="/profil/mitteilungen" aria-label={data.unread ? `${data.unread} neue Mitteilungen` : 'Mitteilungen'}>
-					<Icon name="hinweis" size={22} />{#if data.unread}<span class="dot">{data.unread > 9 ? '9+' : data.unread}</span>{/if}
+				<a class="bell" href="/profil/mitteilungen" aria-label={bellLabel}>
+					<Icon name="hinweis" size={22} />{#if bellCount}<span class="dot">{bellCount > 9 ? '9+' : bellCount}</span>{/if}
 				</a>
 				<a class="btn small secondary" href="/profil">Mein Konto</a>
 			{:else}
@@ -86,7 +95,7 @@
 			<li>
 				<a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>
 					<span class="pin" aria-hidden="true"></span>
-					<Icon name={item.icon} />
+					<Icon name={item.icon} />{#if item.href === '/nachrichten' && chats}<span class="cdot">{chats > 9 ? '9+' : chats}<span class="sr"> ungelesene Chats</span></span>{/if}
 					<span class="label">{item.label}</span>
 				</a>
 			</li>
@@ -209,6 +218,30 @@
 	}
 	.foot a {
 		color: var(--ink-2);
+	}
+
+	.cdot {
+		position: absolute;
+		top: 6px;
+		left: calc(50% + 6px);
+		min-width: 18px;
+		height: 18px;
+		padding: 0 5px;
+		border-radius: 999px;
+		background: #b3261e;
+		color: #fff;
+		font-size: 0.7rem;
+		font-weight: 800;
+		line-height: 18px;
+		text-align: center;
+	}
+	.sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
 	}
 
 	/* Mobil: Leiste unten, einhändig */

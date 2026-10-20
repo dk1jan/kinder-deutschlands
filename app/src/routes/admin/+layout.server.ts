@@ -24,5 +24,6 @@ export const load: LayoutServerLoad = async (event) => {
 		userCan(sql, user.id, 'routes.edit')
 	]);
 	const approver = rights || (await userCan(sql, user.id, 'users.suspend'));
-	return { adminEmail: user.email, may: { users, rights, audit, settings, data, moderation, groups, knowledge, orgs, notices, compass, approvals: approver, stats, affiliate, routes }, openApprovals: approvals };
+	const [me] = await sql`select contact_id from user_profiles where user_id = ${user.id}`;
+	return { adminId: me ? `${me.contact_id.slice(0, 3)}-${me.contact_id.slice(3, 6)}-${me.contact_id.slice(6)}` : '', may: { users, rights, audit, settings, data, moderation, groups, knowledge, orgs, notices, compass, approvals: approver, stats, affiliate, routes }, openApprovals: approvals };
 };

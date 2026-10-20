@@ -25,7 +25,7 @@
 		<div class="field">
 			<label for="user_id">Konto</label>
 			<select id="user_id" name="user_id" required>
-				{#each data.users as u}<option value={u.id} selected={u.id === data.selected}>{u.email}</option>{/each}
+				{#each data.users as u}<option value={u.id} selected={u.id === data.selected}>{u.cid}</option>{/each}
 			</select>
 		</div>
 		<div class="field">
@@ -67,7 +67,7 @@
 
 {#if data.preview}
 	<section aria-labelledby="vorschau" class="block">
-		<h2 id="vorschau">Effektive Rechte: {data.preview.email}</h2>
+		<h2 id="vorschau">Effektive Rechte: Familien-ID {data.preview.cid}</h2>
 		{#if data.preview.rows.length === 0}
 			<p>Keine Rollen – normale Mitgliedsrechte.</p>
 		{:else}
@@ -92,7 +92,7 @@
 			<tbody>
 				{#each data.assignments as a}
 					<tr>
-						<td><a href="?nutzer={a.userId}">{a.email}</a></td>
+						<td><a href="?nutzer={a.userId}">{a.cid}</a></td>
 						<td>{a.role}</td>
 						<td>{a.scope}</td>
 						<td>{a.expires}{a.expired ? ' (abgelaufen)' : ''}</td>

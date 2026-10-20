@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
+	import { unreadChats } from '$lib/chat/client.svelte';
 	let { data } = $props();
+	const chats = $derived(unreadChats());
 	const fmt = (d: string | Date) => new Date(d).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
@@ -9,6 +11,7 @@
 <div class="page">
 	<a class="back" href="/profil"><Icon name="zurueck" size={18} />Profil</a>
 	<h1>Mitteilungen</h1>
+	{#if chats}<a class="chats" href="/nachrichten"><Icon name="nachrichten" size={20} /><span><strong>{chats === 1 ? '1 Unterhaltung' : `${chats} Unterhaltungen`}</strong> mit neuen Nachrichten</span></a>{/if}
 	{#each data.restrictions as r}
 		<div class="restr"><strong>{r.kind === 'stumm' ? `Eingeschränkt bis ${fmt(r.until)}` : 'Verwarnung'}</strong><span>{r.reason}</span><small>{fmt(r.created_at)}</small></div>
 	{/each}
@@ -28,6 +31,18 @@
 </div>
 
 <style>
+	.chats {
+		display: flex;
+		gap: var(--sp-2);
+		align-items: center;
+		padding: var(--sp-3) var(--sp-4);
+		margin-bottom: var(--sp-3);
+		background: var(--surface);
+		border-left: 6px solid #b3261e;
+		border-radius: var(--radius-m);
+		color: var(--ink);
+		text-decoration: none;
+	}
 	.page {
 		max-width: 44rem;
 		margin: 0 auto;

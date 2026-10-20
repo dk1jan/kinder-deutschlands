@@ -27,7 +27,9 @@ async function fetchOsm(src: SourceRow, signal: AbortSignal) {
 	const selector = src.config.selector as Selector;
 	const areas = (src.config.areas as string[] | undefined) ?? ['DE-HB'];
 	const out = [];
-	for (const iso of areas) {
+	for (const [i, iso] of areas.entries()) {
+		// Overpass schonen: kurze Pause zwischen den Ländern (F-015, ganz Deutschland)
+		if (i) await new Promise((r) => setTimeout(r, Number(process.env.OVERPASS_PAUSE_MS ?? 5000)));
 		const els = await overpass(buildQuery(selector, iso), { userAgent: userAgent(), endpoints: overpassEndpoints(), signal });
 		out.push(...toRecords(selector, els));
 	}

@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireAction } from '$lib/server/guard';
 import { isUuid } from '$lib/server/contacts';
-import { ACTIONS, caseDetail, decide, saveNote, takeCase, type ModAction } from '$lib/server/community/moderation';
+import { ACTIONS, caseDetail, decide, saveNote, takeCase, type ModAction, messageCaseAuthor } from '$lib/server/community/moderation';
 import { REASON_LABEL } from '$lib/server/community/automod';
 import { PostError } from '$lib/server/community/posts';
 
@@ -40,6 +40,11 @@ export const actions: Actions = {
 	uebernehmen: async (event) => {
 		const user = await requireAction(event, 'admin.access');
 		return guarded(() => takeCase(db(), user.id, event.params.id), 'Fall übernommen.');
+	},
+	nachricht: async (event) => {
+		const user = await requireAction(event, 'admin.access');
+		const f = await event.request.formData();
+		return guarded(() => messageCaseAuthor(db(), user.id, event.params.id, String(f.get('text') ?? '')), 'Nachricht an die Person zugestellt.');
 	},
 	notiz: async (event) => {
 		const user = await requireAction(event, 'admin.access');

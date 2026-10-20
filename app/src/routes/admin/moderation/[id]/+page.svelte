@@ -65,6 +65,13 @@
 				<p class="muted small">Entfernen sichert den Inhalt als Beweis (nur für die Moderation sichtbar). Sperren nur durch Betreiber – sonst eskalieren. Inhalte anderer werden nie inhaltlich verändert.</p>
 			</form>
 		{/if}
+		{#if c.target_type !== 'chat'}
+			<form method="POST" action="?/nachricht" class="grid">
+				<label for="imsg">Nachricht an die Person (Mitteilung, ohne E-Mail)</label>
+				<textarea id="imsg" name="text" rows="2" maxlength="800" placeholder="z. B. „Bitte keine Telefonnummern in Beiträgen – wir haben den Beitrag angepasst.“"></textarea>
+				<button class="btn small secondary">Nachricht senden</button>
+			</form>
+		{/if}
 		<form method="POST" action="?/notiz" class="grid">
 			<label for="inote">Interne Notiz</label>
 			<textarea id="inote" name="note" rows="3">{c.internal_note ?? ''}</textarea>

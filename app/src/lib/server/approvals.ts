@@ -133,8 +133,8 @@ export async function withdraw(sql: Sql, actorId: string, id: string) {
 
 export async function listApprovals(sql: Sql, viewerId: string) {
 	await sql`update approvals set status = 'abgelaufen' where status = 'offen' and expires_at < now()`;
-	const rows = await sql`select a.*, ru.email as requested_email, du.email as decided_email from approvals a
-		left join users ru on ru.id = a.requested_by left join users du on du.id = a.decided_by
+	const rows = await sql`select a.*, (case when ru.contact_id is null then null else substr(ru.contact_id,1,3) || '-' || substr(ru.contact_id,4,3) || '-' || substr(ru.contact_id,7,3) end) as requested_cid, (case when du.contact_id is null then null else substr(du.contact_id,1,3) || '-' || substr(du.contact_id,4,3) || '-' || substr(du.contact_id,7,3) end) as decided_cid from approvals a
+		left join user_profiles ru on ru.user_id = a.requested_by left join user_profiles du on du.user_id = a.decided_by
 		order by (a.status = 'offen') desc, a.requested_at desc limit 100`;
 	const out = [];
 	for (const r of rows) {
@@ -145,11 +145,11 @@ export async function listApprovals(sql: Sql, viewerId: string) {
 			summary: r.summary as string,
 			reason: r.reason as string,
 			status: r.status as string,
-			requestedBy: (r.requested_email as string | null) ?? 'gelöschtes Konto',
+			requestedBy: (r.requested_cid as string | null) ?? 'gelöschtes Konto',
 			mine: r.requested_by === viewerId,
 			requestedAt: r.requested_at as Date,
 			expiresAt: r.expires_at as Date,
-			decidedBy: r.decided_email as string | null,
+			decidedBy: r.decided_cid as string | null,
 			decidedAt: r.decided_at as Date | null,
 			note: r.decision_note as string | null
 		});

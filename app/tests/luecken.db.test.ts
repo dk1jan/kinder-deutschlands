@@ -258,5 +258,85 @@ d('Lücken schließen (Datenbank)', async () => {
 		l = await LG.saveLegal(sql, u.red, { ...base, resetPrivacy: false, privacyText: '## Eigene Fassung\nText', imprint: {}, checked: false });
 		expect(LG.legalBlocks(l.privacy_text!)).toEqual([{ t: 'h', text: 'Eigene Fassung' }, { t: 'p', text: 'Text' }]);
 	});
+
+	// ---------- Abschnitt 9 / Sammel-Update ----------
+	it('Stadtteile Niedersachsen: OSM-Stadtteile werden der amtlichen Gemeinde zugeordnet, fremde übersprungen', async () => {
+		const { importOsmDistricts } = await import('../src/lib/server/import/regions');
+		await sql`insert into regions (code, name, level, parent_code, source, geom) values
+			('03241', 'Region Hannover', 'kreis', '03', 'Test', ST_Multi(ST_MakeEnvelope(9.6, 52.3, 9.9, 52.45, 4326))),
+			('03241001', 'Hannover', 'gemeinde', '03241', 'Test', ST_Multi(ST_MakeEnvelope(9.65, 52.32, 9.85, 52.43, 4326)))
+			on conflict (code) do nothing`;
+		const sq = (w: number, s: number, e: number, n: number) => [{ lat: s, lon: w }, { lat: s, lon: e }, { lat: n, lon: e }, { lat: n, lon: w }, { lat: s, lon: w }];
+		const els = [
+			{ type: 'relation', id: 111, tags: { name: 'List', boundary: 'administrative', admin_level: '10' }, members: [{ type: 'way', role: 'outer', geometry: sq(9.74, 52.39, 9.77, 52.41) }] },
+			{ type: 'relation', id: 222, tags: { name: 'Findorff (Bremen)' }, members: [{ type: 'way', role: 'outer', geometry: sq(8.79, 53.09, 8.81, 53.1) }] }
+		];
+		let query = '';
+		const fake = (async (_u: string, init: RequestInit) => {
+			query = decodeURIComponent(new URLSearchParams(String(init.body)).get('data') ?? '');
+			return new Response(JSON.stringify({ elements: els }), { status: 200, headers: { 'content-type': 'application/json' } });
+		}) as unknown as typeof fetch;
+		const r = await importOsmDistricts(sql, { iso: 'DE-NI', admin_level: 10 }, { userAgent: 'test', endpoints: ['http://x/api'], fetchImpl: fake, retries: 1 });
+		expect(query).toContain('"ISO3166-2"="DE-NI"');
+		expect(r.counts).toEqual({ stadtteile: 1, uebersprungen: 1 });
+		const [st] = await sql`select name, parent_code, level from regions where code = '03241001:st:111'`;
+		expect(st).toEqual({ name: 'List', parent_code: '03241001', level: 'stadtteil' });
+		const [src] = await sql`select config from data_sources where key = 'osm-stadtteile-ni'`;
+		expect(src.config).toEqual({ type: 'osm-stadtteile', iso: 'DE-NI', admin_level: 10 });
+		const [orte] = await sql`select config->'areas' as a from data_sources where key = 'osm-spielplaetze'`;
+		expect((orte.a as string[]).length).toBe(16); // F-015: ganz Deutschland
+	});
+
+	it('Familie verbinden: beidseitig, Sichtbarkeit nach beiden Profilen, gemeinsam schreiben nur mit Kontakt', async () => {
+		const Fm = await import('../src/lib/server/family');
+		const { cardForViewer } = await import('../src/lib/server/cards');
+		const [pa] = await sql`select contact_id from user_profiles where user_id = ${u.anna}`;
+		await expect(Fm.requestLink(sql, u.ben, 'ZZZ-ZZZ-ZZZ', 'partnerschaft')).rejects.toBeInstanceOf(Fm.FamilyError);
+		await expect(Fm.requestLink(sql, u.ben, pa.contact_id, 'freunde')).rejects.toBeInstanceOf(Fm.FamilyError);
+		await Fm.requestLink(sql, u.ben, pa.contact_id, 'partnerschaft');
+		await expect(Fm.requestLink(sql, u.ben, pa.contact_id, 'familie')).rejects.toBeInstanceOf(Fm.FamilyError); // doppelt
+		const inc = (await Fm.myLinks(sql, u.anna)).find((l) => l.incoming)!;
+		await expect(Fm.respondLink(sql, u.ben, inc.id, true)).rejects.toBeInstanceOf(Fm.FamilyError); // nicht selbst bestätigen
+		// vor Bestätigung nirgends sichtbar
+		const vis = { display_name: 'mitglieder', can_help: 'kontakte', looking_for: 'kontakte', interests: 'kontakte', child_ages: 'kontakte', region: 'kontakte', family: 'mitglieder' };
+		await sql`update user_profiles set display_name = 'Anna', visibility = ${sql.json(vis)} where user_id = ${u.anna}`;
+		await sql`update user_profiles set display_name = 'Ben', visibility = ${sql.json(vis)} where user_id = ${u.ben}`;
+		expect((await cardForViewer(sql, u.anna, u.red))?.card.family).toEqual([]);
+		await Fm.respondLink(sql, u.anna, inc.id, true);
+		let c = await cardForViewer(sql, u.anna, u.red);
+		expect(c?.card.family?.map((f) => [f.name, f.kind])).toEqual([['Ben', 'Partnerschaft']]);
+		expect(c?.writeTogether).toBeNull(); // red ist kein Kontakt
+		// Ben schränkt ein → auf Annas Karte nicht mehr sichtbar
+		await sql`update user_profiles set visibility = ${sql.json({ ...vis, family: 'kontakte' })} where user_id = ${u.ben}`;
+		expect((await cardForViewer(sql, u.anna, u.red))?.card.family).toEqual([]);
+		expect((await cardForViewer(sql, u.anna, null))?.card.family).toEqual([]); // ohne Anmeldung nie
+		// Kontakt beider → sichtbar + gemeinsam schreiben
+		for (const o of [u.anna, u.ben]) { const [a, b] = [u.red, o].sort(); await sql`insert into contacts (user_a, user_b) values (${a}, ${b}) on conflict do nothing`; }
+		c = await cardForViewer(sql, u.anna, u.red);
+		expect(c?.card.family?.length).toBe(1);
+		expect(c?.writeTogether?.length).toBe(2);
+		// lösen
+		await Fm.removeLink(sql, u.ben, inc.id);
+		expect((await Fm.myLinks(sql, u.anna)).length).toBe(0);
+	});
+
+	it('E-Mail für niemanden in der Verwaltung, Nachricht der Verwaltung über Familien-ID', async () => {
+		const M = await import('../src/lib/server/adminmsg');
+		const { PostError: PE } = await import('../src/lib/server/community/posts');
+		const [pb] = await sql`select contact_id from user_profiles where user_id = ${u.ben}`;
+		await expect(M.messageUser(sql, u.red, { contactId: pb.contact_id }, 'kurz')).rejects.toBeInstanceOf(PE);
+		await expect(M.messageUser(sql, u.red, { contactId: 'AAA-AAA-AAA' }, 'Bitte keine Telefonnummern posten.')).rejects.toBeInstanceOf(PE);
+		await M.messageUser(sql, u.red, { contactId: pb.contact_id }, 'Bitte keine Telefonnummern posten.');
+		const [n] = await sql`select text from notifications where user_id = ${u.ben} and kind = 'verwaltung'`;
+		expect(n.text).toBe('Nachricht der Verwaltung: Bitte keine Telefonnummern posten.');
+		const [a] = await sql`select meta from audit_log where action = 'user.messaged' order by at desc limit 1`;
+		expect(a.meta).toEqual({ chars: 'Bitte keine Telefonnummern posten.'.length, case: null }); // Länge, nicht der Text
+		expect(await M.canMessage(sql, u.red)).toBe(true);
+		expect(await M.canMessage(sql, u.anna)).toBe(false);
+		// Freigaben zeigen Familien-IDs, nie E-Mail
+		const A2 = await import('../src/lib/server/approvals');
+		const list = await A2.listApprovals(sql, u.red);
+		expect(JSON.stringify(list)).not.toMatch(/@example\.org/);
+	});
 });
 

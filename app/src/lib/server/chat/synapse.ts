@@ -146,6 +146,15 @@ export async function chatDisplayName(sql: Sql, userId: string): Promise<string>
 	return p?.display_name && (level === 'alle' || level === 'mitglieder') ? String(p.display_name) : 'Mitglied';
 }
 
+/** Nur die (stabile, zufällige) Chat-Kennung festlegen – ohne Chat-Server (für die Schlüsselableitung, D-066). */
+export async function chatLocalpart(sql: Sql, userId: string): Promise<string> {
+	const [a] = await sql`select localpart from chat_accounts where user_id = ${userId}`;
+	if (a) return a.localpart as string;
+	await sql`insert into chat_accounts (user_id, localpart) values (${userId}, ${newLocalpart()}) on conflict (user_id) do nothing`;
+	const [b] = await sql`select localpart from chat_accounts where user_id = ${userId}`;
+	return b.localpart as string;
+}
+
 /** Chat-Konto anlegen (falls nötig) und Anzeigenamen abgleichen. */
 export async function ensureAccount(sql: Sql, userId: string): Promise<string> {
 	let [a] = await sql`select localpart, synced_name from chat_accounts where user_id = ${userId}`;

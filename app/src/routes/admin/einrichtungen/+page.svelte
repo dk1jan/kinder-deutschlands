@@ -23,7 +23,7 @@
 			{#if o.email}<dt>E-Mail</dt><dd>{o.email}</dd>{/if}
 			{#if o.phone}<dt>Telefon</dt><dd>{o.phone}</dd>{/if}
 			{#if o.address}<dt>Adresse</dt><dd>{o.address}</dd>{/if}
-			<dt>Antrag von</dt><dd>{o.applicant?.name ?? 'Mitglied'} · {o.applicant?.cid ?? ''} · {o.applicant?.email ?? ''}</dd>
+			<dt>Antrag von</dt><dd>{o.applicant?.name ?? 'Mitglied'} · Familien-ID {o.applicant?.cid ?? ''}</dd>
 			<dt>Funktion</dt><dd>{o.role ?? '–'}</dd>
 			<dt>Prüfweg</dt><dd>{o.proof ?? '–'}</dd>
 		</dl>

@@ -4,6 +4,7 @@
 	import RegionMap from '$lib/components/art/RegionMap.svelte';
 	import ModuleArt from '$lib/components/art/ModuleArt.svelte';
 	import Notice from '$lib/components/Notice.svelte';
+	import AreaTiles from '$lib/components/AreaTiles.svelte';
 	let { data } = $props();
 
 	type Theme = 'sea' | 'yellow' | 'sky' | 'red' | 'navy' | 'paper';
@@ -51,8 +52,8 @@
 		{
 			art: 'nachrichten',
 			title: 'Schreiben und anrufen',
-			text: 'Nachrichten und Gruppen-Chats über die Familien-ID, Ende-zu-Ende-verschlüsselt. Anrufe folgen.',
-			stage: 'Chat verschlüsselt, Anrufe in Bauabschnitt 7',
+			text: 'Nachrichten, Gruppen-Chats und Anrufe über die Familien-ID, Ende-zu-Ende-verschlüsselt.',
+			stage: 'Chat und Anrufe verschlüsselt',
 			theme: 'paper',
 			href: '/nachrichten'
 		}
@@ -71,12 +72,19 @@
 	<meta name="description" content="Geschütztes Familiennetzwerk für Eltern in Bremen und Niedersachsen: Kontakt über eine Familien-ID statt Telefonnummer, Familienkarte, Treffen und Gruppen." />
 </svelte:head>
 
-<section class="hero">
+{#if data.user?.mfaVerified}
+	<section class="container tilesec top" aria-labelledby="bereiche-top">
+		<h1 id="bereiche-top" class="greet">Entdecken</h1>
+		<AreaTiles member />
+	</section>
+{/if}
+
+<section class="hero" class:after={data.user?.mfaVerified}>
 	<Bunting />
 	<div class="container hero-grid">
 		<div class="copy">
 			<span class="tag">Im Aufbau. Start in Bremen und Niedersachsen.</span>
-			<h1 class="display">Eltern finden Eltern.</h1>
+			<svelte:element this={data.user?.mfaVerified ? 'h2' : 'h1'} class="display">Eltern finden Eltern.</svelte:element>
 			<p class="lead">
 				Kinder Deutschlands verbindet Familien in deiner Gegend. Mit einer eigenen Familien-ID statt Telefonnummer, einer
 				Karte voller Spielplätze und Familienorte und Gruppen, die geschützt bleiben.
@@ -130,19 +138,12 @@
 	</div>
 </section>
 
-<nav class="quick container" aria-label="Entdecken">
-	<a href="/veranstaltungen/heute"><strong>Was machen wir heute?</strong><span>Termine und Orte für heute</span></a>
-	<a href="/veranstaltungen"><strong>Veranstaltungen</strong><span>Liste, Kalender, Karte</span></a>
-	<a href="/angebote"><strong>Freie Plätze & Kurse</strong><span>mit Stand und Gültigkeit</span></a>
-	<a href="/hinweise"><strong>Hinweise & Fristen</strong><span>Absagen, Sperrungen, Leistungen</span></a>
-	<a href="/einrichtungen"><strong>Einrichtungen</strong><span>verifizierte Partner</span></a>
-	<a href="/radar"><strong>Familienradar</strong><span>Neues für deine Region</span></a>
-	<a href="/marktplatz"><strong>Marktplatz</strong><span>Kinderwagen, Kleidung, Spielzeug</span></a>
-	<a href="/hilfe"><strong>Familien helfen Familien</strong><span>Hilfe suchen oder anbieten</span></a>
-	<a href="/kompass"><strong>Lebenslagen-Kompass</strong><span>Geburt, Kita, Trennung, Geld knapp</span></a>
-	<a href="/einladungen"><strong>Einladungen</strong><span>Kindergeburtstag mit Zu- und Absagen</span></a>
-	<a href="/routen"><strong>Kinderwagenrouten</strong><span>Spazierwege mit Untergrund und Treppen</span></a>
-</nav>
+{#if !data.user?.mfaVerified}
+<section class="container tilesec" aria-labelledby="bereiche">
+	<h2 id="bereiche" class="sr">Bereiche</h2>
+	<AreaTiles member={false} />
+</section>
+{/if}
 
 <section class="modules" aria-labelledby="mod-titel">
 	<div class="container">
@@ -678,26 +679,23 @@
 		font-stretch: 85%;
 		color: var(--ink);
 	}
-	.quick {
-		display: grid;
-		gap: var(--sp-2);
-		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+	.tilesec {
 		margin-top: var(--sp-6);
 		margin-bottom: var(--sp-6);
 	}
-	.quick a {
-		display: grid;
-		gap: 2px;
-		padding: var(--sp-3) var(--sp-4);
-		background: var(--surface);
-		border-radius: var(--radius-m);
-		border-left: 6px solid var(--yellow);
-		color: var(--ink);
-		text-decoration: none;
-		box-shadow: var(--shadow);
+	.tilesec.top {
+		margin-top: var(--sp-4);
 	}
-	.quick span {
-		font-size: var(--fs-s);
-		color: var(--ink-2);
+	.greet {
+		margin: 0 0 var(--sp-3);
+		font-size: var(--fs-xl, 1.75rem);
+	}
+	.sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
 	}
 </style>

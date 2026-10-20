@@ -98,6 +98,21 @@ const t = h + "." + p + "." + createHmac("sha256", sec("jwt")).update(h + "." + 
 ' || fail "TURN-Zugangsdaten"
 echo "OK  TURN-Server läuft"
 
+# Umzug (F-014): exportieren, Daten verändern, importieren → alter Stand ist wieder da
+U=$(mktemp -d)
+dc exec -T web sh -c 'echo umzugstest > /data/media/umzug-marke.txt' || fail "Marke im Bilder-Volume"
+KD_STACK=kdstack KD_UMZUG_DIR="$U" bash "$ROOT/deploy/umzug.sh" export > "$U/export.log" 2>&1 || { cat "$U/export.log"; fail "Umzug: Export"; }
+F=$(ls "$U"/kd-umzug-*.tar | head -1)
+tar tf "$F" | grep -q 'kd.dump' && tar tf "$F" | grep -q 'synapse.dump' && tar tf "$F" | grep -q 'media.tar.gz' && tar tf "$F" | grep -q 'stack.env' || fail "Umzugsdatei unvollständig"
+dc exec -T db psql -U kd -d kd -q -c "delete from chat_accounts where localpart = 'kstacktest234567'; delete from users where email = 'stack@example.org'" || fail "Testdaten ändern"
+dc exec -T web rm -f /data/media/umzug-marke.txt
+KD_STACK=kdstack KD_UMZUG_DIR="$U" bash "$ROOT/deploy/umzug.sh" import "$F" > "$U/import.log" 2>&1 || { cat "$U/import.log"; fail "Umzug: Import"; }
+dc exec -T db psql -U kd -d kd -tAc "select count(*) from users where email = 'stack@example.org'" | grep -q '^1$' || fail "Umzug: Datenbank nicht zurückgespielt"
+dc exec -T web cat /data/media/umzug-marke.txt | grep -q umzugstest || fail "Umzug: Bilder nicht zurückgespielt"
+curl -fsS http://127.0.0.1:3120/healthz >/dev/null || fail "Umzug: App nach Import nicht erreichbar"
+rm -rf "$U"
+echo "OK  Umzug: Export → Import stellt Datenbank, Chat-Datenbank und Bilder wieder her"
+
 dc logs synapse 2>&1 | grep -q "Traceback" && fail "Fehler im Synapse-Log"
 dc logs web 2>&1 | grep -q "\[chat\] Synapse-Konfiguration" || fail "Web hat keine Synapse-Konfiguration geschrieben"
 echo "OK  Logs sauber"

@@ -9,6 +9,10 @@ import { generateTotpSecret, otpauthUri, verifyTotp } from '$lib/server/totp';
 import { decrypt, encrypt } from '$lib/server/crypto';
 import { key, isHttps } from '$lib/server/config';
 import { userCan } from '$lib/server/roles';
+import { createEmailToken } from '$lib/server/tokens';
+import { mailConfigured, mails, sendMail } from '$lib/server/mailer';
+import { appUrl } from '$lib/server/config';
+import { rateLimit } from '$lib/server/ratelimit';
 
 const fmt = (d: Date | null) => (d ? new Date(d).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'medium', timeStyle: 'short' }) : '–');
 const TOTP_COOKIE = 'kd_totp_setup';
@@ -42,6 +46,9 @@ export const load: PageServerLoad = async (event) => {
 		totpRequired: await userCan(sql, user.id, 'admin.access'),
 		totpSetup,
 		passwordMin: PASSWORD_MIN,
+		// Die eigene Adresse sieht nur das Mitglied selbst (D-060)
+		email: (await sql`select email from users where id = ${user.id}`)[0]?.email as string,
+		mailOpen: mailConfigured(),
 		passkeys: passkeys.map((p) => ({ id: p.id as string, name: p.name as string, created: fmt(p.created_at), lastUsed: fmt(p.last_used_at) })),
 		sessions: sessions.map((s) => ({
 			id: (s.id_hash as string).slice(0, 12),
@@ -67,6 +74,27 @@ export const actions: Actions = {
 		await sql`delete from sessions where user_id = ${user.id} and id_hash <> ${event.locals.session!.idHash}`;
 		await audit(sql, { actorId: user.id, action: 'password.changed' });
 		return { ok: 'Passwort geändert. Alle anderen Geräte wurden abgemeldet.' };
+	},
+	emailAendern: async (event) => {
+		const user = requireMember(event);
+		const f = await event.request.formData();
+		const sql = db();
+		const next = String(f.get('email') ?? '').trim().toLowerCase();
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next) || next.length > 254) return fail(400, { mailError: 'Bitte eine gültige E-Mail-Adresse eingeben.' });
+		const [u] = await sql`select email, password_hash from users where id = ${user.id}`;
+		if (!(await verifyPassword(String(f.get('current') ?? ''), u.password_hash))) return fail(400, { mailError: 'Das Passwort stimmt nicht.' });
+		if (next === u.email) return fail(400, { mailError: 'Das ist schon deine Adresse.' });
+		if (!mailConfigured()) return fail(400, { mailError: 'E-Mail-Versand ist noch nicht eingerichtet. Bitte später erneut versuchen.' });
+		if (!rateLimit(`mailchange:${user.id}`, 3, 3_600_000)) return fail(429, { mailError: 'Bitte in einer Stunde erneut versuchen.' });
+		// Ob die neue Adresse schon vergeben ist, verraten wir hier nicht (D-016) – nur die neue Adresse erfährt es
+		const [taken] = await sql`select 1 from users where email = ${next}`;
+		if (taken) await sendMail(mails.changeTaken(next));
+		else {
+			const t = await createEmailToken(sql, user.id, 'change', next);
+			await sendMail(mails.changeConfirm(next, `${appUrl()}/email-bestaetigen?t=${t}`));
+		}
+		await audit(sql, { actorId: user.id, action: 'email.change.requested' });
+		return { mailOk: 'Wir haben einen Bestätigungslink an die neue Adresse geschickt. Bis zur Bestätigung gilt die bisherige.' };
 	},
 	passkeyLoeschen: async (event) => {
 		const user = requireMember(event);

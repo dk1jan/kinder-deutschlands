@@ -178,8 +178,11 @@ describe('Echter OSM-Ausschnitt Bremen-Findorff (tests/fixtures)', async () => {
 describe('Luftbild und Navigation', async () => {
 	const { tileInArea, tileBbox3857, aerialTile } = await import('../src/lib/server/aerial');
 	const { navUrl } = await import('../src/lib/components/NavChooser.svelte');
-	it('nur Kacheln in Bremen/Niedersachsen und Zoom 10–19', () => {
+	it('nur Kacheln in Deutschland (F-011) und Zoom 10–19', () => {
 		expect(tileInArea(14, 8592, 5331)).toBe(true); // Bremen
+		expect(tileInArea(14, 8718, 5685)).toBe(true); // München
+		expect(tileInArea(14, 8802, 5373)).toBe(true); // Berlin
+		expect(tileInArea(14, 8000, 5637)).toBe(false); // westlich von Deutschland (Frankreich)
 		expect(tileInArea(14, 0, 0)).toBe(false);
 		expect(tileInArea(9, 268, 166)).toBe(false);
 		expect(tileInArea(20, 1, 1)).toBe(false);

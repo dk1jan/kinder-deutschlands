@@ -39,7 +39,8 @@ const env = {
 	PMTILES_BIN: '/tmp/kd-smoke-pmtiles',
 	LGLN_WMS_URL: 'http://127.0.0.1:3998/lgln',
 	IMPORT_ALLOW_LOCAL: '1',
-	RETRY_WAIT_MS: '50'
+	RETRY_WAIT_MS: '50',
+	OVERPASS_PAUSE_MS: '0'
 };
 
 // ---------- Nachbau externer Dienste mit echten Ausschnitten (tests/fixtures, © OpenStreetMap-Mitwirkende / © BKG) ----------
@@ -262,6 +263,11 @@ try {
 
 	r = await req('/admin');
 	check(r.status === 303 && r.location.startsWith('/anmelden/code'), 'Vor dem zweiten Faktor kein Adminzugang');
+	// D-066: Chat-Kennung (Salz) schon im Zwischenschritt abrufbar, damit der Schlüssel aus dem Passwort entsteht
+	r = await req('/api/chat/salz', { json: {} });
+	check(SYN_PY ? r.status === 200 && /^@[a-z0-9]+:kinder-deutschlands$/.test(JSON.parse(r.body).mxid ?? '') : r.status === 503, 'Chat-Salz im Zwei-Faktor-Zwischenschritt verfügbar');
+	r = await client().req('/api/chat/salz', { json: {} });
+	check(r.status === 401, 'Chat-Salz nur mit Sitzung');
 
 	r = await req('/anmelden/code?/verify&weiter=%2Fadmin', { method: 'POST', form: { code: setupCode } });
 	check(r.status === 400, 'Bereits verwendeter Code wird abgelehnt (Replay-Schutz)');
@@ -755,7 +761,11 @@ try {
 	r = await G.req(invLink ?? '/e/x');
 	check(r.body.includes('Einladung nicht gefunden'), 'Alter Link nach Erneuern ungültig');
 	r = await X2.req('/');
-	check(r.body.includes('/marktplatz') && r.body.includes('/kompass') && r.body.includes('/einladungen'), 'Startseite: Einstiege Abschnitt 6');
+	check(r.body.includes('%2Fmarktplatz') && r.body.includes('href="/kompass"') && r.body.includes('%2Feinladungen') && r.body.includes('href="/mehr"'), 'Startseite: Kacheln für alle Bereiche (Mitgliederbereiche über Anmeldung), Navigation mit „Mehr“');
+	r = await X2.req('/mehr');
+	check(r.status === 200 && r.body.includes('/routen') && r.body.includes('/hinweise') && r.body.includes('/impressum'), 'Seite „Mehr“ mit allen Bereichen');
+	r = await A.req('/');
+	check(r.body.includes('href="/marktplatz"') && !r.body.includes('href="/profil" aria-current'), 'Mitglied: Kacheln direkt verlinkt');
 
 	// ---------- Abschnitt 7: Kinderwagenrouten, Statistik, zweite Freigabe, Partnerlinks ----------
 	const coords = JSON.stringify([[8.7905, 53.0935], [8.7930, 53.0950], [8.7960, 53.0965], [8.7985, 53.0975]]);
@@ -850,6 +860,54 @@ try {
 	r = await req('/admin/rechtstexte?/speichern', { form: { i_provider: 'Smoke Betreiber GmbH', i_street: 'Teststraße 1', i_city: '28195 Bremen', i_email: 'kontakt@example.org', hosting: 'Testserver', authority: 'Testbehörde' } });
 	r = await X2.req('/impressum');
 	check(r.body.includes('Entwurf'), 'Änderung hebt „geprüft“ wieder auf');
+	// ---------- Sammel-Update ----------
+	// F-006 / D-060: keine Mitglieder-E-Mail in der Verwaltung
+	const memberMails = ['anna@example.org', 'ben@example.org', 'cem@example.org', 'dora@example.org'];
+	for (const path of ['/admin', '/admin/nutzer', '/admin/rechte', '/admin/protokoll', '/admin/freigaben', '/admin/einrichtungen', '/admin/moderation', '/admin/statistik', '/admin/affiliate']) {
+		r = await req(path);
+		const hit = memberMails.find((m) => r.body.includes(m)) ?? ([...r.body.matchAll(/[a-z0-9._-]+@example\.org/g)].map((m) => m[0]).find((m) => m !== 'noreply@example.org') ?? null);
+		check(r.status === 200 && !hit, `Keine E-Mail-Adresse in ${path}${hit ? ` (${hit})` : ''}`);
+	}
+	r = await req('/admin/nutzer');
+	check(r.body.includes('Familien-ID'), 'Nutzerliste mit Familien-ID');
+	const [dcid] = await sqlT`select p.contact_id from user_profiles p join users u on u.id = p.user_id where u.email = 'dora@example.org'`;
+	r = await req('/admin/nutzer?/nachricht', { form: { cid: dcid.contact_id, text: 'Hallo aus der Verwaltung (Smoke)' } });
+	check(r.status === 200, 'F-007: Nachricht an Familien-ID gesendet');
+	r = await D.req('/profil/mitteilungen');
+	check(r.body.includes('Nachricht der Verwaltung: Hallo aus der Verwaltung (Smoke)'), 'F-007: Mitglied sieht die Nachricht in den Mitteilungen');
+	// F-006: eigene Adresse sieht das Mitglied, Änderung mit Bestätigung
+	r = await D.req('/profil/sicherheit');
+	check(r.body.includes('dora@example.org'), 'Mitglied sieht die eigene Adresse');
+	r = await D.req('/profil/sicherheit?/emailAendern', { form: { email: 'dora.neu@example.org', current: pwC } });
+	check(r.status === 200, 'Adresswechsel angefordert');
+	const changeMail = lastMailTo('dora.neu@example.org');
+	const changeLink = /\/email-bestaetigen\?t=([A-Za-z0-9_-]+)/.exec(changeMail?.text ?? '')?.[1];
+	check(!!changeLink, 'Bestätigungslink an die neue Adresse');
+	r = await X2.req(`/email-bestaetigen?t=${changeLink}`);
+	check(r.status === 200 && r.body.includes('Adresse bestätigen'), 'Bestätigung per Knopf');
+	r = await X2.req('/email-bestaetigen', { form: { t: changeLink ?? '' } });
+	const [dm] = await sqlT`select email from users where email like 'dora%'`;
+	check(r.status === 200 && dm.email === 'dora.neu@example.org', 'Neue Adresse aktiv');
+	check(!!lastMailTo('dora@example.org')?.subject.includes('geändert'), 'Alte Adresse wird benachrichtigt');
+	await sqlT`update users set email = 'dora@example.org' where email = 'dora.neu@example.org'`;
+	// F-005: Ortsseite – Mitmachen oben, Quelle unten
+	r = await D.req(`/orte/${pl.id}`);
+	const iJoin = r.body.indexOf('id="mitmachen"'), iSrc = r.body.indexOf('id="quelle"'), iExp = r.body.indexOf('id="erf-h"');
+	check(iJoin > 0 && iJoin < iExp && iExp < iSrc, 'Ortsseite: „Mitmachen“ oben, „Quelle und Aktualität“ ganz unten');
+	r = await D.req(`/orte/${pl.id}?/melden`, { form: { kind: 'ergaenzung', message: 'Es gibt jetzt eine Nestschaukel.' } });
+	check(r.status === 200, 'Infos ergänzen am Ort');
+	// F-008: Familie verbinden
+	const [acid] = await sqlT`select p.contact_id from user_profiles p join users u on u.id = p.user_id where u.email = 'anna@example.org'`;
+	r = await D.req('/profil/familie?/anfragen', { form: { cid: acid.contact_id, kind: 'familie' } });
+	check(r.status === 200, 'Familie: Anfrage gesendet');
+	r = await A.req('/profil/familie');
+	const linkId = /name="id" value="([0-9a-f-]{36})"/.exec(r.body)?.[1];
+	check(!!linkId && r.body.includes('möchte sich mit dir verbinden'), 'Familie: Anfrage bei Anna');
+	r = await A.req('/profil/familie?/antworten', { form: { id: linkId ?? '', accept: '1' } });
+	r = await A.req('/profil/familie');
+	check(r.body.includes('verbunden'), 'Familie: verbunden');
+	// D-066: Chat-Salz nur mit Sitzung (Rest im Browsertest chatkey-check.py)
+
 	// Geräteliste: zweites und drittes Gerät abmelden
 	const D2 = client();
 	await D2.req('/anmelden?/anmelden', { form: { email: 'dora@example.org', password: pwC }, headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1' } });

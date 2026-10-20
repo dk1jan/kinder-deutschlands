@@ -4,7 +4,7 @@
 	// Kontaktkarte: zeigt ausschließlich, was der Server für diese Betrachtung freigegeben hat.
 	let { card, children }: { card: PublicCard & { contactIdFormatted: string }; children?: Snippet } = $props();
 	const ageLabel = (k: string) => CHILD_AGES.find((a) => a.key === k)?.label ?? k;
-	const nothing = $derived(!card.displayName && !card.canHelp && !card.lookingFor && !card.interests.length && !card.childAges.length && !card.regionName);
+	const nothing = $derived(!card.displayName && !card.canHelp && !card.lookingFor && !card.interests.length && !card.childAges.length && !card.regionName && !card.family?.length);
 </script>
 
 <article class="cc">
@@ -23,6 +23,10 @@
 			{#if card.childAges.length}<dt>Kinder</dt><dd>{card.childAges.map(ageLabel).join(', ')}</dd>{/if}
 			{#if card.canHelp}<dt>Kann helfen</dt><dd>{card.canHelp}</dd>{/if}
 			{#if card.lookingFor}<dt>Sucht</dt><dd>{card.lookingFor}</dd>{/if}
+			{#if card.family?.length}
+				<dt>Gehört zusammen mit</dt>
+				<dd>{#each card.family as f, i}{i ? ', ' : ''}{f.name ?? `Familien-ID ${f.contactIdFormatted}`} <small class="muted">({f.kind})</small>{/each}</dd>
+			{/if}
 			{#if card.interests.length}
 				<dt>Interessen</dt>
 				<dd><ul class="tags">{#each card.interests as i}<li>{i}</li>{/each}</ul></dd>
