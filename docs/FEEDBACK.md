@@ -22,7 +22,7 @@ Regeln
 | F-006 | Ändern | Verwaltung → Nutzer, Export, Protokoll, M24 | **Entschieden (D-060):** E-Mail bleibt in der Datenbank (Versand, Anmeldung, Reset) und ist für niemand einsehbar – weder Betreiber noch Verwaltung noch Redaktion noch in Export/Protokoll/Meldungen. Nur das Mitglied sieht und ändert die eigene Adresse in Mein Konto. Familien-ID bleibt das einzige Kennzeichen im Admin-Board. | P1 | geplant |
 | F-007 | Dazu | Verwaltung → Nutzer, M24 | Vom Admin-Board aus einem Nutzer über die Familien-ID eine Nachricht schicken können (ohne E-Mail), z. B. bei Moderationsfällen. | P2 | neu |
 | F-008 | Dazu | M01 Profil/QR, Kontakte | Partner/Familie verbinden: Familien-ID des Partners per QR scannen, Beziehung „Partnerschaft“ oder „Familie“ wählen, damit erkennbar ist, wer zusammengehört. Wer so ein Paar/eine Familie sieht, soll beiden gemeinsam schreiben können. | P2 | neu |
-| F-011 | Ändern | Karte, Luftbild (`lib/server/aerial.ts`, Konstante `AREA`) | Luftbild ist im Code auf Bremen + Niedersachsen begrenzt (Rechteck 6,5–11,8° O, 51,2–54,1° N). Außerhalb kommt eine leere Kachel. Auf ganz Deutschland erweitern? Entscheidung Jan, siehe Details. | P3 | neu |
+| F-011 | Ändern | Karte, Luftbild (`lib/server/aerial.ts`, Konstante `AREA`) | Luftbild ist im Code auf Bremen + Niedersachsen begrenzt (Rechteck 6,5–11,8° O, 51,2–54,1° N). Außerhalb kommt eine leere Kachel. Auf ganz Deutschland erweitern? Jan (20.10.): „die Karte geht jetzt für ganz DE“ – im Code (Stand d4d2644) ist `AREA` aber unverändert HB+NI; Abgleich mit dem, was Jan live sieht, steht aus (welche Ansicht, welcher Ort?). | P3 | Rückfrage |
 
 ## Details und offene Fragen
 
