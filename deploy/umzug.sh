@@ -39,9 +39,8 @@ export_all() {
 	day=$(date +%Y%m%d-%H%M); dir=$(mktemp -d "$OUTDIR/kd-umzug-XXXX"); out="$OUTDIR/kd-umzug-${day}.tar"
 	chmod 700 "$dir"
 	echo "→ Geheimnisse aus dem laufenden Stack lesen"
-	docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "${STACK}-web-1" | while IFS= read -r line; do
-		k="${line%%=*}"; for want in $KEYS; do [ "$k" = "$want" ] && printf '%s\n' "$line"; done
-	done > "$dir/stack.env"
+	docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "${STACK}-web-1" \
+		| grep -E "^($(echo $KEYS | tr ' ' '|'))=" > "$dir/stack.env" || true
 	chmod 600 "$dir/stack.env"
 	grep -q '^APP_SECRET=' "$dir/stack.env" || die "APP_SECRET nicht gefunden."
 	echo "→ Datenbanken sichern (läuft im Betrieb, konsistenter Stand je Datenbank)"
