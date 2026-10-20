@@ -2,6 +2,12 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Test-/Fehler-/Änderungsbereich (`docs/FEEDBACK.md`)
+
+**Was** Neue Sammelliste für Beobachtungen aus dem Testen (Fehler, Ändern, Entfernen, Dazu, Fragen) mit IDs, Priorität, Status und festem Ablauf „sammeln → ein Sammel-Update“. `CLAUDE.md` verweist darauf, damit jeder neue Chat offene Einträge mitmeldet.
+**Warum** Jan will beim Testen im Chat Punkte nennen und am Ende alles in einem Auftrag umsetzen lassen, statt jede Kleinigkeit einzeln auszurollen.
+**Module** keine (nur Doku/Prozess) · **DB-Migration** nein · **Tests** nicht nötig (kein Code); Doku-Push löst laut `paths-ignore` keinen Build aus.
+
 ## 2026-10-19 · Abschnitt 7: Anrufe mit TURN, Kinderwagenrouten, Partnerlinks, Statistik, zweite Freigabe
 
 **Was**

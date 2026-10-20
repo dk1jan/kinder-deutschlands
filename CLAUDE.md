@@ -1,6 +1,6 @@
 # Kinder Deutschlands – Arbeitsregeln für Claude
 
-Quelle der Wahrheit ist dieses Repo. Zu Beginn jeder Sitzung lesen: `docs/STATUS.md`, die neuesten Einträge in `docs/CHANGELOG.md`, `docs/DECISIONS.md`. Bei Bedarf `docs/REQUIREMENTS.md` (verbindlicher Masterprompt), `ARCHITECTURE.md`, `ROADMAP.md`, `DEPLOYMENT.md`. Dann dem Nutzer in 3–5 Zeilen melden: Stand, letzte Änderung, offene Punkte.
+Quelle der Wahrheit ist dieses Repo. Zu Beginn jeder Sitzung lesen: `docs/STATUS.md`, die neuesten Einträge in `docs/CHANGELOG.md`, `docs/DECISIONS.md`. Bei Bedarf `docs/REQUIREMENTS.md` (verbindlicher Masterprompt), `ARCHITECTURE.md`, `ROADMAP.md`, `DEPLOYMENT.md`. Außerdem `docs/FEEDBACK.md` lesen (Test-/Fehler-/Änderungsliste) und offene Einträge mitmelden. Neue Beobachtungen von Jan sofort dort eintragen (Stichwort reicht), nicht sofort umsetzen, außer er verlangt es; „Sammel-Update bauen“ = alle offenen Einträge zu einem Auftrag bündeln (Ablauf steht in der Datei). Dann dem Nutzer in 3–5 Zeilen melden: Stand, letzte Änderung, offene Punkte.
 
 Bei jeder Änderung im selben Commit:
 - Code + Tests + Doku.
