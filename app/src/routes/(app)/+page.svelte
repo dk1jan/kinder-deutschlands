@@ -5,6 +5,7 @@
 	import ModuleArt from '$lib/components/art/ModuleArt.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import AreaTiles from '$lib/components/AreaTiles.svelte';
+	import { GROUPS } from '$lib/areas';
 	let { data } = $props();
 
 	type Theme = 'sea' | 'yellow' | 'sky' | 'red' | 'navy' | 'paper';
@@ -72,19 +73,12 @@
 	<meta name="description" content="Geschütztes Familiennetzwerk für Eltern in Bremen und Niedersachsen: Kontakt über eine Familien-ID statt Telefonnummer, Familienkarte, Treffen und Gruppen." />
 </svelte:head>
 
-{#if data.user?.mfaVerified}
-	<section class="container tilesec top" aria-labelledby="bereiche-top">
-		<h1 id="bereiche-top" class="greet">Entdecken</h1>
-		<AreaTiles member />
-	</section>
-{/if}
-
-<section class="hero" class:after={data.user?.mfaVerified}>
+<section class="hero">
 	<Bunting />
 	<div class="container hero-grid">
 		<div class="copy">
 			<span class="tag">Im Aufbau. Start in Bremen und Niedersachsen.</span>
-			<svelte:element this={data.user?.mfaVerified ? 'h2' : 'h1'} class="display">Eltern finden Eltern.</svelte:element>
+			<h1 class="display">Eltern finden Eltern.</h1>
 			<p class="lead">
 				Kinder Deutschlands verbindet Familien in deiner Gegend. Mit einer eigenen Familien-ID statt Telefonnummer, einer
 				Karte voller Spielplätze und Familienorte und Gruppen, die geschützt bleiben.
@@ -138,12 +132,14 @@
 	</div>
 </section>
 
-{#if !data.user?.mfaVerified}
 <section class="container tilesec" aria-labelledby="bereiche">
-	<h2 id="bereiche" class="sr">Bereiche</h2>
-	<AreaTiles member={false} />
+	<h2 id="bereiche">Was es hier alles gibt.</h2>
+	<p class="lead">Alle Bereiche findest du auch im Menü.{data.user ? '' : ' Manche sind nur für Mitglieder.'}</p>
+	{#each GROUPS as g (g.id)}
+		<h3 class="grp-t">{g.label}</h3>
+		<AreaTiles group={g.id} member={!!data.user} />
+	{/each}
 </section>
-{/if}
 
 <section class="modules" aria-labelledby="mod-titel">
 	<div class="container">
@@ -683,12 +679,15 @@
 		margin-top: var(--sp-6);
 		margin-bottom: var(--sp-6);
 	}
-	.tilesec.top {
-		margin-top: var(--sp-4);
+	.tilesec .lead {
+		margin-top: 0;
 	}
-	.greet {
-		margin: 0 0 var(--sp-3);
-		font-size: var(--fs-xl, 1.75rem);
+	.grp-t {
+		margin: var(--sp-5) 0 var(--sp-2);
+		font-size: var(--fs-s);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--ink-2);
 	}
 	.sr {
 		position: absolute;

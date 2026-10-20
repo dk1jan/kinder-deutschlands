@@ -15,7 +15,6 @@ Regeln
 | ID | Art | Wo (Seite/Modul) | Was stört / soll sein | Prio | Status |
 |---|---|---|---|---|---|
 | F-012 | Frage | Karte, Grundkarte („Kartenhintergrund“), Verwaltung → Daten | Grundkarte ist ein fester Ausschnitt: Gebiet `6.6,51.29,11.62,53.9` (HB+NI), Build 20261018, 1.399 MB, bis Zoom 15, geladen 18.10. Außerhalb leer; Berlin/Osten und München nur in der groben Übersicht sichtbar, beim Heranzoomen leer (Kachelraster, kein Ladefehler). Soll die Grundkarte auf ganz Deutschland? **Entschieden (D-068): Grundkarte ganz Deutschland, Zoom 15 überall.** Ablauf: (1) Jan stellt in Verwaltung → Daten → Kartenhintergrund Gebiet `5.8,47.2,15.1,55.1`, Zoom 15 um und klickt „Jetzt abrufen“ (kein Code; Platz geprüft: 313 GB frei); (2) Jan testet; (3) danach schnell DE-weit ausrollen, dann nachbessern. Prüfliste unter „Testnotizen“. | P2 | geplant |
-| F-016 | Ändern | Navigation, Startseite (Entdecken) | Große Kacheln oben auf Entdecken gefallen, gehören aber nicht dorthin. Alle Bereiche ins Menü (Menü umbauen). Zuerst sieht man den Kopf „Eltern finden Eltern.“ (Bild 2); unten darf eine Übersicht „Was es hier alles gibt“ stehen. Vorschlag von Claude im Chat 20.10., Bau erst nach „go“. | P2 | Vorschlag |
 
 ## Details und offene Fragen
 
@@ -60,6 +59,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-016 | erledigt: Menü mit drei Gruppen (Entdecken ▾ · Karte · Community ▾ · Nachrichten · Wissen ▾), kein Punkt „Startseite“, Handy-Menü als Blatt, Startseite mit Kopf zuerst und Übersicht unten (D-073) | CHANGELOG 20.10. Menü |
 | F-001 | erledigt: Leiste mit „Mehr“ + große Kacheln auf Entdecken (Variante von Jan gewählt, D-069) | CHANGELOG 20.10. Sammel-Update |
 | F-002 | erledigt: „Profil“ aus der Leiste, „Mein Konto“ bleibt (D-069) | CHANGELOG 20.10. Sammel-Update |
 | F-003 | erledigt: Glocke + Reiter „Nachrichten“ zählen ungelesene Chats (nur Anzahl, aus dem Gerät) | CHANGELOG 20.10. Sammel-Update |

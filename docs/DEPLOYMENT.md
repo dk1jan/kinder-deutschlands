@@ -117,7 +117,7 @@ Firewall (ufw / IONOS-Cloud-Firewall) nur falls aktiv: `ufw allow 49210` bzw. in
 
 Neuer Dienst `init` (läuft beim Start einmal und beendet sich): macht die Volumes `media` und `backups` für die App beschreibbar. In Portainer erscheint er als „exited (0)“ – das ist richtig.
 
-Lokale Browsertests nach dem Rauchtest – Chat-Schlüssel aus dem Passwort: `… python3 scripts/chatkey-check.py`; Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`. Gruppenanruf (drei Browser, echter Medienserver): Rauchtest und `scripts/groupcall-check.py` jeweils mit `LIVEKIT_BIN=/pfad/livekit-server` (Release v1.13.7).
+Lokale Browsertests nach dem Rauchtest – Chat-Schlüssel aus dem Passwort: `… python3 scripts/chatkey-check.py`; Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Menü (Computer + Handy-Blatt, optional Bildschirmfotos): `TEST_DATABASE_URL=… python3 scripts/menu-check.py [ordner]`. Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`. Gruppenanruf (drei Browser, echter Medienserver): Rauchtest und `scripts/groupcall-check.py` jeweils mit `LIVEKIT_BIN=/pfad/livekit-server` (Release v1.13.7).
 
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.

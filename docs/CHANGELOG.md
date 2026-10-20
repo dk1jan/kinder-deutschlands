@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Menü mit Gruppen, Startseite mit Kopf zuerst (F-016, D-073)
+
+**Was**
+- **Menü am Computer:** Entdecken ▾ · Karte · Community ▾ · Nachrichten · Wissen ▾. Klick auf „Entdecken“ = Startseite, auf „Community“ = Community-Seite; Pfeil daneben oder Maus darüber klappt die Bereiche auf (Symbol, Name, eine Zeile Text). Kein Punkt „Startseite“. „Wissen“ klappt nur auf. Esc schließt und gibt den Fokus zurück, Klick daneben schließt, Klick auf einen Eintrag schließt. Aktive Gruppe mit Wimpel markiert.
+- **Menü am Handy:** Leiste Entdecken · Karte · Community · Nachrichten · **Menü**. „Menü“ öffnet ein Blatt von unten mit allen Gruppen, Konto und Rechtstexten; schließt mit Esc, ✕, Tippen daneben oder Wischen nach unten. Ohne JavaScript führt es zur Seite `/mehr` (jetzt nach Gruppen).
+- **Startseite:** große Kacheln oben entfernt; für alle zuerst der Kopf „Eltern finden Eltern.“, darunter wie bisher, dann **„Was es hier alles gibt“** mit den Kacheln nach Gruppen. Gäste: Mitgliederbereiche mit Schloss bzw. „mit Anmeldung“, Link zur Anmeldung.
+- Bereichsliste bleibt an einer Stelle (`lib/areas.ts`, jetzt mit Gruppe); Menü, Handy-Blatt, `/mehr` und Übersicht lesen daraus.
+**Warum** Jan: „die großen Kacheln … haben da nichts zu suchen … alles ins Menü“; Startseite soll zuerst den Kopf zeigen.
+**Module** Querschnitt (Navigation/Oberfläche, Barrierefreiheit) · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler; 211 Unit/DB-Tests (neu `areas.unit.test.ts`: Gruppen vollständig, kein Punkt „Startseite“, Zuordnung der Pfade, Anmeldelinks); Rauchtest 327 Prüfungen mit echtem Synapse und LiveKit (neu: drei Aufklapper, Kopf vor Übersicht für Gast und Mitglied, Handy-Blatt, `/mehr` nach Gruppen); **neuer Browsertest `scripts/menu-check.py`** (30 Prüfungen, Chromium 1280 px und 390 px: Pfeil, Tastatur, Esc + Fokus, Maus darüber/weg, Klick daneben, Wissen, Navigation, Handy-Blatt öffnen/schließen auf vier Wegen inkl. Wischen, Schloss für Gäste, ohne JavaScript) – dabei zwei Fehler gefunden und behoben (Klick nach Darüberfahren klappte sofort wieder zu; Blatt öffnete 29 px heruntergescrollt, Wischen griff nicht); Barrierefreiheit `a11y-check.py` jetzt auch mit offenem Menü/Blatt: keine schweren Verstöße; Bildschirmfotos geprüft; Build. **Nicht getestet:** echtes Handy (Wischen mit dem Finger, nur simuliert), Screenreader.
+
 ## 2026-10-20 · Gruppenanrufe „wie Zoom“ (D-072) + Volumes beschreibbar
 
 **Was**

@@ -21,8 +21,8 @@ AXE = open(os.path.join(APP, 'node_modules/axe-core/axe.min.js')).read()
 env = dict(os.environ, DATABASE_URL=DB, APP_URL=BASE, ORIGIN=BASE, APP_SECRET='smoke-test-secret-'.ljust(48, 'x'), PORT='3999', SCHEDULER='off',
            BACKUP_DIR='/tmp/kd-smoke-backups', TILES_DIR='/tmp/kd-smoke-tiles', TURN_ENABLED='false', NO_PROXY='127.0.0.1,localhost', no_proxy='127.0.0.1,localhost')
 
-PUBLIC = ['/', '/mehr', '/karte', '/anmelden', '/registrieren', '/kompass', '/kompass/geburt', '/routen', '/hinweise', '/impressum', '/datenschutz', '/partnerlinks', '/veranstaltungen']
-MEMBER = ['/', '/mehr', '/profil/familie', '/profil/sicherheit', '/nachrichten/sicherheit', '/community', '/nachrichten', '/profil', '/profil/bearbeiten', '/marktplatz', '/hilfe', '/hinweise/neu', '/routen/neu', '/einladungen', '/radar', '/veranstaltungen', '/einrichtungen', '/ORT']
+PUBLIC = ['/', '/+MENU', '/mehr', '/karte', '/anmelden', '/registrieren', '/kompass', '/kompass/geburt', '/routen', '/hinweise', '/impressum', '/datenschutz', '/partnerlinks', '/veranstaltungen']
+MEMBER = ['/', '/+MENU', '/mehr', '/profil/familie', '/profil/sicherheit', '/nachrichten/sicherheit', '/community', '/nachrichten', '/profil', '/profil/bearbeiten', '/marktplatz', '/hilfe', '/hinweise/neu', '/routen/neu', '/einladungen', '/radar', '/veranstaltungen', '/einrichtungen', '/ORT']
 ADMIN = ['/admin', '/admin/statistik', '/admin/rechtstexte', '/admin/hinweise', '/admin/moderation', '/admin/nutzer', '/admin/rechte', '/admin/gruppen', '/admin/freigaben', '/admin/protokoll', '/admin/routen', '/admin/affiliate']
 
 def wait_http(url, n=150):
@@ -59,9 +59,12 @@ try:
                     ctx.add_cookies([{'name': 'kd_session', 'value': sess(email), 'url': BASE}])
                 pg = ctx.new_page()
                 for path in pages:
-                    url = BASE + path.replace('/ORT', f'/orte/{ort}')
+                    url = BASE + path.replace('/ORT', f'/orte/{ort}').replace('/+MENU', '/')
                     pg.goto(url, wait_until='networkidle')
                     pg.wait_for_timeout(600)
+                    if path == '/+MENU':  # Menü geöffnet prüfen (F-016): Aufklapper am Computer, Blatt am Handy
+                        pg.click('[data-toggle="community"]' if w >= 960 else '.tabs a[href="/mehr"]')
+                        pg.wait_for_timeout(400)
                     pg.add_script_tag(content=AXE)
                     res = pg.evaluate("""async () => { const r = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } });
                         return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length, target: v.nodes.slice(0, 3).map(x => x.target.join(' ')) })) }""")

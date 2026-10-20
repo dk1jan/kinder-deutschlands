@@ -1,14 +1,15 @@
 <script lang="ts">
-	// Große Kacheln für alle Bereiche (F-001). Auf „Entdecken“ und unter „Mehr“.
+	// Kacheln der Bereiche einer Gruppe (F-001, F-016): Übersicht „Was es hier alles gibt“ auf der Startseite und Seite „Mehr“.
 	import Icon from '$lib/components/Icon.svelte';
-	import { AREAS } from '$lib/areas';
-	let { member = false, compact = false }: { member?: boolean; compact?: boolean } = $props();
+	import { AREAS, areaHref, type GroupId } from '$lib/areas';
+	let { member = false, compact = false, group }: { member?: boolean; compact?: boolean; group?: GroupId } = $props();
+	const list = $derived(group ? AREAS.filter((a) => a.group === group) : AREAS);
 </script>
 
 <ul class="tiles" class:compact role="list">
-	{#each AREAS as a (a.href)}
+	{#each list as a (a.href)}
 		<li>
-			<a href={a.members && !member ? `/anmelden?weiter=${encodeURIComponent(a.href)}` : a.href}>
+			<a href={areaHref(a, member)}>
 				<span class="ic" style:background={a.color} style:color={a.ink}><Icon name={a.icon} size={compact ? 22 : 26} /></span>
 				<strong>{a.label}</strong>
 				{#if !compact}<small>{a.text}{a.members && !member ? ' · mit Anmeldung' : ''}</small>{/if}

@@ -1,12 +1,17 @@
 <script lang="ts">
+	// Rückfallseite des Menüs (ohne JavaScript) und Ziel von „Wissen“ (F-016).
 	import AreaTiles from '$lib/components/AreaTiles.svelte';
+	import { GROUPS } from '$lib/areas';
 	let { data } = $props();
 </script>
 
 <svelte:head><title>Mehr – Kinder Deutschlands</title></svelte:head>
 <div class="container page">
 	<h1>Alle Bereiche</h1>
-	<AreaTiles member={!!data.user} compact />
+	{#each GROUPS as g (g.id)}
+		<h2 id={g.id}>{#if g.id === 'wissen'}{g.label}{:else}<a href={g.href}>{g.label}</a>{/if}</h2>
+		<AreaTiles group={g.id} member={!!data.user} compact />
+	{/each}
 	<h2>Konto und Infos</h2>
 	<ul class="links">
 		{#if data.user}<li><a href="/profil">Mein Konto</a></li><li><a href="/profil/mitteilungen">Mitteilungen</a></li>{:else}<li><a href="/anmelden">Anmelden</a></li>{/if}
@@ -21,6 +26,10 @@
 	h2 {
 		margin-top: var(--sp-6);
 		font-size: var(--fs-l);
+		scroll-margin-top: calc(var(--header-h) + var(--sp-3));
+	}
+	h2 a {
+		color: inherit;
 	}
 	.links {
 		list-style: none;

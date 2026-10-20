@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 20.10.2026 · Sammel-Update und Gruppenanrufe (D-072)
+Stand: 20.10.2026 · Sammel-Update, Gruppenanrufe (D-072), Menü mit Gruppen (D-073)
 
 Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig geprüft) · **getestet** (automatische Tests bestanden) · **extern blockiert**
 
@@ -36,7 +36,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Regionsmodell (AGS/ARS) | getestet | Länder/Kreise/Gemeinden HB+NI amtlich aus VG250, Stadtteile Bremen/Bremerhaven aus OSM (D-020). Stadt-/Ortsteile Niedersachsen aus OSM: umgesetzt, Zuordnung getestet (Abruf läuft auf dem Server); VG250 für alle Länder (Sammel-Update) |
 | Audit-Protokoll (ohne private Inhalte, IP gehasht) | getestet | |
 | Designsystem „Wimpelkette“, Hell/Dunkel/System ohne Aufblitzen | getestet | Startseite + Unterseiten neu gestaltet (D-013); Admin/Setup nutzen dieselben Tokens |
-| Navigation: 4 Ziele + „Mehr“, Kacheln auf Entdecken (D-069) | getestet | Screenshots geprüft; automatische Barrierefreiheitsprüfung (axe, WCAG 2.1 AA) ohne schwere Verstöße (8.3); Test mit Screenreader und Menschen: vorgesehen |
+| Navigation: Menü mit Gruppen Entdecken/Community/Wissen, Handy-Menü als Blatt, Startseite mit Kopf zuerst (D-073, F-016) | getestet | Browsertest `menu-check.py` (Maus, Tastatur, Esc, Handy-Blatt inkl. Wischen, ohne JavaScript), Rauchtest, Screenshots geprüft; axe (WCAG 2.1 AA) auch mit offenem Menü ohne schwere Verstöße; Test mit Screenreader und Menschen: vorgesehen |
 | Sicherheitsheader, CSP, CSRF, noindex | getestet | |
 | Luftbild (LGLN Niedersachsen, optional Esri) | getestet | mit Nachbau des WMS; Gebiet ganz Deutschland (F-011); außerhalb Niedersachsens über Esri-Schlüssel |
 | Navigation an externe Apps | getestet | Google, Apple, Waze, OSM, geo: |
