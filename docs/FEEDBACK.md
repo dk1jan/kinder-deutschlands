@@ -22,7 +22,7 @@ Regeln
 | F-006 | Ändern | Verwaltung → Nutzer, Export, Protokoll, M24 | **Entschieden (D-060):** E-Mail bleibt in der Datenbank (Versand, Anmeldung, Reset) und ist für niemand einsehbar – weder Betreiber noch Verwaltung noch Redaktion noch in Export/Protokoll/Meldungen. Nur das Mitglied sieht und ändert die eigene Adresse in Mein Konto. Familien-ID bleibt das einzige Kennzeichen im Admin-Board. | P1 | geplant |
 | F-007 | Dazu | Verwaltung → Nutzer, M24 | Vom Admin-Board aus einem Nutzer über die Familien-ID eine Nachricht schicken können (ohne E-Mail), z. B. bei Moderationsfällen. | P2 | neu |
 | F-008 | Dazu | M01 Profil/QR, Kontakte | Partner/Familie verbinden: Familien-ID des Partners per QR scannen, Beziehung „Partnerschaft“ oder „Familie“ wählen, damit erkennbar ist, wer zusammengehört. Wer so ein Paar/eine Familie sieht, soll beiden gemeinsam schreiben können. | P2 | neu |
-| F-010 | Ändern | Karte, Luftbild, Verwaltung → Einstellungen | Luftbild soll ohne Schlüssel, Anmeldung und Einrichtung laufen („OpenStreetMap-Satellit“). Recherche: OSM hat kein eigenes Satellitenbild, es gibt nur externe Quellen (siehe Details). Entscheidung Jan offen. | P2 | neu |
+| F-011 | Ändern | Karte, Luftbild (`lib/server/aerial.ts`, Konstante `AREA`) | Luftbild ist im Code auf Bremen + Niedersachsen begrenzt (Rechteck 6,5–11,8° O, 51,2–54,1° N). Außerhalb kommt eine leere Kachel. Auf ganz Deutschland erweitern? Entscheidung Jan, siehe Details. | P3 | neu |
 
 ## Details und offene Fragen
 
@@ -40,6 +40,8 @@ Regeln
 
 **F-010 (Luftbild).** Gesichert: Die Esri-Eingabe steht nur in Verwaltung → Einstellungen; Mitglieder sehen keine Anmeldung. Ohne Eintrag zeigt die Karte das offene Luftbild des LGLN (nur Niedersachsen), Bremen bleibt ohne Luftbild (STATUS: Luftbild). OpenStreetMap selbst betreibt keine Satellitenkarte; der OSM-Wiki-Eintrag „Luftbilder“ nennt nur Landesdaten und Fremdquellen, für Bremen ohne Angabe. Hinweis der BKG-Seite: Ab 01.01.2027 sollen Länder-Geobasisdaten (AdV-GR 4.1) unter offener Lizenz (Datenlizenz Deutschland 2.0 oder CC BY 4.0) nutzbar werden; ob das Bremer Luftbild und einen Webdienst ohne Schlüssel einschließt, ist **nicht bestätigt**. Nicht geprüft: Esri-Bilder ohne Schlüssel einzubinden (Nutzungsbedingungen von Esri unklar, nicht empfohlen). Wege (Vorschläge): (1) Bremen bleibt bis Anfang 2027 ohne Luftbild, danach Prüfung der offenen Bremer Daten; Esri-Feld wandert eingeklappt unter „Erweitert“. (2) Esri-Schlüssel einmalig durch Jan anlegen (kostenlos laut Esri, Bedingungen vorher prüfen); Mitglieder merken nichts. (3) Esri ohne Schlüssel: nur nach Prüfung der Esri-Bedingungen.
 
+**F-011 (Luftbildgebiet).** Gesichert (Code): `tileInArea` liefert nur Kacheln innerhalb `AREA` (Bremen + Niedersachsen, Zoom 10–19); außerhalb kommt eine durchsichtige Kachel. Die eigenen Kartenkacheln und die Orte-Daten decken ebenfalls nur HB+NI ab. Grund der Begrenzung ist im Code nur als „Bremen + Niedersachsen“ (Startregion) vermerkt; Annahme: zusätzlich Schutz des kostenlosen Esri-Kontingents (laut Verwaltungstext bis 2 Mio. Kacheln/Monat) vor Massenabruf. Erweiterung auf ganz Deutschland ist eine kleine Änderung (Rechteck vergrößern), betrifft aber Kontingent und Missbrauchsschutz (Abrufgrenze pro IP gibt es schon: 1500/Min.). Vorschlag: erst erweitern, wenn die Karte selbst über HB+NI hinauswächst. Offen: Verhalten von Esri bei Überschreitung des Kontingents (nicht geprüft; im Esri-Konto Nutzung und Zahlungsangaben ansehen).
+
 ## Testnotizen (was geprüft wurde, ohne Befund)
 
 | Datum | Bereich | Gerät/Browser | Ergebnis |
@@ -51,6 +53,7 @@ Regeln
 | ID | Ergebnis | Verweis |
 |---|---|---|
 | F-009 | verworfen: Jan weiß nicht mehr, was gemeint war („kann ignoriert werden“) | – |
+| F-010 | Erledigt am 20.10. ohne Code: Jan hat einen Esri-Schlüssel (nur Berechtigung Grundkarten) angelegt, in Verwaltung → Einstellungen gespeichert und geprüft; Luftbild deckt Bremen ab. Offen als Notiz: Ablaufdatum des Schlüssels (max. 1 Jahr) vormerken. | – |
 
 ## Ablauf Sammel-Update
 
