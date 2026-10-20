@@ -8,6 +8,7 @@
 	import FamilyMap from '$lib/components/FamilyMap.svelte';
 	import { api, chat, getClient, loadMeta, roomTitle, sdkRef, sendReceipt, startChat } from '$lib/chat/client.svelte';
 	import { call, callsSupported, startCall } from '$lib/chat/calls.svelte';
+	import { CALL_EVENT, group, groupCallStatus, groupCallsSupported, joinGroupCall } from '$lib/chat/groupcall.svelte';
 	import { invite, isMuted, leaveRoom, reportMessage, setMuted } from '$lib/chat/actions';
 	import { livePoints, LIVE_TYPE } from '$lib/chat/live.svelte';
 	import { dayLabel, remaining } from '$lib/chat/format';
@@ -49,9 +50,29 @@
 		}
 	}
 
+	// Gruppenanrufe (D-072): Status alle 15 s, solange die Seite offen ist
+	let gc = $state({ enabled: false, active: false, count: 0 });
+	async function dialGroup(video: boolean) {
+		notice = '';
+		try {
+			await joinGroupCall(roomId, title, video);
+		} catch (e) {
+			notice = (e as Error).message || 'Gruppenanruf nicht möglich.';
+		}
+	}
+	$effect(() => {
+		if (kind === 'direkt' || membership !== 'join' || ended || !canCall) return;
+		const id = roomId;
+		const poll = () => void groupCallStatus(id).then((r) => id === roomId && (gc = r)).catch(() => {});
+		poll();
+		const t = setInterval(poll, 15_000);
+		return () => clearInterval(t);
+	});
+	const inThisCall = $derived(group.view !== 'aus' && group.view !== 'beendet' && group.roomId === roomId);
+
 	onMount(() => {
 		void startChat();
-		canCall = callsSupported();
+		canCall = callsSupported() && groupCallsSupported();
 		const t = setInterval(() => (now = Date.now()), 30_000);
 		return () => clearInterval(t);
 	});
@@ -77,7 +98,10 @@
 	const items = $derived.by(() => {
 		void chat.version;
 		if (!room) return [];
-		const evs = room.getLiveTimeline().getEvents().filter((e) => e.getType() === 'm.room.message' || (e.getType() === 'm.room.encrypted' && !e.isState()) || (e.isRedacted() && e.getType() !== LIVE_TYPE && !e.isState()));
+		const evs = room
+			.getLiveTimeline()
+			.getEvents()
+			.filter((e) => e.getType() === 'm.room.message' || (e.getType() === CALL_EVENT && e.getContent().action === 'start') || (e.getType() === 'm.room.encrypted' && !e.isState()) || (e.isRedacted() && e.getType() !== LIVE_TYPE && !e.isState()));
 		const out: { ev: MatrixEvent; day: string | null; showName: boolean }[] = [];
 		let lastDay = '';
 		let lastSender = '';
@@ -284,6 +308,10 @@
 		{#if lives.length}
 			<button class="btn small secondary livebtn" type="button" onclick={() => (showLive = !showLive)} aria-expanded={showLive}><span class="ldot" aria-hidden="true"></span> {lives.length} live</button>
 		{/if}
+		{#if canCall && kind !== 'direkt' && gc.enabled && membership === 'join' && !ended && !gc.active}
+			<button class="iconbtn" type="button" aria-label="Gruppenanruf starten (Ton)" title="Gruppenanruf (Ton)" disabled={group.view !== 'aus' && group.view !== 'beendet'} onclick={() => dialGroup(false)}><Icon name="telefon" /></button>
+			<button class="iconbtn" type="button" aria-label="Gruppenanruf starten (Video)" title="Gruppenanruf (Video)" disabled={group.view !== 'aus' && group.view !== 'beendet'} onclick={() => dialGroup(true)}><Icon name="video" /></button>
+		{/if}
 		{#if canCall && kind === 'direkt' && membership === 'join' && members.length === 2 && !ended}
 			<button class="iconbtn" type="button" aria-label="Anrufen" title="Anrufen" disabled={call.view !== 'aus'} onclick={() => dial(false)}><Icon name="telefon" /></button>
 			<button class="iconbtn" type="button" aria-label="Videoanruf" title="Videoanruf" disabled={call.view !== 'aus'} onclick={() => dial(true)}><Icon name="video" /></button>
@@ -306,6 +334,16 @@
 			{/if}
 		</div>
 	</header>
+
+	{#if gc.active && !inThisCall && kind !== 'direkt' && membership === 'join' && !ended}
+		<div class="gcbanner" role="status">
+			<p><Icon name="telefon" size={18} /> <strong>Gruppenanruf läuft</strong> · {gc.count} dabei</p>
+			<div class="gcb">
+				<button class="btn small" type="button" disabled={group.view !== 'aus' && group.view !== 'beendet'} onclick={() => dialGroup(false)}>Beitreten</button>
+				<button class="btn small secondary" type="button" disabled={group.view !== 'aus' && group.view !== 'beendet'} onclick={() => dialGroup(true)}>Mit Video</button>
+			</div>
+		</div>
+	{/if}
 
 	{#if searchOpen}
 		<section class="search" aria-label="Im Verlauf suchen">
@@ -386,7 +424,11 @@
 			{/if}
 			{#each items as it (it.ev.getId() ?? it.ev.getTxnId())}
 				{#if it.day}<p class="day"><span>{it.day}</span></p>{/if}
+				{#if it.ev.getType() === CALL_EVENT}
+					<p class="callev"><Icon name="telefon" size={14} /> <span>{sender(it.ev)} {it.ev.getSender() === me ? 'hast' : 'hat'} einen Gruppenanruf gestartet · {new Date(it.ev.getTs()).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span></p>
+				{:else}
 				<div class="mw" class:flash={flash !== '' && flash === it.ev.getId()}><Message ev={it.ev} {room} mine={it.ev.getSender() === me} showName={it.showName} tiles={data.tiles} read={readByOther && it.ev === lastMine} onReport={openReport} /></div>
+				{/if}
 			{/each}
 			{#if typing.length}<p class="typing muted">{typing.join(', ')} schreibt …</p>{/if}
 		{/if}
@@ -650,6 +692,35 @@
 		color: var(--navy);
 		border-radius: 3px;
 		padding: 0 2px;
+	}
+	.callev {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 6px;
+		margin: var(--sp-2) auto;
+		font-size: var(--fs-s);
+		color: var(--ink-2);
+	}
+	.gcbanner {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sp-2);
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--sp-2) var(--sp-4);
+		background: var(--surface-2);
+		border-bottom: 2px solid var(--sea-ink);
+	}
+	.gcbanner p {
+		margin: 0;
+		display: flex;
+		gap: 6px;
+		align-items: center;
+	}
+	.gcb {
+		display: flex;
+		gap: var(--sp-2);
 	}
 	.mw {
 		border-radius: var(--radius-m);

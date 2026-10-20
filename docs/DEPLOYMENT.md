@@ -101,7 +101,23 @@ ss -lunpt | grep -E ':3479|:4916|:4917|:4918|:4919|:4920' ; docker logs --tail 3
 ```
 Falls eine Firewall aktiv ist (ufw / IONOS-Cloud-Firewall), diese Ports freigeben, z. B. `ufw allow 3479 && ufw allow 49160:49200/udp`. Hostname = Host aus `APP_URL` (muss auf die öffentliche IP zeigen). Abschalten: `TURN_ENABLED=false`.
 
-Lokale Browsertests nach dem Rauchtest – Chat-Schlüssel aus dem Passwort: `… python3 scripts/chatkey-check.py`; Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`.
+## Gruppenanrufe / LiveKit (D-072)
+Container `livekit` (Medienserver). Konfiguration schreibt die App (`livekit.yaml` im Volume `synapse-config`), Neustart bei Änderung automatisch. Der Signalweg läuft über die App (`/livekit/rtc`), dafür ist **nichts** in Plesk zu ändern. Von außen erreichbar sein muss nur:
+
+| Port | Protokoll | Zweck |
+|---|---|---|
+| 49210 | UDP | Medien (Bild/Ton, verschlüsselt) |
+| 49210 | TCP | Ausweichweg, wenn UDP gesperrt ist |
+
+Prüfen auf dem Server:
+```bash
+ss -lunpt | grep 49210 ; docker logs --tail 30 kinder-deutschlands-livekit-1
+```
+Firewall (ufw / IONOS-Cloud-Firewall) nur falls aktiv: `ufw allow 49210` bzw. in der IONOS-Firewall 49210 UDP und TCP freigeben. Abschalten: `LIVEKIT_ENABLED=false` (Knöpfe verschwinden). Falsche öffentliche Adresse (z. B. hinter NAT): `LIVEKIT_NODE_IP` setzen.
+
+Neuer Dienst `init` (läuft beim Start einmal und beendet sich): macht die Volumes `media` und `backups` für die App beschreibbar. In Portainer erscheint er als „exited (0)“ – das ist richtig.
+
+Lokale Browsertests nach dem Rauchtest – Chat-Schlüssel aus dem Passwort: `… python3 scripts/chatkey-check.py`; Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`. Gruppenanruf (drei Browser, echter Medienserver): Rauchtest und `scripts/groupcall-check.py` jeweils mit `LIVEKIT_BIN=/pfad/livekit-server` (Release v1.13.7).
 
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.
@@ -141,7 +157,7 @@ Neuer Server (Docker + Portainer laufen; am besten vorher den Portainer-Token wi
 curl -fsSL https://raw.githubusercontent.com/dk1jan/kinder-deutschlands/main/deploy/umzug.sh -o /root/umzug.sh
 bash /root/umzug.sh import /root/kd-umzug-<Datum>.tar
 ```
-Danach: DNS der Domain auf die neue IP, Plesk-Subdomain + nginx-Block (`deploy/plesk-nginx.conf`) + TLS, TURN-Ports 3479 UDP/TCP und 49160–49200 UDP, Verwaltung → Daten → Kartenhintergrund „Jetzt abrufen“. Alten Stack erst stoppen, wenn der neue läuft. Die Umzugsdatei enthält `APP_SECRET` und Passwörter: nur per scp, danach auf beiden Servern `rm -f /root/kd-umzug-*.tar`.
+Danach: DNS der Domain auf die neue IP, Plesk-Subdomain + nginx-Block (`deploy/plesk-nginx.conf`) + TLS, TURN-Ports 3479 UDP/TCP und 49160–49200 UDP, Gruppenanrufe 49210 UDP/TCP, Verwaltung → Daten → Kartenhintergrund „Jetzt abrufen“. Alten Stack erst stoppen, wenn der neue läuft. Die Umzugsdatei enthält `APP_SECRET` und Passwörter: nur per scp, danach auf beiden Servern `rm -f /root/kd-umzug-*.tar`.
 
 ## Datenabruf: „DNS vorübergehend nicht erreichbar“ (F-013)
 Die Abrufe wiederholen sich bei DNS-Aussetzern automatisch (bis zu 5 Versuche, danach nächster Lauf mit wachsender Pause). Hält der Fehler an, prüfen:
@@ -183,6 +199,9 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 | `TURN_ENABLED` | nein | Standard `true`; `false` schaltet den TURN-Server für Anrufe ab |
 | `TURN_HOST` | nein | Standard: Host aus `APP_URL` |
 | `TURN_EXTERNAL_IP` | nein | nur nötig, wenn der Server hinter NAT steht (öffentliche IP) |
+| `LIVEKIT_ENABLED` | nein | Standard `true`; `false` schaltet Gruppenanrufe ab |
+| `LIVEKIT_NODE_IP` | nein | öffentliche IP für Gruppenanrufe, nur falls die automatische Ermittlung (DNS des APP_URL-Hosts) nicht stimmt |
+| `LIVEKIT_MAX_PARTICIPANTS` | nein | Standard `25` Personen je Gruppenanruf |
 
 ## Domainwechsel später
 Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung. Chats bleiben erhalten (feste Chat-Serverkennung, D-035); Push-Abos melden sich auf der neuen Adresse neu an.

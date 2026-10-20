@@ -14,7 +14,7 @@ Internet ── Plesk nginx (TLS, kinder.jan-krueger.org) ── 127.0.0.1:3120 
 
 Kartenkacheln (PMTiles) liefert die App selbst aus (Volume `tiles`, D-021); Datenabrufe laufen als Zeitplan im Web-Container (D-023).
 
-Chat (D-034): Browser ↔ App-Proxy ↔ Synapse. Verschlüsselung nur im Browser (`app/src/lib/chat/`). Die App schreibt die Synapse-Konfiguration beim Start (`app/scripts/synapse-prepare.mjs`), das Regelmodul `app/scripts/kd_rules.py` fragt die App bei Einladungen, Beitritten ohne Einladung und beim Senden. Serverseite: `app/src/lib/server/chat/` (Admin-Zugang, Räume/Treffen, Regeln, Meldungen), `app/src/lib/server/push.ts` (Web-Push, Gateway, Ruhezeiten). Geplante Zusatzdienste: LiveKit/coturn (Abschnitt 7), optional n8n (intern).
+Chat (D-034): Browser ↔ App-Proxy ↔ Synapse. Verschlüsselung nur im Browser (`app/src/lib/chat/`). Die App schreibt die Synapse-Konfiguration beim Start (`app/scripts/synapse-prepare.mjs`), das Regelmodul `app/scripts/kd_rules.py` fragt die App bei Einladungen, Beitritten ohne Einladung und beim Senden. Serverseite: `app/src/lib/server/chat/` (Admin-Zugang, Räume/Treffen, Regeln, Meldungen), `app/src/lib/server/push.ts` (Web-Push, Gateway, Ruhezeiten). Anrufe: 1:1 über Matrix-Signalisierung + coturn (D-056); Gruppenanrufe über LiveKit (Container `livekit`, D-072) – Token von der App (`src/lib/server/livekit.ts`, `/api/anruf`), Signalweg über `scripts/server.mjs` (`/livekit/rtc`), Ende-zu-Ende-Schlüssel im Browser (`src/lib/chat/groupcall.svelte.ts`, Weitergabe per Olm). Optional später n8n (intern).
 
 ## Repo-Aufbau
 

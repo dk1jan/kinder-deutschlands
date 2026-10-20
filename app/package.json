@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "node scripts/migrate.mjs && node build",
+    "start": "node scripts/migrate.mjs && node scripts/server.mjs",
     "migrate": "node scripts/migrate.mjs",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --threshold error",
     "test": "vitest run"
@@ -20,6 +20,7 @@
     "@protomaps/basemaps": "5.7.2",
     "@simplewebauthn/browser": "13.3.0",
     "@simplewebauthn/server": "13.3.3",
+    "livekit-client": "2.22.3",
     "maplibre-gl": "6.12.0",
     "matrix-js-sdk": "43.0.0",
     "nodemailer": "7.0.13",

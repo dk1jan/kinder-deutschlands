@@ -119,6 +119,7 @@ Was du schreibst oder einstellst, ist für den Kreis sichtbar, den die jeweilige
 - Nachrichten, Bilder, Dateien, Sprachnachrichten, geteilte Standorte und die Anrufsignalisierung sind Ende-zu-Ende-verschlüsselt und werden nur in den Geräten der Beteiligten entschlüsselt.
 - Der Chat-Server speichert verschlüsselte Inhalte sowie technisch nötige Angaben: wer in welchem Raum ist, Zeitpunkte, Geräte. IP-Adressen der Chat-Verbindungen werden nach 14 Tagen gelöscht.
 - Anrufe gehen direkt von Gerät zu Gerät oder, wenn das nicht klappt, über unseren eigenen Vermittlungsserver (TURN), der nur verschlüsselte Daten sieht. Bei direkter Verbindung kann das Gerät der anderen Person deine IP-Adresse sehen.
+- Gruppenanrufe laufen über unseren eigenen Medienserver. Bild und Ton sind zusätzlich Ende-zu-Ende-verschlüsselt; den Schlüssel tauschen nur die Geräte der Teilnehmenden über den verschlüsselten Chat aus. Der Medienserver sieht deine IP-Adresse und deine zufällige Chat-Kennung, solange du im Anruf bist, aber keine Inhalte. Es gibt keinen Mitschnitt und keine Anrufprotokolle; technische Fehlermeldungen werden nur kurz in rotierenden Server-Logs gehalten.
 - Gemeldete Nachrichten erreicht die Moderation nur, wenn du sie beim Melden ausdrücklich mitschickst.
 - Die Suche im Chat findet nur auf deinem Gerät statt.
 

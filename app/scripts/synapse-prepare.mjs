@@ -6,6 +6,8 @@
 import { hkdfSync, createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -178,6 +180,65 @@ ${denied.map((d) => `denied-peer-ip=${d}`).join('\n')}
 `;
 }
 
+/** Gruppenanrufe (D-072): Medienserver LiveKit. Standard an; Ports 49210 UDP/TCP (neben TURN 49160–49200). */
+export function livekitSettings(env = process.env) {
+	if ((env.LIVEKIT_ENABLED ?? 'true') === 'false') return null;
+	let host = '';
+	try {
+		host = new URL(env.APP_URL || '').hostname;
+	} catch {
+		host = '';
+	}
+	const udp = Number(env.LIVEKIT_UDP_PORT || 49210), tcp = Number(env.LIVEKIT_TCP_PORT || 49210);
+	const max = Number(env.LIVEKIT_MAX_PARTICIPANTS || 25);
+	if (![udp, tcp].every((p) => p > 1024 && p < 65536) || !(max >= 2 && max <= 200)) throw new Error('LiveKit-Einstellungen ungültig.');
+	return { host, udp, tcp, max, nodeIp: env.LIVEKIT_NODE_IP || env.TURN_EXTERNAL_IP || '', apiKey: 'kd-app' };
+}
+
+/** Öffentliche Adresse für die Medienverbindungen: fest eingestellt, sonst DNS des APP_URL-Hosts (IPv4). Leer = per STUN ermitteln. */
+export async function livekitNodeIp(l) {
+	if (l.nodeIp) return l.nodeIp;
+	if (!l.host) return '';
+	if (l.host === 'localhost') return '127.0.0.1';
+	if (isIP(l.host)) return l.host;
+	try {
+		return (await lookup(l.host, { family: 4 })).address;
+	} catch {
+		return '';
+	}
+}
+
+/** LiveKit-Konfiguration: Räume legt nur die App an, Schlüssel aus APP_SECRET, eigener TURN-Server statt fremder STUN-Server. */
+export function buildLivekitConfig(appSecret, l, nodeIp, turn) {
+	const sec = chatSecret(appSecret, 'turn');
+	const turnLines = turn
+		? `  stun_servers: [${yamlStr(`${turn.host}:${turn.port}`)}]
+  turn_servers:
+    - { host: ${yamlStr(turn.host)}, port: ${turn.port}, protocol: udp, secret: ${yamlStr(sec)}, ttl: 3600 }
+    - { host: ${yamlStr(turn.host)}, port: ${turn.port}, protocol: tcp, secret: ${yamlStr(sec)}, ttl: 3600 }
+`
+		: '';
+	return `# Automatisch erzeugt von scripts/synapse-prepare.mjs – Änderungen hier werden beim nächsten Start überschrieben.
+port: 7880
+bind_addresses: ["0.0.0.0"]
+rtc:
+  udp_port: ${l.udp}
+  tcp_port: ${l.tcp}
+  use_external_ip: ${nodeIp ? 'false' : 'true'}
+${nodeIp ? `  node_ip: ${yamlStr(nodeIp)}
+` : ''}${turnLines}room:
+  auto_create: false
+  empty_timeout: 120
+  departure_timeout: 20
+  max_participants: ${l.max}
+keys:
+  ${yamlStr(l.apiKey)}: ${yamlStr(chatSecret(appSecret, 'livekit'))}
+logging:
+  level: warn
+  pion_level: error
+`;
+}
+
 const LOG_CONFIG = `version: 1
 formatters:
   precise:
@@ -252,6 +313,9 @@ export async function prepareSynapse(sql, env = process.env) {
 		await writeIfChanged(join(configDir, 'kd_rules.py'), module),
 		turn ? await writeIfChanged(join(configDir, 'turnserver.conf'), buildTurnConfig(appSecret, turn)) : false
 	].some(Boolean);
-	console.log(`[chat] Synapse-Konfiguration ${changed ? 'aktualisiert' : 'unverändert'}${created ? ', Datenbank angelegt' : ''}${turn ? `, Anrufe über TURN ${turn.host}:${turn.port}` : ', ohne TURN'}.`);
+	const lk = livekitSettings(env);
+	const lkIp = lk ? await livekitNodeIp(lk) : '';
+	if (lk) await writeIfChanged(join(configDir, 'livekit.yaml'), buildLivekitConfig(appSecret, lk, lkIp, turn));
+	console.log(`[chat] Synapse-Konfiguration ${changed ? 'aktualisiert' : 'unverändert'}${created ? ', Datenbank angelegt' : ''}${turn ? `, Anrufe über TURN ${turn.host}:${turn.port}` : ', ohne TURN'}${lk ? `, Gruppenanrufe über ${lkIp || 'STUN-Adresse'}:${lk.udp}` : ''}.`);
 	return { changed, created };
 }

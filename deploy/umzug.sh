@@ -11,14 +11,14 @@
 # Nicht mitgeht (wird neu geholt/erzeugt): Kartenkacheln (Verwaltung → Daten → Kartenhintergrund „Jetzt abrufen“),
 # Chat-Konfiguration (schreibt die App beim Start), tägliche Sicherungen (neue entstehen ab dem ersten Tag).
 # Danach: DNS der Domain auf den neuen Server, Plesk-Subdomain + nginx-Block (plesk-nginx.conf), TLS,
-# TURN-Ports 3479 UDP/TCP und 49160–49200 UDP freigeben (DEPLOYMENT.md). Alter Server: Stack erst stoppen,
+# TURN-Ports 3479 UDP/TCP und 49160–49200 UDP sowie 49210 UDP/TCP (Gruppenanrufe) freigeben (DEPLOYMENT.md). Alter Server: Stack erst stoppen,
 # wenn der neue läuft.
 set -euo pipefail
 
 STACK="${KD_STACK:-kinder-deutschlands}"
 OUTDIR="${KD_UMZUG_DIR:-/root}"
 IMG=postgis/postgis:17-3.6-alpine
-KEYS="APP_URL APP_SECRET POSTGRES_PASSWORD ALLOW_INDEXING SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_INSECURE_TLS TURN_ENABLED TURN_HOST TURN_EXTERNAL_IP"
+KEYS="APP_URL APP_SECRET POSTGRES_PASSWORD ALLOW_INDEXING SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_INSECURE_TLS TURN_ENABLED TURN_HOST TURN_EXTERNAL_IP LIVEKIT_ENABLED LIVEKIT_NODE_IP LIVEKIT_MAX_PARTICIPANTS"
 PORTAINER_URL="${PORTAINER_URL:-http://127.0.0.1:9000}"
 CONF=/opt/kinder-deutschlands/portainer.env
 
@@ -101,8 +101,8 @@ import_all() {
 	fi
 	echo "→ Warte auf Datenbank"
 	wait_for "${STACK}-db-1"
-	echo "→ App, Chat, TURN und Sicherung anhalten"
-	for c in web synapse turn backup; do docker stop "${STACK}-$c-1" >/dev/null 2>&1 || true; done
+	echo "→ App, Chat, TURN, Gruppenanrufe und Sicherung anhalten"
+	for c in web synapse turn livekit backup; do docker stop "${STACK}-$c-1" >/dev/null 2>&1 || true; done
 	echo "→ Datenbank zurückspielen"
 	docker exec -i "${STACK}-db-1" pg_restore -U kd -d kd --clean --if-exists --no-owner < "$dir/kd.dump"
 	if [ -f "$dir/synapse.dump" ]; then
@@ -114,10 +114,10 @@ import_all() {
 	vol_in media "$dir"
 	vol_in synapse-data "$dir"
 	echo "→ Starten"
-	for c in web synapse turn backup; do docker start "${STACK}-$c-1" >/dev/null 2>&1 || true; done
+	for c in web synapse turn livekit backup; do docker start "${STACK}-$c-1" >/dev/null 2>&1 || true; done
 	wait_for "${STACK}-web-1"
 	rm -rf "$dir"
-	echo "✔ Umzug fertig. Jetzt: DNS umstellen, Plesk-Subdomain + nginx-Block, TLS, TURN-Ports (DEPLOYMENT.md → Umzug)."
+	echo "✔ Umzug fertig. Jetzt: DNS umstellen, Plesk-Subdomain + nginx-Block, TLS, Ports für Anrufe (DEPLOYMENT.md → Umzug)."
 	echo "  Kartenhintergrund: Verwaltung → Daten → Kartenhintergrund → „Jetzt abrufen“."
 	echo "  Umzugsdatei löschen: rm -f $file"
 }

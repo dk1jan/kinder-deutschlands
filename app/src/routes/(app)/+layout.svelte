@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Pennant from '$lib/components/Pennant.svelte';
 	import CallOverlay from '$lib/components/chat/CallOverlay.svelte';
+	import GroupCallOverlay from '$lib/components/chat/GroupCallOverlay.svelte';
 	import { onMount } from 'svelte';
 	import { unreadChats } from '$lib/chat/client.svelte';
 	import { inArea } from '$lib/areas';
@@ -77,6 +78,7 @@
 <main id="inhalt" tabindex="-1">
 	{@render children()}
 	<CallOverlay />
+	<GroupCallOverlay />
 	{#if !fullscreen}
 		<footer class="foot">
 			<nav aria-label="Rechtliches">

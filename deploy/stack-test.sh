@@ -16,7 +16,7 @@ dc() { docker compose -p kdstack "$@"; }
 fail() {
 	echo "::error::Stack-Test: $1"
 	dc ps || true
-	dc logs --tail 80 web synapse || true
+	dc logs --tail 80 web synapse livekit || true
 	dc down -v --remove-orphans >/dev/null 2>&1 || true
 	exit 1
 }
@@ -97,6 +97,40 @@ const t = h + "." + p + "." + createHmac("sha256", sec("jwt")).update(h + "." + 
 })().catch((e) => { console.error(e); process.exit(1); });
 ' || fail "TURN-Zugangsdaten"
 echo "OK  TURN-Server läuft"
+
+# Volumes für die App beschreibbar (Dienst „init“), sonst scheitern Bild-Uploads und Sicherungen vor Migrationen
+dc exec -T web sh -c 'test -w /data/media && test -w /backups' || fail "Volumes media/backups für die App nicht beschreibbar"
+echo "OK  Volumes media und backups beschreibbar"
+
+# Gruppenanrufe (D-072): LiveKit läuft mit der Konfiguration der App, Signalweg nur über /livekit/rtc der App
+for i in $(seq 1 30); do
+	l=$(docker inspect -f '{{.State.Health.Status}}' kdstack-livekit-1 2>/dev/null || echo none)
+	[ "$l" = healthy ] && break
+	sleep 4
+done
+[ "$l" = healthy ] || { dc logs --tail 40 livekit; fail "LiveKit nicht gesund ($l)"; }
+dc exec -T web sh -c 'grep -q "udp_port: 49210" /synapse-config/livekit.yaml && grep -q "auto_create: false" /synapse-config/livekit.yaml' || fail "LiveKit-Konfiguration fehlt"
+dc exec -T web node -e '
+const { hkdfSync, createHmac } = require("crypto");
+const sec = Buffer.from(hkdfSync("sha256", process.env.APP_SECRET, "kinder-deutschlands", "chat:livekit", 32)).toString("base64url");
+const b = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const jwt = (c) => { const n = Math.floor(Date.now() / 1000), h = b({ alg: "HS256", typ: "JWT" }), p = b({ iss: "kd-app", nbf: n - 5, exp: n + 60, ...c }); return h + "." + p + "." + createHmac("sha256", sec).update(h + "." + p).digest("base64url"); };
+(async () => {
+	const L = process.env.LIVEKIT_URL;
+	const cr = await fetch(L + "/twirp/livekit.RoomService/CreateRoom", { method: "POST", headers: { authorization: "Bearer " + jwt({ video: { roomCreate: true } }), "content-type": "application/json" }, body: JSON.stringify({ name: "kd-stacktest", metadata: "x" }) });
+	if (cr.status !== 200) { console.error("CreateRoom", cr.status, await cr.text()); process.exit(1); }
+	const t = jwt({ sub: "@kstacktest234567:kinder-deutschlands|STACK", video: { room: "kd-stacktest", roomJoin: true } });
+	const v = await fetch("http://127.0.0.1:3000/livekit/rtc/validate?access_token=" + t);
+	if (v.status !== 200) { console.error("validate über die App", v.status, await v.text()); process.exit(1); }
+	const bad = await fetch("http://127.0.0.1:3000/livekit/rtc/validate?access_token=" + t.slice(0, -4) + "AAAA");
+	if (bad.status === 200) { console.error("falsches Token angenommen"); process.exit(1); }
+	const tw = await fetch("http://127.0.0.1:3000/livekit/twirp/livekit.RoomService/ListRooms", { method: "POST" });
+	if (tw.status !== 404) { console.error("Verwaltung von außen erreichbar", tw.status); process.exit(1); }
+	console.log("OK  LiveKit: Raum nur über die App, Token geprüft, Signalweg /livekit/rtc über die App, Verwaltung nicht erreichbar");
+})().catch((e) => { console.error(e); process.exit(1); });
+' || fail "Gruppenanrufe (LiveKit)"
+docker port kdstack-livekit-1 | grep -q "49210/udp" || fail "LiveKit-Port 49210/udp nicht veröffentlicht"
+echo "OK  LiveKit läuft, Port 49210 UDP/TCP veröffentlicht"
 
 # Umzug (F-014): exportieren, Daten verändern, importieren → alter Stand ist wieder da
 U=$(mktemp -d)

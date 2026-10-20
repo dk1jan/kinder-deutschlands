@@ -229,6 +229,7 @@ async function doStart(): Promise<MatrixClient | null> {
 		await c.initRustCrypto({ cryptoDatabasePrefix: dbPrefix(stored) });
 		// Anrufe (Abschnitt 7): eingehende Anrufe im Direktchat
 		(await import('./calls.svelte')).initCalls(c, sdk);
+		(await import('./groupcall.svelte')).initGroupCalls(c, sdk);
 		c.on(sdk.HttpApiEvent.SessionLoggedOut, () => {
 			writeStored(null);
 			chat.status = 'fehler';
@@ -289,6 +290,7 @@ async function autoJoinDirect(room: Room) {
 
 export async function stopChat() {
 	(await import('./calls.svelte')).hangup();
+	(await import('./groupcall.svelte')).leaveGroupCall();
 	if (client) {
 		client.stopClient();
 		client.removeAllListeners();
@@ -560,7 +562,7 @@ export function lastEvent(room: Room): MatrixEvent | undefined {
 	const evs = room.getLiveTimeline().getEvents();
 	for (let i = evs.length - 1; i >= 0; i--) {
 		const t = evs[i].getType();
-		if (t === 'm.room.message' || t === 'm.room.encrypted') return evs[i];
+		if (t === 'm.room.message' || t === 'm.room.encrypted' || (t === 'de.kinder.call' && evs[i].getContent().action === 'start')) return evs[i];
 	}
 	return undefined;
 }
@@ -570,6 +572,7 @@ export function previewText(ev: MatrixEvent | undefined): string {
 	if (ev.isRedacted()) return 'Nachricht gelöscht';
 	if (ev.isDecryptionFailure()) return '🔒 Verschlüsselte Nachricht';
 	if (ev.getType() === 'm.room.encrypted') return '…';
+	if (ev.getType() === 'de.kinder.call') return '📞 Gruppenanruf gestartet';
 	const c = ev.getContent();
 	switch (c.msgtype) {
 		case 'm.image':

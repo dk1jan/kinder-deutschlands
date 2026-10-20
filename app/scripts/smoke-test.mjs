@@ -182,6 +182,10 @@ if (SYN_PY) {
 		CHAT_JOBS: 'on',
 		CHAT_JOBS_MS: '1500'
 	});
+	// Gruppenanrufe (D-072): echter Medienserver, wenn LIVEKIT_BIN gesetzt ist (CI: immer, siehe Workflow)
+	if (!process.env.LIVEKIT_BIN && process.env.SYNAPSE_REQUIRED) throw new Error('LIVEKIT_BIN fehlt – Medienserver-Test ist in CI Pflicht.');
+	if (process.env.LIVEKIT_BIN) env.LIVEKIT_URL = 'http://127.0.0.1:7880';
+	else env.LIVEKIT_ENABLED = 'false';
 	rmSync('/tmp/kd-smoke-push', { recursive: true, force: true });
 }
 
@@ -204,7 +208,15 @@ if (SYN_PY) {
 	synapse.stdout.on('data', (d) => (synapseLog += d));
 	synapse.stderr.on('data', (d) => (synapseLog += d));
 }
-const server = spawn('node', ['build'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+let livekit = null;
+let livekitLog = '';
+if (SYN_PY && process.env.LIVEKIT_BIN) {
+	livekit = spawn(process.env.LIVEKIT_BIN, ['--config', `${SYN_DIR}/config/livekit.yaml`], { stdio: ['ignore', 'pipe', 'pipe'] });
+	livekit.stdout.on('data', (d) => (livekitLog += d));
+	livekit.stderr.on('data', (d) => (livekitLog += d));
+}
+// Wie im Container: eigener Start mit Weiterleitung /livekit/rtc → Medienserver
+const server = spawn('node', ['scripts/server.mjs'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', (d) => (serverLog += d));
 server.stderr.on('data', (d) => (serverLog += d));
@@ -1119,6 +1131,35 @@ try {
 			let joined = true;
 			try { await ma.joinRoom(tr); } catch { joined = false; }
 			check(joined, 'Mit Ticket dem Treffen beigetreten');
+			// Gruppenanrufe (D-072): Token nur für Mitglieder mit eigenem Gerät, Signalweg über die App
+			const anruf = (P, roomId, deviceId) => P.req('/api/anruf', { json: { roomId, deviceId } });
+			if (livekit) {
+				r = await anruf(C, tr, mc.getDeviceId());
+				const j1 = JSON.parse(r.body);
+				check(r.status === 200 && j1.fresh === true && j1.url === '/livekit' && j1.identity === `${sc.userId}|${mc.getDeviceId()}`, `Gruppenanruf: Start im Treffen liefert Token (${r.body.slice(0, 80)})`);
+				r = await anruf(A, tr, ma.getDeviceId());
+				const j2 = JSON.parse(r.body);
+				check(r.status === 200 && j2.fresh === false && j2.callId === j1.callId, 'Gruppenanruf: zweites Mitglied bekommt denselben Anruf (kein zweiter Schlüssel)');
+				r = await anruf(admin, tr, 'ABCDEFGH');
+				check(r.status === 400, 'Gruppenanruf: Nicht-Mitglied abgelehnt');
+				r = await anruf(A, tr, 'FREMDGERAET');
+				check(r.status === 400 && r.body.includes('Gerät'), 'Gruppenanruf: fremdes Gerät abgelehnt');
+				r = await anruf(A, dm, ma.getDeviceId());
+				check(r.status === 400 && r.body.includes('Gruppen'), 'Gruppenanruf: nicht im Direktchat');
+				r = await A.req(`/api/anruf?raum=${encodeURIComponent(tr)}`);
+				check(r.status === 200 && JSON.parse(r.body).enabled === true && JSON.parse(r.body).active === false, 'Gruppenanruf: Status für Mitglieder');
+				let v = await fetch(`${BASE}/livekit/rtc/validate?access_token=${j1.token}`);
+				check(v.status === 200, `Gruppenanruf: Token vom Medienserver über die App angenommen (${v.status})`);
+				v = await fetch(`${BASE}/livekit/rtc/validate?access_token=${j1.token.slice(0, -6)}AAAAAA`);
+				check(v.status !== 200, 'Gruppenanruf: verfälschtes Token abgelehnt');
+				v = await fetch(`${BASE}/livekit/twirp/livekit.RoomService/ListRooms`, { method: 'POST' });
+				const v2 = await fetch(`${BASE}/livekit/rtc/../twirp/livekit.RoomService/ListRooms`);
+				check(v.status === 404 && v2.status === 404, 'Gruppenanruf: Verwaltung des Medienservers von außen nicht erreichbar');
+			} else {
+				r = await anruf(C, tr, mc.getDeviceId());
+				check(r.status === 400 && r.body.includes('nicht eingerichtet'), 'Gruppenanruf ohne Medienserver: verständliche Meldung');
+				console.log('HINWEIS  Medienserver-Test übersprungen (LIVEKIT_BIN nicht gesetzt)');
+			}
 			r = await A.req(`/api/qr?d=${encodeURIComponent(turl)}`);
 			check(r.status === 200 && r.body.includes('<svg'), 'QR-Code für das Treffen');
 			r = await A.req(`/api/qr?d=${encodeURIComponent('https://evil.example/x')}`);
@@ -1197,11 +1238,12 @@ try {
 } finally {
 	server.kill();
 	synapse?.kill();
+	livekit?.kill('SIGKILL');
 	mock.close();
 }
 
 if (failures) {
-	console.log(`\n${failures} Prüfung(en) fehlgeschlagen.\n--- Serverlog ---\n${serverLog}${synapseLog ? `\n--- Chat-Server ---\n${synapseLog.slice(-4000)}` : ''}`);
+	console.log(`\n${failures} Prüfung(en) fehlgeschlagen.\n--- Serverlog ---\n${serverLog}${synapseLog ? `\n--- Chat-Server ---\n${synapseLog.slice(-4000)}` : ''}${livekitLog ? `\n--- Medienserver ---\n${livekitLog.slice(-3000)}` : ''}`);
 	if (process.env.GITHUB_ACTIONS) console.log(`::error title=Serverlog::${serverLog.slice(-1500).replace(/\n/g, '%0A')}`);
 	process.exit(1);
 }

@@ -30,7 +30,7 @@ WORKDIR /app
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/scripts/migrate.mjs /app/scripts/synapse-prepare.mjs /app/scripts/kd_rules.py ./scripts/
+COPY --from=build /app/scripts/migrate.mjs /app/scripts/synapse-prepare.mjs /app/scripts/server.mjs /app/scripts/kd_rules.py ./scripts/
 COPY --from=build /app/migrations ./migrations
 ARG GIT_SHA=unbekannt
 ENV GIT_SHA=$GIT_SHA
@@ -38,4 +38,4 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "node scripts/migrate.mjs && exec node build"]
+CMD ["sh", "-c", "node scripts/migrate.mjs && exec node scripts/server.mjs"]

@@ -14,10 +14,25 @@ x-logging: &logging
     max-file: "3"
 
 services:
+  # Einmal beim Start: Volumes für die App beschreibbar machen (App läuft als Benutzer „node“, UID 1000).
+  # Sonst hängt es davon ab, welcher Container ein neues Volume zuerst einbindet.
+  init:
+    image: postgis/postgis:17-3.6-alpine
+    restart: "no"
+    network_mode: none
+    volumes:
+      - backups:/backups
+      - media:/media
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["chown 1000:1000 /backups /media && echo '[init] Volumes bereit'"]
+    logging: *logging
+
   web:
     image: __WEB_IMAGE__
     restart: unless-stopped
     depends_on:
+      init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     environment:
@@ -47,6 +62,11 @@ services:
       TURN_ENABLED: ${TURN_ENABLED:-true}
       TURN_HOST: ${TURN_HOST:-}
       TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-}
+      # Gruppenanrufe (D-072): Medienserver LiveKit, Signalweg über die App (/livekit), Medien über 49210 UDP/TCP
+      LIVEKIT_ENABLED: ${LIVEKIT_ENABLED:-true}
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_NODE_IP: ${LIVEKIT_NODE_IP:-}
+      LIVEKIT_MAX_PARTICIPANTS: ${LIVEKIT_MAX_PARTICIPANTS:-25}
       # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
       NODE_OPTIONS: --max-old-space-size=1536
     ports:
@@ -140,6 +160,44 @@ services:
           if [ "$$(sum)" != "$$h" ]; then echo "[turn] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
         done
         wait $$p
+    logging: *logging
+
+  # Gruppenanrufe (D-072): Medienserver LiveKit (SFU). Leitet nur verschlüsselte Medienpakete weiter; Bild und Ton
+  # sind zusätzlich Ende-zu-Ende-verschlüsselt (Schlüssel nur in den Browsern). Kein Mitschnitt. Konfiguration
+  # (inkl. Schlüssel) schreibt die App. Nach außen nur 49210 UDP (Medien) und 49210 TCP (Ausweichweg); der
+  # Signalweg läuft über die App (/livekit/rtc), die Verwaltungs-Schnittstelle bleibt intern.
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - synapse-config:/cfg:ro
+    ports:
+      - "49210:49210/udp"
+      - "49210:49210/tcp"
+    networks: [frontend]
+    mem_limit: 512m
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while [ ! -f /cfg/livekit.yaml ]; do echo "[livekit] warte auf Konfiguration"; sleep 10; done
+        sum() { md5sum /cfg/livekit.yaml; }
+        h=$$(sum)
+        /livekit-server --config /cfg/livekit.yaml & p=$$!
+        trap 'kill -TERM $$p; wait $$p; exit 0' TERM INT
+        while kill -0 $$p 2>/dev/null; do
+          sleep 30
+          if [ "$$(sum)" != "$$h" ]; then echo "[livekit] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
+        done
+        wait $$p
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7880 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
     logging: *logging
 
   # Tägliche Sicherung (14 Tage). Schreibt last-backup.json für die Admin-Übersicht.

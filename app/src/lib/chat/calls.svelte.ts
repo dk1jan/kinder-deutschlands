@@ -23,6 +23,8 @@ export const call = $state({
 });
 
 let current: MatrixCall | null = null;
+/** Läuft ein Gruppenanruf? (gesetzt von groupcall.svelte.ts) – dann sind 1:1-Anrufe besetzt. */
+export const busy = { group: false };
 let clearTimer: ReturnType<typeof setTimeout> | null = null;
 let ringtone: { stop: () => void } | null = null;
 
@@ -129,9 +131,9 @@ function end() {
 /** Vom Chat-Client beim Start aufgerufen: eingehende Anrufe annehmen können. */
 export function initCalls(c: MatrixClient, sdk: Sdk) {
 	c.on('Call.incoming' as never, ((mc: MatrixCall) => {
-		// Nur im Direktchat – Gruppenanrufe gibt es (noch) nicht. Besetzt, wenn schon ein Anruf läuft.
+		// Nur im Direktchat – Gruppenanrufe laufen über den Medienserver (groupcall.svelte.ts). Besetzt, wenn schon ein Anruf läuft.
 		const room = c.getRoom(mc.roomId);
-		if (current || !room || room.getJoinedMemberCount() !== 2) {
+		if (current || busy.group || !room || room.getJoinedMemberCount() !== 2) {
 			mc.reject();
 			return;
 		}
@@ -141,7 +143,7 @@ export function initCalls(c: MatrixClient, sdk: Sdk) {
 }
 
 export async function startCall(c: MatrixClient, sdk: Sdk, roomId: string, video: boolean) {
-	if (current) throw new Error('Es läuft schon ein Anruf.');
+	if (current || busy.group) throw new Error('Es läuft schon ein Anruf.');
 	if (!callsSupported()) throw new Error('Dieser Browser unterstützt keine Anrufe.');
 	const room = c.getRoom(roomId);
 	if (!room || room.getJoinedMemberCount() !== 2) throw new Error('Anrufe gehen nur im Direktchat, wenn beide beigetreten sind.');

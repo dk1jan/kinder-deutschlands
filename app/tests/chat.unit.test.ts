@@ -148,6 +148,61 @@ describe('Anrufe: TURN', async () => {
 	});
 });
 
+describe('Gruppenanrufe: LiveKit (D-072)', async () => {
+	const { livekitSettings, livekitNodeIp, buildLivekitConfig, turnSettings }: any = await import(/* @vite-ignore */ prepPath);
+	const secret = 'y'.repeat(48);
+	it('Standard an, eigener Port 49210, Grenzen geprüft, abschaltbar', () => {
+		const l = livekitSettings({ APP_URL: 'https://kinder.example.org' });
+		expect([l.udp, l.tcp, l.max, l.host]).toEqual([49210, 49210, 25, 'kinder.example.org']);
+		expect(livekitSettings({ APP_URL: 'https://a.b', LIVEKIT_ENABLED: 'false' })).toBeNull();
+		expect(() => livekitSettings({ APP_URL: 'https://a.b', LIVEKIT_MAX_PARTICIPANTS: '1' })).toThrow();
+		expect(() => livekitSettings({ APP_URL: 'https://a.b', LIVEKIT_UDP_PORT: '80' })).toThrow();
+	});
+	it('öffentliche Adresse: fest > TURN_EXTERNAL_IP > IP-Literal/localhost', async () => {
+		expect(await livekitNodeIp(livekitSettings({ APP_URL: 'https://a.b', LIVEKIT_NODE_IP: '203.0.113.7', TURN_EXTERNAL_IP: '198.51.100.1' }))).toBe('203.0.113.7');
+		expect(await livekitNodeIp(livekitSettings({ APP_URL: 'https://a.b', TURN_EXTERNAL_IP: '198.51.100.1' }))).toBe('198.51.100.1');
+		expect(await livekitNodeIp(livekitSettings({ APP_URL: 'http://127.0.0.1:3120' }))).toBe('127.0.0.1');
+		expect(await livekitNodeIp(livekitSettings({ APP_URL: 'http://localhost:3000' }))).toBe('127.0.0.1');
+	});
+	it('Konfiguration: Räume nur über die App, Schlüssel aus APP_SECRET, eigener STUN/TURN statt fremder Server', () => {
+		const env = { APP_URL: 'https://kinder.example.org' };
+		const conf = buildLivekitConfig(secret, livekitSettings(env), '203.0.113.7', turnSettings(env));
+		expect(conf).toContain('auto_create: false');
+		expect(conf).toContain('udp_port: 49210');
+		expect(conf).toContain('use_external_ip: false');
+		expect(conf).toContain('node_ip: "203.0.113.7"');
+		expect(conf).toContain(`"kd-app": "${chatSecret(secret, 'livekit')}"`);
+		expect(conf).toContain('stun_servers: ["kinder.example.org:3479"]');
+		expect(conf).toContain(`secret: "${chatSecret(secret, 'turn')}"`);
+		expect(conf).not.toMatch(/google/i);
+		const noIp = buildLivekitConfig(secret, livekitSettings(env), '', null);
+		expect(noIp).toContain('use_external_ip: true');
+		expect(noIp).not.toContain('turn_servers');
+	});
+});
+
+describe('Gruppenanrufe: Token und Raumname (D-072)', async () => {
+	const { livekitJwt, callRoomName, LIVEKIT_KEY } = await import('../src/lib/server/livekit');
+	const { chatSecret: serverSecret } = await import('../src/lib/server/chat/synapse');
+	const { createHmac } = await import('node:crypto');
+	it('Token: HS256 mit dem LiveKit-Schlüssel, nur die übergebenen Rechte, kurz gültig', () => {
+		const t = livekitJwt({ sub: '@k:kinder-deutschlands|DEV', video: { room: 'kd-x', roomJoin: true } }, 60);
+		const [h, p, sig] = t.split('.');
+		expect(createHmac('sha256', serverSecret('livekit')).update(`${h}.${p}`).digest('base64url')).toBe(sig);
+		const body = JSON.parse(Buffer.from(p, 'base64url').toString());
+		expect(body.iss).toBe(LIVEKIT_KEY);
+		expect(body.video).toEqual({ room: 'kd-x', roomJoin: true });
+		expect(body.exp - Math.floor(Date.now() / 1000)).toBeLessThanOrEqual(60);
+	});
+	it('Raumname: fest je Chat-Raum, verrät die Chat-Kennung nicht', () => {
+		const a = callRoomName('!abcDEF123:kinder-deutschlands');
+		expect(a).toMatch(/^kd-[0-9a-f]{32}$/);
+		expect(callRoomName('!abcDEF123:kinder-deutschlands')).toBe(a);
+		expect(callRoomName('!anders:kinder-deutschlands')).not.toBe(a);
+		expect(a).not.toContain('abcDEF123');
+	});
+});
+
 describe('Suche im Chat (nur im Gerät)', async () => {
 	const { searchableText, matches, snippet } = await import('../src/lib/chat/search');
 	it('durchsucht Text und Dateinamen, sonst nichts', () => {

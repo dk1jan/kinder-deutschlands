@@ -2,6 +2,16 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Gruppenanrufe „wie Zoom“ (D-072) + Volumes beschreibbar
+
+**Was**
+- **Gruppenanrufe** in Gruppen und Treffen: Knöpfe „Gruppenanruf (Ton/Video)“ im Kopf der Unterhaltung; läuft einer, zeigt der Chat „Gruppenanruf läuft · N dabei · Beitreten / Mit Video“, im Verlauf steht „… hat einen Gruppenanruf gestartet“ (verschlüsselt, löst die normale Benachrichtigung aus). Anruf-Fenster mit Kacheln aller Teilnehmenden, gelbem Rahmen für Sprechende, Stumm-Anzeige, Stumm/Kamera/Kamera wechseln/Bildschirm teilen (Computer), Verkleinern (Chat bleibt nutzbar, Ton läuft weiter), Auflegen. Bis 25 Personen.
+- **Medienserver LiveKit** (neuer Container `livekit`, v1.13.7) – Bild und Ton zusätzlich Ende-zu-Ende-verschlüsselt. Schlüssel entsteht im Browser der startenden Person und geht nur per Olm an Geräte von Mitgliedern, die gerade im Anruf sind (mit Nachfrage, falls er nicht ankommt). App stellt Beitritts-Token nur für Mitglieder mit eigenem, angemeldetem Gerät aus (`/api/anruf`), nicht für eingeschränkte Konten, nicht im Direktchat (dort bleibt der 1:1-Anruf). Signalweg über die App (`/livekit/rtc`, eigener Start `scripts/server.mjs`), Verwaltung des Medienservers nur intern. Treffen beendet → Anruf beendet. Datenschutz-Entwurf um Gruppenanrufe ergänzt.
+- **Neuer Dienst `init`:** macht die Volumes `media` und `backups` beim Start für die App beschreibbar. Gefunden durch den Stack-Test des Sammel-Updates (schlug fehl, weil ein neu angelegtes Volume je nach Startreihenfolge nur für root beschreibbar war → Bild-Uploads/Sicherung vor Migration wären gescheitert).
+**Warum** Jan: „Gruppenanrufe ja wie z.b. zoom“; Stack-Test-Fehler vom Sammel-Update.
+**Module** M02, M24 (Betrieb), Querschnitt (Datenschutz-Entwurf) · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler; 207 Unit/DB-Tests (neu: LiveKit-Konfiguration, öffentliche Adresse, Token/Raumname); Rauchtest 322 Prüfungen mit echtem Synapse **und echtem LiveKit** (neu: Token nur für Mitglieder/eigenes Gerät, kein Direktchat, gleicher Anruf für zweites Mitglied, Token über `/livekit/rtc` angenommen, verfälschtes abgelehnt, Verwaltung nicht erreichbar); **Browsertest `groupcall-check.py`** mit drei Browsern: Gruppe anlegen, Video-Anruf starten, Beitreten per Hinweis, alle drei Kacheln, entschlüsseltes Bild und hörbarer Ton bei allen, Medienserver meldet alle Spuren verschlüsselt, Stumm-Anzeige, Verkleinern, Verlassen und erneut Beitreten – 4 Läufe hintereinander bestanden (vorher Zustellung des Schlüssels im ausgelasteten Testrechner teils > 25 s: Wartezeit jetzt 60 s mit Nachfrage alle paar Sekunden); 1:1-Anruftest; Barrierefreiheit; Build. Stack-Test (CI) prüft Container, Volumes, Signalweg. **Nicht getestet:** echte Handys über Mobilfunk/TURN (nur auf dem Server möglich), Bildschirm teilen (im Testbrowser nicht automatisierbar).
+
 ## 2026-10-20 · Sammel-Update F-001 bis F-015 + Stadtteile Niedersachsen
 
 **Was**

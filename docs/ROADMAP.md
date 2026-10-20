@@ -13,6 +13,6 @@ Jeder Abschnitt endet betreibbar. Am Ende jedes Abschnitts in CHANGELOG/STATUS: 
 | **6 Alltag** ✔ | Marktplatz, Familien helfen Familien, Lebenslagen-Kompass, Geburtstage/Einladungen | M09, M15, M16, M21 |
 | **7 Ausbau** ✔ (Gruppenanrufe/LiveKit, Routen-Import später; Affiliate wartet auf Amazon) | Audio/Video 1:1 mit TURN, Kinderwagenrouten, Affiliate (nach Prüfung der Amazon-Bedingungen), Statistik-Ausbau, zweite Freigabe für kritische Aktionen | M02, M08, M14, M24 |
 | **8 Lücken schließen** ✔ | 8.1 ✔ Kartenebenen, Orte abonnieren, Treffen am Ort · 8.2 ✔ Profil-Stufe „Gruppen“, Aufnahme durch Partnerorganisationen, Hinweise von Mitgliedern, Chat-Suche im Gerät · 8.3 ✔ Rechtstexte pflegbar, Barrierefreiheit automatisch prüfen, Geräteliste-Test | M01, M02, M04, M05, M10, M11, M20, Querschnitt |
-| **9 (geplant)** | Mehrsprachigkeit/einfache Sprache, Gruppenanrufe (LiveKit), Stadtteile Niedersachsen, weitere Datenquellen nach Lizenzklärung | M02, M23, Querschnitt |
+| **9** (Gruppenanrufe ✔, Stadtteile NI ✔, Mehrsprachigkeit verworfen D-071) | Gruppenanrufe mit LiveKit (D-072), Stadtteile Niedersachsen; offen: einfache Sprache, „Ruf mich an“, weitere Datenquellen nach Lizenzklärung | M02, M23, Querschnitt |
 
 Externe Abhängigkeiten: Lizenz-/Nutzungsprüfung jeder Datenquelle (M23), Amazon-PartnerNet-Konto und -Bedingungen (M08), offene UDP-Ports für TURN (M02), Rechtstexte (Impressum, Datenschutz) durch den Betreiber.

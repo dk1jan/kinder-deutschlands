@@ -147,6 +147,7 @@ export async function endTreffen(sql: Sql, userId: string, roomId: string) {
 	const [r] = await sql`select room_id from chat_rooms where room_id = ${roomId} and created_by = ${userId} and kind = 'treffen' and status = 'aktiv'`;
 	if (!r) throw new ChatError('Treffen nicht gefunden.');
 	await deleteRoom(sql, roomId);
+	await (await import('../livekit')).endCall(roomId);
 	await sql`update chat_rooms set status = 'geloescht', ended_at = now(), join_token_hash = null where room_id = ${roomId}`;
 	await audit(sql, { actorId: userId, action: 'chat.treffen.ended', targetType: 'room', targetId: roomId });
 }
@@ -158,6 +159,7 @@ export async function expireTreffen(sql: Sql): Promise<number> {
 	for (const r of due) {
 		try {
 			await deleteRoom(sql, r.room_id);
+			await (await import('../livekit')).endCall(r.room_id);
 			await sql`update chat_rooms set status = 'abgelaufen', ended_at = now(), join_token_hash = null where room_id = ${r.room_id}`;
 			n++;
 		} catch (e) {
