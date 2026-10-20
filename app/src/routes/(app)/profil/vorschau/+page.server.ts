@@ -14,6 +14,7 @@ export const load: PageServerLoad = async (event) => {
 	const views: { key: Relation; label: string; text: string }[] = [
 		{ key: 'extern', label: 'Ohne Konto', text: 'Wer deinen QR-Code scannt und nicht angemeldet ist.' },
 		{ key: 'mitglied', label: 'Mitglieder', text: 'Angemeldete Mitglieder, die deine ID kennen oder dich entdecken.' },
+		{ key: 'gruppe', label: 'Aus deinen Gruppen', text: 'Mitglieder, die mit dir in einer offenen Gruppe sind (geschützte Gruppen zählen nie).' },
 		{ key: 'kontakt', label: 'Kontakte', text: 'Familien, deren Anfrage du angenommen hast.' }
 	];
 	return {

@@ -10,8 +10,9 @@ export const load: PageServerLoad = async (event) => {
 	const user = requireMember(event);
 	const sql = db();
 	const g = await groupBySlug(sql, user.id, event.params.slug);
-	if (!g || !g.access.moderator) error(404, 'Nicht gefunden.');
-	return { g, requests: await pendingRequests(sql, user.id, g.id), members: await members(sql, user.id, g.id) };
+	if (!g || !(g.access.moderator || g.access.partner)) error(404, 'Nicht gefunden.');
+	// Partnerorganisation: nur Anfragen entscheiden, keine Mitgliederliste (D-064)
+	return { g, requests: await pendingRequests(sql, user.id, g.id), members: g.access.moderator ? await members(sql, user.id, g.id) : null, asPartner: !g.access.moderator };
 };
 
 async function act(event: Parameters<Actions[string]>[0], fn: (sql: ReturnType<typeof db>, mod: string, gid: string, uid: string, f: FormData) => Promise<void>) {

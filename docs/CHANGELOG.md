@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Abschnitt 8.2: Freigabestufe „Gruppen“, Partnerorganisationen, Hinweise von Mitgliedern, Suche im Chat
+
+**Was**
+- Profil (M01): neue Freigabestufe „Mitglieder meiner Gruppen“ – sichtbar für Mitglieder aus gemeinsamen offenen/Beitritts-Gruppen (ohne Pseudonym) und für Kontakte; geschützte Gruppen zählen nie. Vorschau „So sehen andere mich“ mit Gruppen-Sicht; Entdecken nutzt dieselbe Regel.
+- Gruppen (M04): Aufnahme durch Partnerorganisation. Verwaltung → Gruppen: verifizierte Einrichtung zuordnen (nicht bei offenen Gruppen). Deren Verwaltung entscheidet über Anfragen (nur Pseudonym + Antworten, keine Familien-ID, keine Mitgliederliste, keine Moderation); Einstieg unter „Meine Einrichtungen → Aufnahme in Gruppen“. Neue Anfragen melden sich jetzt bei Gruppenmoderation und Partner (ohne Namen). Anfragende sehen, wer mitentscheidet.
+- Hinweise (M20): „Hinweis vorschlagen“ für Mitglieder (`/hinweise/neu`) mit Art, Gegend, optionaler Quelle, Laufzeit; private Daten werden abgewiesen, 3 pro Tag. Redaktion prüft unter Verwaltung → Hinweise („Vorschläge von Mitgliedern“), Ablehnung nur mit Grund; Mitglied erhält Mitteilung, sieht Status, kann beenden/zurückziehen. Sichtbar als „Hinweis eines Mitglieds“. Export und Kontolöschung umfassen die Vorschläge.
+- Chat (M02): „Im Verlauf suchen“ im Menü jeder Unterhaltung – nur in den auf dem Gerät geladenen, entschlüsselten Nachrichten (Text und Dateinamen), Groß/klein-, Umlaut- und ß-tolerant, Treffer mit Ausschnitt, Antippen springt zur Nachricht, „Ältere Nachrichten laden“ erweitert die Suche. Nichts geht an den Server.
+**Warum** Offene „vorgesehen“-Punkte aus STATUS (Abschnitt 8); Grundsätze D-063 bis D-065.
+**Module** M01, M02, M04, M20, M22 (Partnerrolle), M24 · **DB-Migration** ja – `0011_gruppen_hinweise.sql` (community_groups.partner_org_id; notices: Status pruefung/abgelehnt, review_note)
+**Tests** svelte-check 0 Fehler; 198 Unit/DB-Tests (neu 5 Unit: Stufe „gruppen“, Chat-Suche Text/Umlaute/Ausschnitt; 3 DB: Gruppen-Sicht nur offene Gruppen ohne Pseudonym/aktiv/Kontakte/ohne Anmeldung nie, Partner nur verifiziert + Verwaltung/keine Profile/keine Mitgliederliste/Mitteilung ohne Namen/Protokoll/pausiert/offene Gruppe, Mitgliederhinweise Arten/Region/private Daten/Prüfung/Rechte/Ablehnung mit Grund/Limit/beenden/Export/Löschung); Rauchtest 274 Prüfungen mit echtem Synapse (neu: Stufe speichern + Vorschau, Hinweis vorschlagen → unsichtbar → Redaktion gibt frei → sichtbar als Mitglied, Gruppenverwaltung mit Partner); Browsertest `call-check.py`: Suche im Verlauf (Umlaut-tolerant) und Sprung zur Nachricht, danach Videoanruf wie bisher; Bildschirmfotos; Build
+**Korrektur unterwegs** Benannte Form-Actions: `/hinweise/neu` nutzt `?/vorschlagen` (SvelteKit erlaubt keine Default-Action neben benannten).
+
 ## 2026-10-20 · Abschnitt 8.1: Kartenebenen, Orte abonnieren, Treffen am Spielplatz
 
 **Was**

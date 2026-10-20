@@ -61,6 +61,12 @@ describe('Sichtbarkeit', () => {
 		expect(canSee('kontakt', 'kontakte')).toBe(true);
 		expect(canSee('kontakt', 'niemand')).toBe(false);
 		expect(canSee('selbst', 'niemand')).toBe(true);
+		// Stufe „Mitglieder meiner Gruppen“ liegt zwischen Mitgliedern und Kontakten
+		expect(canSee('mitglied', 'gruppen')).toBe(false);
+		expect(canSee('gruppe', 'gruppen')).toBe(true);
+		expect(canSee('gruppe', 'kontakte')).toBe(false);
+		expect(canSee('kontakt', 'gruppen')).toBe(true);
+		expect(canSee('extern', 'gruppen')).toBe(false);
 		expect(canSee('selbst', undefined)).toBe(true);
 		expect(canSee('kontakt', undefined)).toBe(false);
 	});

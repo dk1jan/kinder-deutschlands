@@ -7,7 +7,7 @@ anna@ und dora@, die dort Kontakte geworden sind):
     TEST_DATABASE_URL=postgres://… SYNAPSE_PYTHON=/opt/synvenv/bin/python node scripts/smoke-test.mjs
     TEST_DATABASE_URL=postgres://… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py
 
-Kamera und Mikrofon sind künstlich (Chromium „fake device“). Geprüft: Dora ruft Anna per Video an, Anna nimmt an,
+Zusätzlich: Suche im Verlauf. Kamera und Mikrofon sind künstlich (Chromium „fake device“). Geprüft: Dora ruft Anna per Video an, Anna nimmt an,
 beide sehen „verbunden“ und empfangen Bild und Ton des anderen; Auflegen beendet bei beiden. Nicht in CI, weil
 dort kein Browser mit Medien läuft – Netz-Durchgang (TURN) lässt sich nur auf dem Server prüfen.
 """
@@ -73,6 +73,17 @@ try:
         # Anna tritt automatisch bei (Einladung eines Kontakts); dann erscheinen bei Dora die Anruf-Knöpfe
         dora.wait_for_selector('button[aria-label="Videoanruf"]', timeout=60000)
         check(True, 'Anruf-Knöpfe im Direktchat')
+        # Suche im Verlauf (nur im Gerät, Abschnitt 8.2)
+        dora.fill('#cmp-t', 'Treffpunkt am Bürgerpark-Eingang')
+        dora.click('button[aria-label="Senden"]')
+        dora.wait_for_selector('text=Treffpunkt am Bürgerpark-Eingang', timeout=20000)
+        dora.click('button[aria-label="Optionen"]')
+        dora.click('text=Im Verlauf suchen')
+        dora.fill('input[aria-label="Suchbegriff"]', 'burgerpark')
+        dora.wait_for_selector('.hits mark', timeout=5000)
+        check(dora.inner_text('.hits mark') == 'Bürgerpark', 'Suche im Verlauf findet „burgerpark“ (Umlaut-tolerant, im Gerät)')
+        dora.click('.hits button')
+        check(not dora.is_visible('.hits'), 'Treffer antippen springt zur Nachricht')
         dora.click('button[aria-label="Videoanruf"]')
         anna.wait_for_selector('text=Videoanruf von', timeout=30000)
         check(True, 'Anna sieht den eingehenden Videoanruf (auf einer beliebigen Seite)')

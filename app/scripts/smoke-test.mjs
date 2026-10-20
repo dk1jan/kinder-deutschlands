@@ -811,6 +811,28 @@ try {
 	check(r.status === 200, 'Treffen am Ort: Formular vorausgefüllt');
 	r = await X2.req('/karte');
 	check(r.status === 200, 'Karte lädt');
+
+	// ---------- Abschnitt 8.2: Freigabestufe Gruppen, Hinweise von Mitgliedern, Partnerorganisation ----------
+	r = await D.req('/profil/bearbeiten', { method: 'POST', form: { display_name: 'Dora', can_help: 'Laufrad-Tipps', preset: 'individuell', vis_display_name: 'mitglieder', vis_can_help: 'gruppen', vis_looking_for: 'kontakte', vis_interests: 'kontakte', vis_child_ages: 'kontakte', vis_region: 'kontakte' } });
+	check(r.status === 303, 'Profil mit Stufe „Mitglieder meiner Gruppen“ gespeichert');
+	r = await D.req('/profil/vorschau');
+	check(r.body.includes('Aus deinen Gruppen'), 'Vorschau zeigt die Gruppen-Sicht');
+	const [dv] = await sqlT`select visibility from user_profiles p join users u on u.id = p.user_id where u.email = 'dora@example.org'`;
+	check(dv.visibility.can_help === 'gruppen', 'Stufe „gruppen“ gespeichert');
+	r = await D.req('/hinweise/neu?/vorschlagen', { form: { kind: 'sperrung', title: 'Smoke-Hinweis Gehweg gesperrt', body: 'Bis Freitag', region_code: fdf.code, days: '7' } });
+	check(r.status === 200, 'Mitglied schlägt Hinweis vor');
+	r = await X2.req(`/hinweise?region=${encodeURIComponent(fdf.code)}`);
+	check(!r.body.includes('Smoke-Hinweis Gehweg gesperrt'), 'Vorschlag vor Prüfung nicht sichtbar');
+	r = await req('/admin/hinweise');
+	const propId = /name="id" value="([0-9a-f-]{36})"[^]*?Freigeben/.exec(r.body)?.[1];
+	check(r.body.includes('Vorschläge von Mitgliedern') && !!propId, 'Redaktion sieht den Vorschlag');
+	r = await req('/admin/hinweise?/pruefen', { form: { id: propId ?? '', decision: 'ja' } });
+	r = await X2.req(`/hinweise?region=${encodeURIComponent(fdf.code)}`);
+	check(r.body.includes('Smoke-Hinweis Gehweg gesperrt') && r.body.includes('Mitglied'), 'Nach Freigabe sichtbar, Herkunft „Mitglied“');
+	r = await req('/admin/gruppen');
+	check(r.status === 200 && r.body.includes('Partnerorganisation'), 'Gruppenverwaltung: Partnerorganisation wählbar');
+	r = await D.req('/einrichtungen/verwalten');
+	check(r.status === 200, 'Meine Einrichtungen lädt');
 	await sqlT.end();
 	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
 

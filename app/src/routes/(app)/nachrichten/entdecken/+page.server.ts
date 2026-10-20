@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
 import { ContactError, discover, sendRequest } from '$lib/server/contacts';
-import { getProfile, getProfileByContactId, areContacts } from '$lib/server/profiles';
+import { getProfile, getProfileByContactId, relationOf } from '$lib/server/profiles';
 import { formatContactId, normalizeContactId } from '$lib/server/contactid';
 import { cardFor } from '$lib/visibility';
 import { rateLimit } from '$lib/server/ratelimit';
@@ -22,7 +22,7 @@ export const load: PageServerLoad = async (event) => {
 	);
 	const items = await Promise.all(
 		rows.map(async (r) => {
-			const rel = (await areContacts(sql, user.id, r.user_id as string)) ? ('kontakt' as const) : ('mitglied' as const);
+			const rel = await relationOf(sql, user.id, r.user_id as string);
 			return {
 				cid: r.contact_id as string,
 				relation: rel,

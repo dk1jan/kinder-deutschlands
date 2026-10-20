@@ -49,6 +49,9 @@
 			<div class="field wide"><label for="admission">Aufnahmefragen für geschützte Gruppen (eine je Zeile, höchstens 5)</label>
 				<textarea id="admission" name="admission" rows="3" placeholder="Was erhoffst du dir von der Gruppe?">{((g?.admission ?? []) as string[]).join('\n')}</textarea>
 				<span class="hint">Datensparsam fragen: keine Nachweise, keine Ausweise, keine Details über Kinder. Antworten werden nach der Entscheidung gelöscht.</span></div>
+			<div class="field wide"><label for="partner">Aufnahme auch durch Partnerorganisation (optional, nicht bei offenen Gruppen)</label>
+				<select id="partner" name="partner"><option value="">keine</option>{#each data.orgs as o}<option value={o.id} selected={g?.partner_org_id === o.id}>{o.name}</option>{/each}</select>
+				<span class="hint">Die Verwaltung dieser verifizierten Einrichtung entscheidet über Anfragen (sieht nur Gruppennamen und Antworten), moderiert aber keine Inhalte.</span></div>
 			<div class="wide"><button class="btn">Speichern</button>{#if g}<a class="btn secondary" href="/admin/gruppen">Neue Gruppe</a>{/if}</div>
 		</form>
 	{/key}

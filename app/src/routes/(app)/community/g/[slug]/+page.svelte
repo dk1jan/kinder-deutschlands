@@ -23,7 +23,7 @@
 				<a class="btn" href="/community/neu?gruppe={g.slug}"><Icon name="plus" size={18} />In der Gruppe schreiben</a>
 				<form method="POST" action="?/verlassen" onsubmit={(e) => { if (!confirm('Gruppe verlassen?')) e.preventDefault(); }}><button class="btn secondary small">Verlassen</button></form>
 			{/if}
-			{#if g.access.moderator}<a class="btn secondary small" href="/community/g/{g.slug}/verwalten">Verwalten{data.pending ? ` (${data.pending} Anfragen)` : ''}</a>{/if}
+			{#if g.access.moderator || g.access.partner}<a class="btn secondary small" href="/community/g/{g.slug}/verwalten">Verwalten{data.pending ? ` (${data.pending} Anfragen)` : ''}</a>{/if}
 		</div>
 	</header>
 
@@ -38,14 +38,14 @@
 
 	{#if !g.access.member}
 		{#if g.access.status === 'angefragt'}
-			<Notice kind="info" title="Anfrage läuft">Die Gruppenmoderation prüft deine Anfrage.</Notice>
+			<Notice kind="info" title="Anfrage läuft">Die Gruppenmoderation{g.partner ? ` oder ${g.partner.name}` : ''} prüft deine Anfrage.</Notice>
 		{:else if g.access.status === 'entfernt'}
 			<Notice kind="warn">Du wurdest aus dieser Gruppe entfernt.</Notice>
 		{:else}
 			<form method="POST" action="?/beitreten" class="join">
 				<h2>{g.kind === 'offen' ? 'Beitreten' : 'Aufnahme anfragen'}</h2>
 				{#if g.kind === 'geschuetzt'}
-					<p class="muted">Hier trittst du mit einem eigenen Namen auf, nicht mit deinem Profil. Er ist für andere nicht mit dir verknüpfbar. Deine Antworten liest nur die Gruppenmoderation, sie werden nach der Entscheidung gelöscht. Wir verlangen keine Ausweise oder Nachweise – und können deshalb auch keine absolute Sicherheit versprechen.</p>
+					<p class="muted">Hier trittst du mit einem eigenen Namen auf, nicht mit deinem Profil. Er ist für andere nicht mit dir verknüpfbar. Deine Antworten liest nur die Gruppenmoderation{g.partner ? ` und die Partnerorganisation ${g.partner.name}` : ''}, sie werden nach der Entscheidung gelöscht. Wir verlangen keine Ausweise oder Nachweise – und können deshalb auch keine absolute Sicherheit versprechen.</p>
 					<div class="field">
 						<label for="pseudonym">Dein Name in dieser Gruppe</label>
 						<input id="pseudonym" name="pseudonym" required minlength="3" maxlength="30" placeholder="z. B. Möwe_HB" />
@@ -54,7 +54,7 @@
 						<div class="field"><label for="a{i}">{q}</label><textarea id="a{i}" name="answer" rows="2" maxlength="600" required></textarea></div>
 					{/each}
 				{:else if g.kind === 'beitritt'}
-					<p class="muted">Die Gruppenmoderation bestätigt Beitritte.</p>
+					<p class="muted">Die Gruppenmoderation{g.partner ? ` oder die Partnerorganisation ${g.partner.name}` : ''} bestätigt Beitritte.</p>
 				{/if}
 				<button class="btn">{g.kind === 'offen' ? 'Beitreten' : 'Anfrage senden'}</button>
 			</form>

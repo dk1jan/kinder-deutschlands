@@ -17,6 +17,13 @@
 	{#each data.pending as p}
 		<p class="pend"><strong>{p.name}</strong> – {ST[p.status]}{p.note ? `: ${p.note}` : ''}</p>
 	{/each}
+	{#if data.groups.length}
+		<h2>Aufnahme in Gruppen</h2>
+		<p class="muted small">Eure Einrichtung entscheidet als Partnerorganisation über Anfragen für diese Gruppen.</p>
+		<ul class="list">
+			{#each data.groups as g}<li><a href="/community/g/{g.slug}/verwalten"><strong>{g.name}</strong><small>{g.orgName} · {g.pending === 1 ? '1 offene Anfrage' : `${g.pending} offene Anfragen`}</small></a></li>{/each}
+		</ul>
+	{/if}
 	{#if !data.orgs.length && !data.pending.length}<p class="muted">Du pflegst noch keine Einrichtung.</p>{/if}
 	<p><a class="btn small" href="/einrichtungen/antrag">Einrichtung anmelden</a></p>
 	<p class="muted small">Du sollst eine bestehende Einrichtung mitpflegen? Gib der Verwaltung dort deine Familien-ID (steht in deinem <a href="/profil">Profil</a>).</p>

@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireAction } from '$lib/server/guard';
 import { PostError } from '$lib/server/community/posts';
-import { archiveNotice, createNotice } from '$lib/server/angebote/notices';
+import { archiveNotice, createNotice, pendingProposals, reviewProposal } from '$lib/server/angebote/notices';
 import { formValues, noticeFromForm } from '$lib/server/angebote/forms';
 import { isUuid } from '$lib/server/angebote/common';
 
@@ -15,11 +15,13 @@ async function editor(event: Parameters<PageServerLoad>[0] | Parameters<Actions[
 }
 
 export const load: PageServerLoad = async (event) => {
-	await editor(event);
+	const user = await editor(event);
+	const proposals = await pendingProposals(db(), user.id);
 	const rows = await db()`select n.id, n.kind, n.title, n.source_kind, n.urgent, n.deadline, n.valid_until, n.created_at, n.status, r.name as region_name, o.name as org_name
 		from notices n left join regions r on r.code = n.region_code left join organizations o on o.id = n.org_id
 		where n.status = 'aktiv' and (n.valid_until is null or n.valid_until > now()) order by n.created_at desc limit 200`;
 	return {
+		proposals,
 		rows: rows.map((n) => ({ id: n.id as string, kind: n.kind as string, title: n.title as string, sourceKind: n.source_kind as string, urgent: n.urgent as boolean,
 			deadline: n.deadline as Date | null, validUntil: n.valid_until as Date | null, created: n.created_at as Date, regionName: n.region_name as string | null, orgName: n.org_name as string | null }))
 	};
@@ -34,6 +36,20 @@ export const actions: Actions = {
 			return { ok: 'Veröffentlicht.' };
 		} catch (e) {
 			if (e instanceof PostError) return fail(400, { error: e.message, values: formValues(f) });
+			throw e;
+		}
+	},
+	pruefen: async (event) => {
+		const user = await editor(event);
+		const f = await event.request.formData();
+		const id = String(f.get('id') ?? '');
+		if (!isUuid(id)) return fail(400, { error: 'Ungültig.' });
+		const yes = f.get('decision') === 'ja';
+		try {
+			await reviewProposal(db(), user.id, id, yes, String(f.get('note') ?? ''));
+			return { ok: yes ? 'Freigegeben.' : 'Abgelehnt, Mitglied ist informiert.' };
+		} catch (e) {
+			if (e instanceof PostError) return fail(400, { error: e.message });
 			throw e;
 		}
 	},

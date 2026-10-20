@@ -87,5 +87,19 @@ export async function areContacts(sql: Sql, a: string, b: string): Promise<boole
 export async function relationOf(sql: Sql, viewerId: string | null, ownerId: string): Promise<Relation> {
 	if (!viewerId) return 'extern';
 	if (viewerId === ownerId) return 'selbst';
-	return (await areContacts(sql, viewerId, ownerId)) ? 'kontakt' : 'mitglied';
+	if (await areContacts(sql, viewerId, ownerId)) return 'kontakt';
+	return (await shareGroup(sql, viewerId, ownerId)) ? 'gruppe' : 'mitglied';
+}
+
+/**
+ * Freigabestufe „Mitglieder meiner Gruppen“ (D-063): beide aktiv in derselben offenen oder Beitritts-Gruppe,
+ * beide dort ohne Pseudonym. Geschützte Gruppen zählen nie – sonst ließe sich aus einer sichtbaren Angabe
+ * ableiten, dass jemand Mitglied einer geschützten Gruppe ist.
+ */
+export async function shareGroup(sql: Sql, a: string, b: string): Promise<boolean> {
+	const [r] = await sql`select 1 from group_members x join group_members y on y.group_id = x.group_id and y.user_id = ${b}
+		join community_groups g on g.id = x.group_id
+		where x.user_id = ${a} and x.status = 'aktiv' and y.status = 'aktiv' and x.pseudonym is null and y.pseudonym is null
+			and g.kind in ('offen', 'beitritt') and g.status = 'aktiv' limit 1`;
+	return !!r;
 }

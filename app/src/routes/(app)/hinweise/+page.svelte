@@ -14,7 +14,8 @@
 <div class="container page">
 	<div class="head">
 		<h1>Hinweise & Fristen</h1>
-		{#if data.editor}<a class="btn small secondary" href="/admin/hinweise">Hinweis veröffentlichen</a>{/if}
+		{#if data.editor}<a class="btn small secondary" href="/admin/hinweise">Hinweis veröffentlichen</a>
+		{:else if data.member}<a class="btn small secondary" href="/hinweise/neu">Hinweis vorschlagen</a>{/if}
 	</div>
 	<p class="lead">Was sich in deiner Region ändert: Absagen, Sperrungen, Fristen, neue Leistungen. Die Herkunft steht immer dabei.</p>
 

@@ -1,8 +1,8 @@
 // Sichtbarkeit von Profilangaben. Reine Logik – wird auf dem Server angewendet, die Oberfläche zeigt nur an.
-// Wer sieht etwas? extern (QR-Scan ohne Anmeldung) < mitglied < kontakt < selbst.
+// Wer sieht etwas? extern (QR-Scan ohne Anmeldung) < mitglied < gruppe (gemeinsame Gruppe, D-063) < kontakt < selbst.
 
-export type Relation = 'extern' | 'mitglied' | 'kontakt' | 'selbst';
-export type Level = 'alle' | 'mitglieder' | 'kontakte' | 'niemand';
+export type Relation = 'extern' | 'mitglied' | 'gruppe' | 'kontakt' | 'selbst';
+export type Level = 'alle' | 'mitglieder' | 'gruppen' | 'kontakte' | 'niemand';
 export type Field = 'display_name' | 'can_help' | 'looking_for' | 'interests' | 'child_ages' | 'region';
 export type Visibility = Record<Field, Level>;
 export type Preset = 'zurueckhaltend' | 'offen' | 'individuell';
@@ -19,6 +19,7 @@ export const FIELDS: { key: Field; label: string }[] = [
 export const LEVELS: { key: Level; label: string }[] = [
 	{ key: 'alle', label: 'Alle, auch ohne Konto' },
 	{ key: 'mitglieder', label: 'Angemeldete Mitglieder' },
+	{ key: 'gruppen', label: 'Mitglieder meiner Gruppen' },
 	{ key: 'kontakte', label: 'Nur bestätigte Kontakte' },
 	{ key: 'niemand', label: 'Nur ich' }
 ];
@@ -42,8 +43,8 @@ export const PRESETS: Record<Exclude<Preset, 'individuell'>, Visibility> = {
 	}
 };
 
-const REL_RANK: Record<Relation, number> = { extern: 0, mitglied: 1, kontakt: 2, selbst: 3 };
-const LEVEL_RANK: Record<Level, number> = { alle: 0, mitglieder: 1, kontakte: 2, niemand: 3 };
+const REL_RANK: Record<Relation, number> = { extern: 0, mitglied: 1, gruppe: 2, kontakt: 3, selbst: 4 };
+const LEVEL_RANK: Record<Level, number> = { alle: 0, mitglieder: 1, gruppen: 2, kontakte: 3, niemand: 4 };
 
 export function canSee(relation: Relation, level: Level | undefined): boolean {
 	return REL_RANK[relation] >= LEVEL_RANK[level ?? 'niemand'];

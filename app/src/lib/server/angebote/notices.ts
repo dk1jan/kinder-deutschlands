@@ -4,7 +4,8 @@
 import type { Sql } from '../db';
 import { audit } from '../audit';
 import { userCan, regionPath } from '../roles';
-import { PostError } from '../community/posts';
+import { PostError, notify } from '../community/posts';
+import { checkText } from '../community/automod';
 import { ancestors, cleanUrl, subtree } from './common';
 import { requireOrgRole } from './orgs';
 import { NOTICE_KINDS, isRadarTopic } from '$lib/angebote';
@@ -46,9 +47,74 @@ export async function createNotice(sql: Sql, userId: string, i: NoticeInput, opt
 	return n.id as string;
 }
 
+// ---------- Hinweise von Mitgliedern (M20, D-065) ----------
+export const MEMBER_NOTICE_KINDS = ['sperrung', 'absage', 'frist', 'info', 'neu'] as const;
+
+export interface MemberNoticeInput {
+	kind: string;
+	title: string;
+	body: string;
+	regionCode: string | null;
+	sourceUrl: string | null;
+	days: number;
+}
+
+/** Mitglied schlägt einen regionalen Hinweis vor. Erst nach Freigabe durch die Redaktion sichtbar. */
+export async function proposeNotice(sql: Sql, userId: string, i: MemberNoticeInput): Promise<string> {
+	if (!(MEMBER_NOTICE_KINDS as readonly string[]).includes(i.kind)) throw new PostError('Bitte die Art des Hinweises wählen.');
+	if (i.title.trim().length < 5) throw new PostError('Bitte kurz sagen, worum es geht (mindestens 5 Zeichen).');
+	if (!i.regionCode) throw new PostError('Bitte die Gegend wählen, für die der Hinweis gilt.');
+	const [reg] = await sql`select 1 from regions where code = ${i.regionCode}`;
+	if (!reg) throw new PostError('Gegend nicht gefunden.');
+	const flags = checkText(`${i.title}\n${i.body}`).filter((f) => f.reason === 'private_daten');
+	if (flags.length) throw new PostError(`Bitte keine privaten Daten (${flags.map((f) => f.detail).join(', ')}) – Hinweise sind für alle sichtbar.`);
+	const [{ n }] = await sql`select count(*)::int as n from notices where created_by = ${userId} and source_kind = 'mitglied' and created_at > now() - interval '1 day'`;
+	if (n >= 3) throw new PostError('Heute schon drei Hinweise vorgeschlagen. Danke! Bitte morgen weiter.');
+	const days = [3, 7, 14, 30].includes(i.days) ? i.days : 14;
+	const [row] = await sql`insert into notices (kind, title, body, topics, region_code, source_kind, source_url, valid_until, status, created_by)
+		values (${i.kind}, ${i.title.trim().slice(0, 200)}, ${i.body.trim().slice(0, 1200)}, '{}', ${i.regionCode}, 'mitglied', ${cleanUrl(i.sourceUrl, 'Quellenlink')},
+			now() + make_interval(days => ${days}), 'pruefung', ${userId}) returning id`;
+	await audit(sql, { actorId: userId, action: 'notice.proposed', targetType: 'notice', targetId: row.id });
+	return row.id as string;
+}
+
+export async function myProposals(sql: Sql, userId: string) {
+	return (await sql`select n.id, n.kind, n.title, n.status, n.review_note, n.created_at, r.name as region_name from notices n left join regions r on r.code = n.region_code
+		where n.created_by = ${userId} and n.source_kind = 'mitglied' and n.status <> 'entfernt' order by n.created_at desc limit 30`).map((r) => ({
+		id: r.id as string, kind: r.kind as string, title: r.title as string, status: r.status as string, note: r.review_note as string | null, at: r.created_at as Date, regionName: r.region_name as string | null
+	}));
+}
+
+export async function pendingProposals(sql: Sql, userId: string) {
+	const rows = await sql`select n.id, n.kind, n.title, n.body, n.source_url, n.region_code, n.valid_until, n.created_at, r.name as region_name
+		from notices n left join regions r on r.code = n.region_code where n.status = 'pruefung' and n.source_kind = 'mitglied' order by n.created_at limit 100`;
+	const out = [];
+	for (const r of rows)
+		if (await userCan(sql, userId, 'notices.edit', r.region_code ? { regionPath: await regionPath(sql, r.region_code) } : undefined))
+			out.push({ id: r.id as string, kind: r.kind as string, title: r.title as string, body: r.body as string, sourceUrl: r.source_url as string | null, regionName: r.region_name as string | null, validUntil: r.valid_until as Date | null, at: r.created_at as Date });
+	return out;
+}
+
+/** Redaktion entscheidet über einen Mitglieder-Vorschlag. Freigeben ≠ amtlich bestätigen: Herkunft bleibt „Mitglied“. */
+export async function reviewProposal(sql: Sql, userId: string, id: string, approve: boolean, note: string) {
+	const [n] = await sql`select region_code, title, created_by from notices where id = ${id} and status = 'pruefung' and source_kind = 'mitglied'`;
+	if (!n) throw new PostError('Vorschlag nicht (mehr) offen.');
+	if (!(await userCan(sql, userId, 'notices.edit', n.region_code ? { regionPath: await regionPath(sql, n.region_code) } : undefined))) throw new PostError('Keine Berechtigung für diese Region.');
+	if (!approve && !note.trim()) throw new PostError('Bitte kurz begründen, warum der Hinweis nicht erscheint.');
+	await sql`update notices set status = ${approve ? 'aktiv' : 'abgelehnt'}, review_note = ${note.trim().slice(0, 300) || null}, valid_from = now(), updated_at = now() where id = ${id}`;
+	await audit(sql, { actorId: userId, action: approve ? 'notice.approved' : 'notice.rejected', targetType: 'notice', targetId: id });
+	if (n.created_by)
+		await notify(sql, n.created_by, 'hinweis', approve ? `Dein Hinweis „${n.title}“ ist jetzt sichtbar.` : `Dein Hinweis „${n.title}“ erscheint nicht: ${note.trim().slice(0, 200)}`, approve ? `/hinweise#h-${id}` : '/hinweise/neu');
+}
+
 export async function archiveNotice(sql: Sql, userId: string, id: string) {
-	const [n] = await sql`select org_id, region_code from notices where id = ${id}`;
+	const [n] = await sql`select org_id, region_code, created_by, source_kind from notices where id = ${id}`;
 	if (!n) throw new PostError('Hinweis nicht gefunden.');
+	// Eigener Mitgliederhinweis: darf die Person selbst beenden
+	if (n.source_kind === 'mitglied' && n.created_by === userId) {
+		await sql`update notices set status = 'archiviert', updated_at = now() where id = ${id}`;
+		return;
+	}
 	if (n.org_id) await requireOrgRole(sql, userId, n.org_id);
 	else if (!(await userCan(sql, userId, 'notices.edit', n.region_code ? { regionPath: await regionPath(sql, n.region_code) } : undefined))) throw new PostError('Keine Berechtigung.');
 	await sql`update notices set status = 'archiviert', updated_at = now() where id = ${id}`;

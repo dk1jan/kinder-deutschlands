@@ -11,6 +11,7 @@
 	import { invite, isMuted, leaveRoom, reportMessage, setMuted } from '$lib/chat/actions';
 	import { livePoints, LIVE_TYPE } from '$lib/chat/live.svelte';
 	import { dayLabel, remaining } from '$lib/chat/format';
+	import { matches, searchableText, snippet } from '$lib/chat/search';
 
 	let { data } = $props();
 	const roomId = $derived(data.roomId);
@@ -32,6 +33,11 @@
 	let reportState = $state<'' | 'senden' | 'ok' | string>('');
 	let now = $state(Date.now());
 	let canCall = $state(false);
+	// Suche nur in geladenen, im Gerät entschlüsselten Nachrichten
+	let searchOpen = $state(false);
+	let q = $state('');
+	let searchInput: HTMLInputElement | undefined = $state();
+	let flash = $state('');
 	async function dial(video: boolean) {
 		notice = '';
 		const c = getClient(), sdk = sdkRef();
@@ -85,6 +91,31 @@
 		}
 		return out;
 	});
+
+	const hits = $derived.by(() => {
+		if (!searchOpen || q.trim().length < 2) return [];
+		return items
+			.map((it) => ({ ev: it.ev, text: searchableText(it.ev.getContent()) }))
+			.filter((h) => !h.ev.isRedacted() && matches(h.text, q))
+			.reverse()
+			.slice(0, 100);
+	});
+	async function openSearch() {
+		menu = false;
+		searchOpen = true;
+		await tick();
+		searchInput?.focus();
+	}
+	async function jump(id: string | undefined) {
+		if (!id) return;
+		searchOpen = false;
+		await tick();
+		document.getElementById(`m-${id}`)?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+		flash = id;
+		setTimeout(() => (flash = ''), 2200);
+	}
+	const sender = (ev: MatrixEvent) => (ev.getSender() === me ? 'Du' : (room?.getMember(ev.getSender() ?? '')?.name ?? 'Mitglied'));
+	const when = (ts: number) => new Date(ts).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 	const members = $derived.by(() => {
 		void chat.version;
@@ -261,6 +292,7 @@
 			<button class="iconbtn" type="button" aria-label="Optionen" aria-expanded={menu} onclick={() => (menu = !menu)}><Icon name="mehr" /></button>
 			{#if menu}
 				<div class="menu" role="menu">
+					<button role="menuitem" type="button" onclick={openSearch}>Im Verlauf suchen</button>
 					<button role="menuitem" type="button" onclick={toggleMute}>{muted ? 'Stummschaltung aufheben' : 'Stummschalten'}</button>
 					{#if kind !== 'direkt'}<button role="menuitem" type="button" onclick={() => { showMembers = !showMembers; menu = false; }}>Mitglieder</button>{/if}
 					{#if kind === 'treffen' && meta?.mine && !ended}
@@ -274,6 +306,32 @@
 			{/if}
 		</div>
 	</header>
+
+	{#if searchOpen}
+		<section class="search" aria-label="Im Verlauf suchen">
+			<div class="srow">
+				<Icon name="suche" size={18} />
+				<input bind:this={searchInput} bind:value={q} type="search" placeholder="Suchen in dieser Unterhaltung …" aria-label="Suchbegriff" enterkeyhint="search" autocomplete="off" />
+				<button class="iconbtn" type="button" aria-label="Suche schließen" onclick={() => ((searchOpen = false), (q = ''))}><Icon name="schliessen" size={18} /></button>
+			</div>
+			<p class="muted small" aria-live="polite">
+				{#if q.trim().length < 2}Nur in den Nachrichten, die auf diesem Gerät geladen sind – der Server kann nicht mitsuchen.
+				{:else}{hits.length === 0 ? 'Nichts gefunden' : hits.length === 1 ? '1 Treffer' : `${hits.length} Treffer`} in {items.length} geladenen Nachrichten.{/if}
+				{#if !noMore}<button class="linkbtn" type="button" onclick={older} disabled={loadingOlder}>{loadingOlder ? 'Lädt …' : 'Ältere Nachrichten laden'}</button>{/if}
+			</p>
+			{#if hits.length}
+				<ul class="hits">
+					{#each hits as h (h.ev.getId() ?? h.ev.getTxnId())}
+						{@const sn = snippet(h.text, q)}
+						<li><button type="button" onclick={() => jump(h.ev.getId())}>
+							<small>{sender(h.ev)} · {when(h.ev.getTs())}</small>
+							<span>{#if sn}{sn[0]}<mark>{sn[1]}</mark>{sn[2]}{:else}{h.text}{/if}</span>
+						</button></li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+	{/if}
 
 	{#if notice}<p class="notice" role="status">{notice} <button type="button" class="x" aria-label="Hinweis schließen" onclick={() => (notice = '')}><Icon name="schliessen" size={16} /></button></p>{/if}
 
@@ -328,7 +386,7 @@
 			{/if}
 			{#each items as it (it.ev.getId() ?? it.ev.getTxnId())}
 				{#if it.day}<p class="day"><span>{it.day}</span></p>{/if}
-				<Message ev={it.ev} {room} mine={it.ev.getSender() === me} showName={it.showName} tiles={data.tiles} read={readByOther && it.ev === lastMine} onReport={openReport} />
+				<div class="mw" class:flash={flash !== '' && flash === it.ev.getId()}><Message ev={it.ev} {room} mine={it.ev.getSender() === me} showName={it.showName} tiles={data.tiles} read={readByOther && it.ev === lastMine} onReport={openReport} /></div>
 			{/each}
 			{#if typing.length}<p class="typing muted">{typing.join(', ')} schreibt …</p>{/if}
 		{/if}
@@ -534,6 +592,71 @@
 		margin: 0;
 		padding-left: var(--sp-4);
 		font-size: var(--fs-s);
+	}
+	.search {
+		padding: var(--sp-2) var(--sp-3);
+		border-bottom: 1px solid var(--line);
+		background: var(--surface);
+		max-height: 50%;
+		overflow: auto;
+	}
+	.srow {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
+	}
+	.srow input {
+		flex: 1;
+		min-width: 0;
+	}
+	.search p {
+		margin: var(--sp-1) 0;
+	}
+	.linkbtn {
+		border: 0;
+		background: none;
+		padding: 0 0 0 var(--sp-2);
+		color: var(--link, var(--navy));
+		font: inherit;
+		font-weight: 650;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.hits {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 2px;
+	}
+	.hits button {
+		display: grid;
+		width: 100%;
+		text-align: left;
+		padding: var(--sp-2) var(--sp-3);
+		border: 0;
+		border-radius: var(--radius-s);
+		background: var(--surface-2);
+		color: var(--ink);
+		font: inherit;
+		cursor: pointer;
+	}
+	.hits small {
+		color: var(--ink-2);
+		font-size: var(--fs-xs);
+	}
+	.hits mark {
+		background: var(--yellow);
+		color: var(--navy);
+		border-radius: 3px;
+		padding: 0 2px;
+	}
+	.mw {
+		border-radius: var(--radius-m);
+		transition: box-shadow 0.3s;
+	}
+	.mw.flash {
+		box-shadow: 0 0 0 3px var(--yellow);
 	}
 	.scroller {
 		flex: 1;

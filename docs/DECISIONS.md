@@ -182,8 +182,19 @@ Routen entstehen nur durch Einzeichnen auf der Karte (oder später Import mit ge
 
 ## D-060 · E-Mail-Adresse für niemanden einsehbar (20.10.2026)
 Entscheidung Jan: Die E-Mail-Adresse bleibt in der Datenbank (Anmeldung, Bestätigung, Passwort zurücksetzen, Radar-Mails), aber keine Rolle – auch Betreiber nicht – kann sie in der App, Verwaltung, Export, Protokoll oder Moderation sehen. Nur das Mitglied sieht und ändert die eigene Adresse. Identifikation im Admin-Board nur über die Familien-ID. Präzisiert D-016. Werbeaussage nur als „für niemanden einsehbar“, nicht als „unbekannt“, solange die Adresse gespeichert ist. Umsetzung im nächsten Sammel-Update (F-006).
+
 ## D-061 · Zusatzebenen der Familienkarte (20.10.2026)
 Auf der Karte erscheinen nur Dinge mit öffentlichem Ort: Termine (Sichtbarkeit wie in der Liste) und geprüfte Kinderwagenrouten. Marktplatz und Hilfe nur für angemeldete Mitglieder und nur als Anzahl je Gegend am Mittelpunkt der Region – einzelne Punkte würden eine Genauigkeit vortäuschen, die es bewusst nicht gibt (D-051). Eine Ebene „Mitglieder“ gibt es nicht: keine Personen auf der Karte, auch nicht grob. Die Auswahl der Ebenen bleibt im Browser bzw. in der Adresse, nichts wird serverseitig gespeichert.
 
 ## D-062 · Orte abonnieren (20.10.2026)
 Abo = gemerkter Ort mit Schalter „Bei Änderungen benachrichtigen“. Auslöser: neuer oder bestätigter Hinweis (defekt/gesperrt), Aufhebung, neuer nicht-privater Termin an diesem Ort. Nutzerhinweise ohne Freitext (der geht nur an die Redaktion). Push nur mit dem Schalter „Radar“. Einzelne Termine braucht kein eigenes Abo: „Merken“ meldet Änderung und Absage und erinnert auf Wunsch.
+
+## D-063 · Freigabestufe „Mitglieder meiner Gruppen“ (20.10.2026)
+Neue Stufe zwischen „Mitglieder“ und „Kontakte“: sichtbar für Mitglieder, die mit mir aktiv in derselben offenen oder Beitritts-Gruppe sind (und für Kontakte). Geschützte Gruppen und Gruppen, in denen eine der Personen ein Pseudonym nutzt, zählen nie – sonst ließe sich aus einer plötzlich sichtbaren Angabe ableiten, dass jemand Mitglied einer geschützten Gruppe ist. Die Vorschau „So sehen andere mich“ zeigt die Gruppen-Sicht.
+
+## D-064 · Aufnahme durch Partnerorganisationen (20.10.2026)
+Gruppen mit Beitritt oder geschützte Gruppen können einer verifizierten Einrichtung zugeordnet werden. Deren Verwaltung (Rolle „admin“ im Einrichtungsteam, nicht „Redaktion“) entscheidet über Aufnahmeanfragen – sieht dabei nur Gruppennamen/Pseudonym und Antworten, nie Familien-ID oder Profil, keine Mitgliederliste, keine Inhalte, keine Moderation. Pausierte oder nicht verifizierte Einrichtungen verlieren das Recht sofort. Mitteilungen über neue Anfragen nennen keine Namen. Wer anfragt, sieht, dass die Partnerorganisation mitentscheidet. Jede Entscheidung im Protokoll mit „via partner“.
+
+## D-065 · Hinweise von Mitgliedern (20.10.2026)
+Mitglieder schlagen regionale Hinweise vor (Sperrung, Absage, Frist, Information, Neu – nicht „Leistung“). Vorschläge sind erst nach Freigabe durch die Redaktion mit Recht `notices.edit` für die Region sichtbar und bleiben als „Hinweis eines Mitglieds“ gekennzeichnet – Freigabe heißt plausibel und ohne private Daten, nicht amtlich bestätigt. Ablehnung nur mit Begründung, die das Mitglied erhält. Telefonnummern/E-Mail/IBAN werden abgewiesen. Höchstens 3 Vorschläge pro Tag, Laufzeit 3–30 Tage, selbst beendbar, Name wird nicht gezeigt, Löschung mit dem Konto. Hinweise zu Orten der Karte laufen weiter über „Melden“ am Ort.
+

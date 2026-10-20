@@ -9,7 +9,8 @@
 
 <div class="page">
 	<a class="back" href="/community/g/{data.g.slug}"><Icon name="zurueck" size={18} />{data.g.name}</a>
-	<h1>Gruppe verwalten</h1>
+	<h1>{data.asPartner ? 'Aufnahmeanfragen' : 'Gruppe verwalten'}</h1>
+	{#if data.asPartner}<p class="muted">Du entscheidest als Partnerorganisation{data.g.partner ? ` (${data.g.partner.name})` : ''} über Aufnahmeanfragen. Inhalte und Mitglieder der Gruppe siehst du dadurch nicht.</p>{/if}
 	{#if form?.error}<Notice kind="error">{form.error}</Notice>{/if}
 	<section>
 		<h2>Anfragen ({data.requests.length})</h2>
@@ -25,6 +26,7 @@
 			</article>
 		{:else}<p class="muted">Keine offenen Anfragen.</p>{/each}
 	</section>
+	{#if data.members}
 	<section>
 		<h2>Mitglieder ({data.members.length})</h2>
 		<ul class="list">
@@ -34,6 +36,7 @@
 			{/each}
 		</ul>
 	</section>
+	{/if}
 </div>
 
 <style>

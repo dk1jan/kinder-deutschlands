@@ -147,3 +147,25 @@ describe('Anrufe: TURN', async () => {
 		expect(bc({ appUrl: 'https://kinder.example.org', appSecret: secret, databaseUrl: 'postgres://u:p@db/kd', dbName: 'synapse', configDir: '/c', mediaStore: '/m', port: 8008, bind: '0.0.0.0', pidFile: '/p', internalUrl: 'http://web:3000', pushAllow: [], turn: null })).not.toContain('turn_uris');
 	});
 });
+
+describe('Suche im Chat (nur im Gerät)', async () => {
+	const { searchableText, matches, snippet } = await import('../src/lib/chat/search');
+	it('durchsucht Text und Dateinamen, sonst nichts', () => {
+		expect(searchableText({ msgtype: 'm.text', body: 'Treffen am Spielplatz' })).toBe('Treffen am Spielplatz');
+		expect(searchableText({ msgtype: 'm.file', body: 'Elterngeld-Antrag.pdf' })).toBe('Elterngeld-Antrag.pdf');
+		expect(searchableText({ msgtype: 'm.location', body: 'geo:53,8' })).toBe('');
+		expect(searchableText(null)).toBe('');
+	});
+	it('findet ohne Groß-/Kleinschreibung, Umlaute und ß tolerant, ab 2 Zeichen', () => {
+		expect(matches('Wir sind im Bürgerpark', 'BÜRGER')).toBe(true);
+		expect(matches('Straße gesperrt', 'strasse')).toBe(true);
+		expect(matches('Café am Wall', 'cafe')).toBe(true);
+		expect(matches('abc', 'a')).toBe(false);
+		expect(matches('abc', 'xy')).toBe(false);
+	});
+	it('Ausschnitt markiert den Treffer im Originaltext', () => {
+		expect(snippet('Die Straße am Park ist gesperrt', 'strasse', 4)).toEqual(['Die ', 'Straße', ' am …']);
+		expect(snippet('kurz', 'ku')).toEqual(['', 'ku', 'rz']);
+		expect(snippet('kurz', 'zz')).toBeNull();
+	});
+});

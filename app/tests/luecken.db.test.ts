@@ -16,7 +16,12 @@ d('Lücken schließen (Datenbank)', async () => {
 	const R = await import('../src/lib/server/routes');
 	const P = await import('../src/lib/server/places');
 	const DC = await import('../src/lib/server/datacenter');
-	const { exportAccount } = await import('../src/lib/server/account');
+	const { exportAccount, deleteAccount } = await import('../src/lib/server/account');
+	const G = await import('../src/lib/server/community/groups');
+	const N = await import('../src/lib/server/angebote/notices');
+	const { relationOf } = await import('../src/lib/server/profiles');
+	const { cardForViewer } = await import('../src/lib/server/cards');
+	const { PostError } = await import('../src/lib/server/community/posts');
 	const sql = postgres(url ?? '', { max: 4, onnotice: () => {} });
 	const u: Record<string, string> = {};
 	let place = '';
@@ -34,7 +39,7 @@ d('Lücken schließen (Datenbank)', async () => {
 		await sql.unsafe('drop schema public cascade; create schema public;');
 		execFileSync('node', ['scripts/migrate.mjs'], { env: { ...process.env, DATABASE_URL: url, BACKUP_DIR: '/tmp/kd-test-bk' }, encoding: 'utf8' });
 		const { ensureProfile } = await import('../src/lib/server/profiles');
-		for (const n of ['anna', 'ben', 'red', 'cem']) {
+		for (const n of ['anna', 'ben', 'red', 'cem', 'dora', 'partner', 'helfer', 'eva']) {
 			const [x] = await sql`insert into users (email, password_hash, email_verified_at) values (${n + '@example.org'}, 'x', now()) returning id`;
 			u[n] = x.id;
 			await ensureProfile(sql, x.id);
@@ -130,5 +135,99 @@ d('Lücken schließen (Datenbank)', async () => {
 		expect((await F.followedPlaces(sql, u.cem)).map((p) => p.name)).toEqual(['Spielplatz Torfkanal']);
 		const x = (await exportAccount(sql, u.cem)) as unknown as { orte_merkliste?: { abonniert: boolean }[] };
 		expect(x.orte_merkliste?.[0]?.abonniert).toBe(true);
+	});
+
+	// ---------- 8.2 ----------
+	it('Freigabestufe „Mitglieder meiner Gruppen“: nur offene/Beitritts-Gruppen ohne Pseudonym', async () => {
+		await sql`update user_profiles set display_name = 'Dora', can_help = 'Fahrrad reparieren', visibility = ${sql.json({ display_name: 'mitglieder', can_help: 'gruppen', looking_for: 'kontakte', interests: 'kontakte', child_ages: 'kontakte', region: 'kontakte' })} where user_id = ${u.dora}`;
+		expect(await relationOf(sql, u.eva, u.dora)).toBe('mitglied');
+		expect((await cardForViewer(sql, u.dora, u.eva))?.card.canHelp).toBeNull();
+		const [open] = await sql`insert into community_groups (slug, name, description, kind) values ('papas-findorff', 'Papas Findorff', 'Austausch für Väter', 'offen') returning id`;
+		const [prot] = await sql`insert into community_groups (slug, name, description, kind) values ('alleinerziehend', 'Alleinerziehend', 'Geschützter Austausch', 'geschuetzt') returning id`;
+		// gemeinsame geschützte Gruppe (mit Pseudonym) zählt nicht
+		await sql`insert into group_members (group_id, user_id, status, pseudonym) values (${prot.id}, ${u.dora}, 'aktiv', 'Möwe'), (${prot.id}, ${u.eva}, 'aktiv', 'Kranich')`;
+		expect(await relationOf(sql, u.eva, u.dora)).toBe('mitglied');
+		// gemeinsame offene Gruppe zählt
+		await sql`insert into group_members (group_id, user_id, status) values (${open.id}, ${u.dora}, 'aktiv'), (${open.id}, ${u.eva}, 'angefragt')`;
+		expect(await relationOf(sql, u.eva, u.dora)).toBe('mitglied'); // nur angefragt
+		await sql`update group_members set status = 'aktiv' where group_id = ${open.id} and user_id = ${u.eva}`;
+		expect(await relationOf(sql, u.eva, u.dora)).toBe('gruppe');
+		const c = await cardForViewer(sql, u.dora, u.eva);
+		expect(c?.card.canHelp).toBe('Fahrrad reparieren');
+		expect(c?.card.lookingFor).toBeNull();
+		// Kontakte sehen „gruppen“-Felder auch
+		const [a, b] = [u.dora, u.ben].sort();
+		await sql`insert into contacts (user_a, user_b) values (${a}, ${b})`;
+		expect((await cardForViewer(sql, u.dora, u.ben))?.card.canHelp).toBe('Fahrrad reparieren');
+		// ohne Anmeldung nie
+		expect((await cardForViewer(sql, u.dora, null))?.card.canHelp ?? null).toBeNull();
+	});
+
+	it('Aufnahme durch Partnerorganisation: nur Verwaltung einer verifizierten Einrichtung, nur Anfragen, keine Profile', async () => {
+		const [org] = await sql`insert into organizations (slug, name, kind, status) values ('verband-ae', 'Verband Alleinerziehender', 'beratung', 'verifiziert') returning id`;
+		const [unv] = await sql`insert into organizations (slug, name, kind, status) values ('neu-verein', 'Neuer Verein', 'verein', 'beantragt') returning id`;
+		await sql`insert into org_members (org_id, user_id, role) values (${org.id}, ${u.partner}, 'admin'), (${org.id}, ${u.helfer}, 'redaktion')`;
+		const base = { slug: 'ae-bremen', name: 'Alleinerziehend Bremen', description: 'Geschützter Austausch für Alleinerziehende', rules: null, kind: 'geschuetzt', topicKey: null, regionCode: null, admission: ['Was erhoffst du dir?'] };
+		await expect(G.saveGroup(sql, u.red, null, { ...base, partnerOrgId: unv.id })).rejects.toBeInstanceOf(PostError);
+		const gid = await G.saveGroup(sql, u.red, null, { ...base, partnerOrgId: org.id });
+		expect(await G.isPartnerAdmitter(sql, u.partner, gid)).toBe(true);
+		expect(await G.isPartnerAdmitter(sql, u.helfer, gid)).toBe(false); // Redaktion der Einrichtung reicht nicht
+		expect((await G.partnerGroups(sql, u.partner)).map((g) => g.slug)).toEqual(['ae-bremen']);
+		await G.join(sql, u.anna, gid, 'Lerche', ['Austausch mit anderen']);
+		const [note] = await sql`select text, link from notifications where user_id = ${u.partner} and kind = 'gruppe'`;
+		expect(note.text).toBe('Neue Aufnahmeanfrage für „Alleinerziehend Bremen“');
+		expect(note.text).not.toContain('Lerche');
+		const reqs = await G.pendingRequests(sql, u.partner, gid);
+		expect(reqs.map((r) => [r.pseudonym, r.contactId])).toEqual([['Lerche', null]]);
+		await expect(G.pendingRequests(sql, u.helfer, gid)).rejects.toBeInstanceOf(PostError);
+		await expect(G.members(sql, u.partner, gid)).rejects.toBeInstanceOf(PostError); // keine Mitgliederliste
+		await G.decideRequest(sql, u.partner, gid, u.anna, true);
+		const [m] = await sql`select status, application from group_members where group_id = ${gid} and user_id = ${u.anna}`;
+		expect(m.status).toBe('aktiv');
+		expect(m.application).toBeNull();
+		const [log] = await sql`select meta from audit_log where action = 'group.member.accepted' order by at desc limit 1`;
+		expect(log.meta.via).toBe('partner');
+		// Einrichtung pausiert → Recht weg
+		await sql`update organizations set status = 'pausiert' where id = ${org.id}`;
+		expect(await G.isPartnerAdmitter(sql, u.partner, gid)).toBe(false);
+		await sql`update organizations set status = 'verifiziert' where id = ${org.id}`;
+		// Offene Gruppe: Partner wird nicht gespeichert
+		const oid = await G.saveGroup(sql, u.red, null, { ...base, slug: 'offen-x', kind: 'offen', partnerOrgId: org.id });
+		const [og] = await sql`select partner_org_id from community_groups where id = ${oid}`;
+		expect(og.partner_org_id).toBeNull();
+	});
+
+	it('Hinweise von Mitgliedern: Vorschlag → Prüfung → sichtbar als „Mitglied“; Ablehnung mit Grund', async () => {
+		const i = { kind: 'sperrung', title: 'Gehweg vor der Kita gesperrt', body: 'Bis Freitag Baustelle.', regionCode: '04011:st:1', sourceUrl: null, days: 7 };
+		await expect(N.proposeNotice(sql, u.eva, { ...i, kind: 'leistung' })).rejects.toBeInstanceOf(PostError);
+		await expect(N.proposeNotice(sql, u.eva, { ...i, regionCode: null })).rejects.toBeInstanceOf(PostError);
+		await expect(N.proposeNotice(sql, u.eva, { ...i, body: 'Ruft mich an: 0151 23456789' })).rejects.toBeInstanceOf(PostError);
+		const id = await N.proposeNotice(sql, u.eva, i);
+		expect((await N.listNotices(sql, { region: '04011:st:1' })).notices.map((n) => n.title)).not.toContain(i.title);
+		expect((await N.pendingProposals(sql, u.anna)).length).toBe(0); // kein Recht
+		const p = await N.pendingProposals(sql, u.red);
+		expect(p.map((x) => x.id)).toEqual([id]);
+		await expect(N.reviewProposal(sql, u.anna, id, true, '')).rejects.toBeInstanceOf(PostError);
+		await N.reviewProposal(sql, u.red, id, true, '');
+		const vis = (await N.listNotices(sql, { region: '04011:st:1' })).notices.find((n) => n.id === id);
+		expect(vis?.sourceKind).toBe('mitglied');
+		const [nt] = await sql`select text from notifications where user_id = ${u.eva} and kind = 'hinweis'`;
+		expect(nt.text).toContain('jetzt sichtbar');
+		// Ablehnen nur mit Grund
+		const id2 = await N.proposeNotice(sql, u.eva, { ...i, title: 'Kita macht zu (Gerücht)' });
+		await expect(N.reviewProposal(sql, u.red, id2, false, '')).rejects.toBeInstanceOf(PostError);
+		await N.reviewProposal(sql, u.red, id2, false, 'Bitte mit Quelle');
+		expect((await N.myProposals(sql, u.eva)).find((x) => x.id === id2)?.note).toBe('Bitte mit Quelle');
+		// höchstens 3 pro Tag
+		await N.proposeNotice(sql, u.eva, { ...i, title: 'Dritter Hinweis heute' });
+		await expect(N.proposeNotice(sql, u.eva, { ...i, title: 'Vierter Hinweis heute' })).rejects.toBeInstanceOf(PostError);
+		// eigenen Hinweis beenden
+		await N.archiveNotice(sql, u.eva, id);
+		expect((await N.listNotices(sql, { region: '04011:st:1' })).notices.find((n) => n.id === id)).toBeUndefined();
+		// Export + Löschung
+		const x = (await exportAccount(sql, u.eva)) as unknown as { hinweise_vorgeschlagen: unknown[] };
+		expect(x.hinweise_vorgeschlagen.length).toBe(3);
+		await deleteAccount(sql, u.eva);
+		expect((await sql`select 1 from notices where source_kind = 'mitglied'`).length).toBe(0);
 	});
 });

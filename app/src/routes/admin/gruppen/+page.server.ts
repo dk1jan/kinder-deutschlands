@@ -16,7 +16,8 @@ export const load: PageServerLoad = async (event) => {
 			from community_groups g left join regions r on r.code = g.region_code order by g.name`,
 		sql`select key, name from topics order by sort`
 	]);
-	return { groups, topics, edit: event.url.searchParams.get('bearbeiten') };
+	const orgs = await sql`select id, name from organizations where status = 'verifiziert' order by name`;
+	return { groups, topics, orgs, edit: event.url.searchParams.get('bearbeiten') };
 };
 
 export const actions: Actions = {
@@ -33,7 +34,8 @@ export const actions: Actions = {
 				kind: String(f.get('kind') ?? ''),
 				topicKey: String(f.get('topic') ?? '') || null,
 				regionCode: String(f.get('region_code') ?? '') || null,
-				admission: String(f.get('admission') ?? '').split('\n')
+				admission: String(f.get('admission') ?? '').split('\n'),
+				partnerOrgId: isUuid(String(f.get('partner') ?? '')) ? String(f.get('partner')) : null
 			});
 		} catch (e) {
 			if (e instanceof PostError) return fail(400, { error: e.message });

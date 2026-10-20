@@ -15,6 +15,26 @@
 {#if form && 'error' in form}<Notice kind="error">{form.error}</Notice>{/if}
 {#if form && 'ok' in form}<Notice kind="ok">{form.ok}</Notice>{/if}
 
+{#if data.proposals.length}
+	<section class="card prop">
+		<h2>Vorschläge von Mitgliedern ({data.proposals.length})</h2>
+		<p class="muted">Freigeben heißt: plausibel, keine privaten Daten, passt zur Region. Es bleibt sichtbar als „Hinweis eines Mitglieds“ – nicht amtlich.</p>
+		{#each data.proposals as p (p.id)}
+			<article>
+				<p><strong>{NOTICE_KINDS[p.kind as keyof typeof NOTICE_KINDS] ?? p.kind}: {p.title}</strong> · {p.regionName ?? '–'} · bis {fmt(p.validUntil)}</p>
+				{#if p.body}<p class="body">{p.body}</p>{/if}
+				{#if p.sourceUrl}<p><a href={p.sourceUrl} rel="noopener nofollow" target="_blank">Quelle</a></p>{/if}
+				<form method="POST" action="?/pruefen" class="row">
+					<input type="hidden" name="id" value={p.id} />
+					<input name="note" maxlength="300" placeholder="Begründung (bei Ablehnung Pflicht)" aria-label="Begründung" />
+					<button class="btn small" name="decision" value="ja">Freigeben</button>
+					<button class="btn small secondary" name="decision" value="nein">Ablehnen</button>
+				</form>
+			</article>
+		{/each}
+	</section>
+{/if}
+
 <details class="card" open={!!(form && 'error' in form)}>
 	<summary>Neuer Hinweis</summary>
 	{#key form}
@@ -58,6 +78,25 @@
 		border-radius: var(--radius-m);
 		padding: var(--sp-4);
 		margin-bottom: var(--sp-4);
+	}
+	.prop article {
+		border-top: 1px solid var(--line);
+		padding: var(--sp-3) 0;
+	}
+	.prop h2 {
+		margin: 0 0 var(--sp-2);
+		font-size: var(--fs-l);
+	}
+	.prop .body {
+		white-space: pre-line;
+	}
+	.prop .row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sp-2);
+	}
+	.prop .row input {
+		flex: 1 1 14rem;
 	}
 	summary {
 		cursor: pointer;

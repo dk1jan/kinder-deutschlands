@@ -71,6 +71,7 @@ export async function exportAccount(sql: Sql, userId: string) {
 		einladungen_eigene: await sql`select i.title, i.message, i.starts_at, i.place_text, i.status, i.created_at,
 			(select json_agg(json_build_object('name', r.name, 'antwort', r.answer, 'kinder', r.kids, 'erwachsene', r.adults, 'notiz', r.note)) from invitation_rsvps r where r.invitation_id = i.id) as antworten
 			from invitations i where i.organizer_id = ${userId}`,
+		hinweise_vorgeschlagen: await sql`select kind, title, body, region_code, status, created_at from notices where created_by = ${userId} and source_kind = 'mitglied' and status <> 'entfernt'`,
 		kinderwagenrouten: await sql`select title, description, distance_m, status, created_at from stroller_routes where created_by = ${userId} and status <> 'entfernt'`,
 		routen_erfahrungen: await sql`select r.title, x.kind, x.text, x.created_at from route_reports x join stroller_routes r on r.id = x.route_id where x.user_id = ${userId}`,
 		einladungen_antworten: await sql`select i.title, i.starts_at, r.name, r.answer, r.kids, r.adults, r.note, r.updated_at from invitation_rsvps r join invitations i on i.id = r.invitation_id where r.user_id = ${userId}`,
@@ -117,6 +118,8 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`update places set created_by = null where created_by = ${userId}`;
 		await tx`update place_reports set user_id = null, message = null where user_id = ${userId}`;
 		await tx`update place_notices set created_by = null where created_by = ${userId}`;
+		// Eigene Hinweis-Vorschläge (M20) verschwinden mit dem Konto
+		await tx`delete from notices where created_by = ${userId} and source_kind = 'mitglied'`;
 		// Community: eigene Texte verschwinden, Antworten anderer bleiben stehen; Bilder werden gelöscht
 		await tx`update posts set title = '[gelöscht]', body = '', link_card = null, link_url = null, status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;
 		await tx`update comments set body = '[gelöscht]', status = 'entfernt', mod_note = 'Konto gelöscht' where author_id = ${userId}`;

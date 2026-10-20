@@ -13,7 +13,7 @@ export const load: PageServerLoad = async (event) => {
 	if (!g) error(404, 'Gruppe nicht gefunden.');
 	const canRead = g.access.member || g.access.moderator;
 	const posts = canRead ? await feed(sql, user.id, { mode: 'neu', groupId: g.id, before: event.url.searchParams.get('vor') }) : null;
-	const [{ pending }] = g.access.moderator ? await sql`select count(*)::int as pending from group_members where group_id = ${g.id} and status = 'angefragt'` : [{ pending: 0 }];
+	const [{ pending }] = g.access.moderator || g.access.partner ? await sql`select count(*)::int as pending from group_members where group_id = ${g.id} and status = 'angefragt'` : [{ pending: 0 }];
 	return { g, posts, pending };
 };
 
