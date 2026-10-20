@@ -124,7 +124,7 @@ const jwt = (c) => { const n = Math.floor(Date.now() / 1000), h = b({ alg: "HS25
 	if (v.status !== 200) { console.error("validate über die App", v.status, await v.text()); process.exit(1); }
 	const bad = await fetch("http://127.0.0.1:3000/livekit/rtc/validate?access_token=" + t.slice(0, -4) + "AAAA");
 	if (bad.status === 200) { console.error("falsches Token angenommen"); process.exit(1); }
-	const tw = await fetch("http://127.0.0.1:3000/livekit/twirp/livekit.RoomService/ListRooms", { method: "POST" });
+	const tw = await fetch("http://127.0.0.1:3000/livekit/twirp/livekit.RoomService/ListRooms", { method: "POST", redirect: "manual" });
 	// vor der Ersteinrichtung leitet die App alles auf /setup um (303), danach 404 – nie die LiveKit-Verwaltung
 	if (tw.status !== 404 && tw.status !== 303) { console.error("Verwaltung von außen erreichbar", tw.status); process.exit(1); }
 	console.log("OK  LiveKit: Raum nur über die App, Token geprüft, Signalweg /livekit/rtc über die App, Verwaltung nicht erreichbar");
