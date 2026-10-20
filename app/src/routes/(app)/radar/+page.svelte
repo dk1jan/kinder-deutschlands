@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	let { data } = $props();
 </script>
 
@@ -21,6 +22,21 @@
 	{/if}
 	{#if data.profiles.length < 5}<p><a class="btn" href="/radar/neu">{data.profiles.length ? 'Weiteres Profil anlegen' : 'Radar einrichten'}</a></p>{/if}
 	<p class="muted small">Mehrere Profile, z. B. für Wohnort und Großeltern. Jedes lässt sich pausieren oder löschen.</p>
+
+	<h2>Abonnierte Orte</h2>
+	{#if data.places.length}
+		<ul class="list abo">
+			{#each data.places as p (p.id)}
+				<li>
+					<a href="/orte/{p.id}"><strong>{p.name}</strong><small>Mitteilung bei neuen Hinweisen und Terminen</small></a>
+					<form method="POST" action="?/aboEnde" use:enhance><input type="hidden" name="id" value={p.id} /><button class="btn small secondary" type="submit">Abo beenden</button></form>
+				</li>
+			{/each}
+		</ul>
+	{:else}
+		<p class="muted">Noch kein Ort abonniert. Auf der Seite eines Spielplatzes oder Ortes: „Abonnieren“.</p>
+	{/if}
+	<p class="muted small">Einzelne Termine verfolgst du über „Merken“: Bei Änderung oder Absage kommt eine Mitteilung, auf Wunsch mit Erinnerung.</p>
 </div>
 
 <style>
@@ -48,6 +64,17 @@
 	}
 	.list small {
 		color: var(--ink-2);
+	}
+	.abo li {
+		display: flex;
+		gap: var(--sp-2);
+		align-items: center;
+	}
+	.abo li a {
+		flex: 1;
+	}
+	h2 {
+		margin-top: var(--sp-6);
 	}
 	.small {
 		font-size: var(--fs-s);

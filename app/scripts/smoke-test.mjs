@@ -789,6 +789,28 @@ try {
 	check(r.status === 200, 'Partnerlink-Test');
 	r = await X2.req('/partnerlinks');
 	check(r.status === 200 && r.body.includes('Partnerlink'), 'Erklärseite Partnerlinks öffentlich');
+
+	// ---------- Abschnitt 8.1: Kartenebenen, Orte abonnieren, Treffen am Ort ----------
+	const bb = '8.70,53.03,8.90,53.15';
+	r = await X2.req(`/api/karte/ebenen?bbox=${bb}&e=routen,marktplatz,hilfe`);
+	let lj = JSON.parse(r.body);
+	check(r.status === 200 && lj.lines.some((l) => l.title === 'Smoke-Runde Torfkanal') && lj.points.length === 0 && lj.hidden.includes('marktplatz'), 'Kartenebenen ohne Anmeldung: Routen ja, Marktplatz/Hilfe nein');
+	r = await D.req(`/api/karte/ebenen?bbox=${bb}&e=marktplatz,hilfe`);
+	lj = JSON.parse(r.body);
+	check(r.status === 200 && lj.points.some((p) => p.layer === 'marktplatz' && p.href.startsWith('/marktplatz?region=')) && lj.points.some((p) => p.layer === 'hilfe'), 'Kartenebenen für Mitglieder: Marktplatz und Hilfe je Gegend');
+	r = await X2.req('/api/karte/ebenen?bbox=0,0,50,50&e=termine');
+	check(r.status === 400, 'Kartenebenen: zu großer Ausschnitt abgelehnt');
+	const [pl] = await sqlT`select id from places where status = 'aktiv' and kind = 'spielplatz' limit 1`;
+	r = await D.req(`/orte/${pl.id}?/abo`, { form: { on: '1' } });
+	check(r.status === 200, 'Ort abonniert');
+	r = await D.req(`/orte/${pl.id}`);
+	check(r.body.includes('Abonniert') && r.body.includes(`/nachrichten/treffen/neu?ort=${pl.id}`), 'Ortsseite: Abo aktiv, „Treffen hier“');
+	r = await D.req('/radar');
+	check(r.body.includes('Abonnierte Orte') && r.body.includes(`/orte/${pl.id}`), 'Radar zeigt abonnierte Orte');
+	r = await D.req(`/nachrichten/treffen/neu?ort=${pl.id}`);
+	check(r.status === 200, 'Treffen am Ort: Formular vorausgefüllt');
+	r = await X2.req('/karte');
+	check(r.status === 200, 'Karte lädt');
 	await sqlT.end();
 	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
 

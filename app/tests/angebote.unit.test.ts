@@ -20,6 +20,11 @@ describe('Wiederholungen', () => {
 		expect(occ.map((o) => berlinParts(o.start).h)).toEqual([10, 10, 10, 10]);
 		expect(occ[2].end!.getTime() - occ[2].start.getTime()).toBe(2 * 3600_000);
 	});
+	it('Startzeit mit Sekunden (Kalender-Import) verliert den ersten Termin nicht', () => {
+		const s = new Date(B(2026, 10, 17).getTime() + 7_405);
+		const occ = expand({ startsAt: s, endsAt: null, rrule: 'FREQ=WEEKLY;COUNT=2', exdates: [] }, B(2026, 10, 1), B(2026, 11, 8));
+		expect(occ.map((o) => o.date)).toEqual(['2026-10-17', '2026-10-24']);
+	});
 	it('Einzelabsage bleibt als „abgesagt“ sichtbar', () => {
 		const occ = expand({ startsAt: B(2026, 10, 17), endsAt: null, rrule: 'FREQ=WEEKLY;COUNT=3', exdates: ['2026-10-24'] }, B(2026, 10, 1), B(2027, 1, 1));
 		expect(occ.map((o) => [o.date, o.cancelled])).toEqual([['2026-10-17', false], ['2026-10-24', true], ['2026-10-31', false]]);

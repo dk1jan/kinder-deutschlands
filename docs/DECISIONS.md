@@ -182,3 +182,8 @@ Routen entstehen nur durch Einzeichnen auf der Karte (oder später Import mit ge
 
 ## D-060 · E-Mail-Adresse für niemanden einsehbar (20.10.2026)
 Entscheidung Jan: Die E-Mail-Adresse bleibt in der Datenbank (Anmeldung, Bestätigung, Passwort zurücksetzen, Radar-Mails), aber keine Rolle – auch Betreiber nicht – kann sie in der App, Verwaltung, Export, Protokoll oder Moderation sehen. Nur das Mitglied sieht und ändert die eigene Adresse. Identifikation im Admin-Board nur über die Familien-ID. Präzisiert D-016. Werbeaussage nur als „für niemanden einsehbar“, nicht als „unbekannt“, solange die Adresse gespeichert ist. Umsetzung im nächsten Sammel-Update (F-006).
+## D-061 · Zusatzebenen der Familienkarte (20.10.2026)
+Auf der Karte erscheinen nur Dinge mit öffentlichem Ort: Termine (Sichtbarkeit wie in der Liste) und geprüfte Kinderwagenrouten. Marktplatz und Hilfe nur für angemeldete Mitglieder und nur als Anzahl je Gegend am Mittelpunkt der Region – einzelne Punkte würden eine Genauigkeit vortäuschen, die es bewusst nicht gibt (D-051). Eine Ebene „Mitglieder“ gibt es nicht: keine Personen auf der Karte, auch nicht grob. Die Auswahl der Ebenen bleibt im Browser bzw. in der Adresse, nichts wird serverseitig gespeichert.
+
+## D-062 · Orte abonnieren (20.10.2026)
+Abo = gemerkter Ort mit Schalter „Bei Änderungen benachrichtigen“. Auslöser: neuer oder bestätigter Hinweis (defekt/gesperrt), Aufhebung, neuer nicht-privater Termin an diesem Ort. Nutzerhinweise ohne Freitext (der geht nur an die Redaktion). Push nur mit dem Schalter „Radar“. Einzelne Termine braucht kein eigenes Abo: „Merken“ meldet Änderung und Absage und erinnert auf Wunsch.

@@ -4,6 +4,7 @@ import { audit } from './audit';
 import { displayName, featuresFor, isKind, type Kind } from '$lib/places';
 import { tileState, validBbox } from './import/tiles';
 import { assignRegions } from './import/engine';
+import { notifyPlaceFollowers } from './follows';
 
 export class DataError extends Error {}
 
@@ -153,6 +154,7 @@ export async function markDistinct(sql: Sql, a: string, b: string, actorId: stri
 
 /** Meldung bearbeiten. Bei Defekt/Sperrung: Hinweis bestätigen (Redaktion/amtlich) oder beenden. */
 export async function handleReport(sql: Sql, id: string, decision: 'erledigt' | 'abgelehnt', notice: 'bestaetigen' | 'amtlich' | 'beenden' | null, text: string | null, sourceUrl: string | null, actorId: string) {
+	let done: { placeId: string; kind: string } | null = null as { placeId: string; kind: string } | null;
 	await sql.begin(async (tx) => {
 		const [rp] = await tx`update place_reports set status = ${decision}, handled_by = ${actorId}, handled_at = now(), resolution = ${text}
 			where id = ${id} and status = 'offen' returning place_id, kind`;
@@ -165,7 +167,13 @@ export async function handleReport(sql: Sql, id: string, decision: 'erledigt' | 
 				values (${rp.place_id}, ${rp.kind}, ${notice === 'amtlich' ? 'amtlich' : 'redaktion'}, ${text}, ${sourceUrl}, ${id}, ${actorId})`;
 		}
 		await audit(tx as unknown as Sql, { actorId, action: 'place.report.handled', targetType: 'place', targetId: rp.place_id, meta: { decision, notice } });
+		done = { placeId: rp.place_id, kind: rp.kind };
 	});
+	if (done && (done.kind === 'defekt' || done.kind === 'gesperrt')) {
+		const word = done.kind === 'gesperrt' ? 'Sperrung' : 'Defekt';
+		if (notice === 'beenden' || decision === 'abgelehnt') await notifyPlaceFollowers(sql, done.placeId, `{ort}: Hinweis „${word}“ aufgehoben`, null, actorId);
+		else if (notice === 'bestaetigen' || notice === 'amtlich') await notifyPlaceFollowers(sql, done.placeId, `{ort}: ${word} ${notice === 'amtlich' ? 'amtlich gemeldet' : 'von der Redaktion bestätigt'}`, null, actorId);
+	}
 }
 
 // ---------- Ortspflege ----------
@@ -242,11 +250,15 @@ export async function addNotice(sql: Sql, placeId: string, kind: string, origin:
 	await sql`insert into place_notices (place_id, kind, origin, text, source_url, created_by, valid_until)
 		values (${placeId}, ${kind}, ${origin}, ${text}, ${sourceUrl}, ${actorId}, ${days ? sql`now() + make_interval(days => ${days})` : null})`;
 	await audit(sql, { actorId, action: 'place.notice.added', targetType: 'place', targetId: placeId, meta: { kind, origin } });
+	await notifyPlaceFollowers(sql, placeId, `{ort}: ${kind === 'gesperrt' ? 'gesperrt' : 'etwas ist defekt'} (${origin === 'amtlich' ? 'amtliche Meldung' : 'Redaktion'})`, null, actorId);
 }
 
 export async function endNotice(sql: Sql, noticeId: string, actorId: string) {
 	const [n] = await sql`update place_notices set ended_at = now() where id = ${noticeId} and ended_at is null returning place_id`;
-	if (n) await audit(sql, { actorId, action: 'place.notice.ended', targetType: 'place', targetId: n.place_id });
+	if (n) {
+		await audit(sql, { actorId, action: 'place.notice.ended', targetType: 'place', targetId: n.place_id });
+		await notifyPlaceFollowers(sql, n.place_id, '{ort}: Hinweis aufgehoben', null, actorId);
+	}
 }
 
 export async function reassignAllRegions(sql: Sql) {

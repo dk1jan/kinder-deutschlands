@@ -139,10 +139,12 @@ export function expand(s: Series, from: Date, to: Date, limit = 400): Occurrence
 	const hardEnd = new Date(Math.min(to.getTime(), s.startsAt.getTime() + MAX_YEARS * 366 * 86_400_000));
 	const out: Occurrence[] = [];
 	let n = 0;
+	// Vergleich auf ganze Minuten: Startzeiten mit Sekunden (z. B. aus Kalender-Importen) dürfen den ersten Termin nicht verlieren
+	const first = Math.floor(s.startsAt.getTime() / 60_000) * 60_000;
 	const accept = (c: Civil): boolean => {
 		// gibt false zurück, wenn die Serie zu Ende ist
 		const o = mk(c);
-		if (o.start.getTime() < s.startsAt.getTime()) return true;
+		if (o.start.getTime() < first) return true;
 		if (r.until && o.start.getTime() > r.until.getTime()) return false;
 		if (o.start.getTime() >= hardEnd.getTime()) return false;
 		n++;

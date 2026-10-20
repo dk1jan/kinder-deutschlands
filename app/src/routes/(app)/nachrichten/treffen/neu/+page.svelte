@@ -6,11 +6,13 @@
 	import { chat, startChat } from '$lib/chat/client.svelte';
 	import { createTreffen } from '$lib/chat/actions';
 	let { data } = $props();
-	let name = $state('');
+	// svelte-ignore state_referenced_locally
+	const pl = data.place;
+	let name = $state(pl ? `Treffen: ${pl.name}` : '');
 	let hours = $state(6);
-	let withPoint = $state(false);
-	let point = $state<{ lat: number; lon: number } | null>(null);
-	let pointLabel = $state('');
+	let withPoint = $state(!!pl);
+	let point = $state<{ lat: number; lon: number } | null>(pl ? { lat: pl.lat, lon: pl.lon } : null);
+	let pointLabel = $state(pl?.name ?? '');
 	let busy = $state(false);
 	let error = $state('');
 	let done = $state<{ roomId: string; url: string } | null>(null);

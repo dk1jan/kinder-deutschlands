@@ -102,3 +102,44 @@ export function addMarkerImages(map: MlMap, theme: 'light' | 'dark') {
 	px.stroke();
 	map.addImage('m-person', px.getImageData(0, 0, pc.width, pc.height), { pixelRatio: R });
 }
+
+/** Zusatzebenen der Familienkarte: runde Marken mit Symbol (Termine, Marktplatz, Hilfe). */
+export const LAYER_STYLE = {
+	termine: { color: '#7b4fa3', ink: '#ffffff', icon: 'uhr' },
+	marktplatz: { color: '#2f7d4f', ink: '#ffffff', icon: 'flagge' },
+	hilfe: { color: '#1a5c9a', ink: '#ffffff', icon: 'gruppe' },
+	routen: { color: '#1f7468', ink: '#ffffff', icon: 'route' }
+} as const;
+
+export function addLayerImages(map: MlMap, theme: 'light' | 'dark') {
+	for (const [key, st] of Object.entries(LAYER_STYLE)) {
+		const name = `l-${key}`;
+		if (map.hasImage(name)) map.removeImage(name);
+		const S = 34;
+		const c = document.createElement('canvas');
+		c.width = c.height = S * R;
+		const ctx = c.getContext('2d')!;
+		ctx.scale(R, R);
+		ctx.shadowColor = 'rgba(8, 19, 32, 0.35)';
+		ctx.shadowBlur = 3;
+		ctx.shadowOffsetY = 1;
+		ctx.beginPath();
+		ctx.arc(S / 2, S / 2, 14, 0, Math.PI * 2);
+		ctx.fillStyle = st.color;
+		ctx.fill();
+		ctx.shadowColor = 'transparent';
+		ctx.lineWidth = 2.25;
+		ctx.strokeStyle = theme === 'dark' ? '#0a1626' : '#ffffff';
+		ctx.stroke();
+		ctx.save();
+		ctx.translate(S / 2 - 9, S / 2 - 9);
+		ctx.scale(0.75, 0.75);
+		ctx.lineWidth = 2.4;
+		ctx.lineCap = 'round';
+		ctx.lineJoin = 'round';
+		ctx.strokeStyle = st.ink;
+		ctx.stroke(new Path2D(ICONS[st.icon] ?? ICONS.pin));
+		ctx.restore();
+		map.addImage(name, ctx.getImageData(0, 0, c.width, c.height), { pixelRatio: R });
+	}
+}

@@ -9,6 +9,7 @@ import { checkText } from '../community/automod';
 import { berlinDateKey, berlinParts, describeRule, expand, parseRule, RuleError, seriesUntil, type Occurrence } from './recurrence';
 import { cleanUrl, intOrNull, regionAt, subtree } from './common';
 import { orgRole } from './orgs';
+import { notifyPlaceFollowers } from '../follows';
 import { ACCESSIBILITY, EVENT_KINDS, SETTINGS, ageMatches, isRadarTopic } from '$lib/angebote';
 
 export interface Viewer {
@@ -167,6 +168,8 @@ export async function createEvent(sql: Sql, userId: string, i: EventInput, opts:
 			values ('event', ${e.id}, 'automatisch', ${top.reason}, ${flags.map((f) => f.detail).join(' · ').slice(0, 500)}, ${top.priority}, ${loc.region})`;
 	}
 	await audit(sql, { actorId: userId, action: 'event.created', targetType: 'event', targetId: e.id, meta: { origin: who.origin } });
+	if (i.placeId && !hold && i.visibility !== 'privat')
+		await notifyPlaceFollowers(sql, i.placeId, `Neuer Termin am Ort {ort}: ${i.title.trim()}`, `/veranstaltungen/${e.id}`, userId);
 	return { id: e.id as string, held: hold, shareToken };
 }
 
@@ -264,6 +267,8 @@ export interface ListFilter {
 	freikarte?: boolean;
 	q?: string | null;
 	near?: { lat: number; lon: number; km: number } | null;
+	/** Kartenausschnitt [West, Süd, Ost, Nord] – nur Termine mit Ort darin */
+	bbox?: [number, number, number, number] | null;
 	orgId?: string | null;
 	topics?: string[];
 	mine?: boolean;
@@ -328,6 +333,7 @@ export async function listOccurrences(sql: Sql, v: Viewer, f: ListFilter): Promi
 			${f.setting === 'drinnen' ? sql`and e.setting in ('drinnen', 'beides')` : f.setting === 'draussen' ? sql`and e.setting in ('draussen', 'beides')` : sql``}
 			${q ? sql`and (e.title ilike ${'%' + q + '%'} or e.description ilike ${'%' + q + '%'} or o.name ilike ${'%' + q + '%'})` : sql``}
 			${f.near ? sql`and ST_DWithin(e.location::geography, ST_SetSRID(ST_MakePoint(${f.near.lon}, ${f.near.lat}), 4326)::geography, ${f.near.km * 1000})` : sql``}
+			${f.bbox ? sql`and e.location && ST_MakeEnvelope(${f.bbox[0]}, ${f.bbox[1]}, ${f.bbox[2]}, ${f.bbox[3]}, 4326)` : sql``}
 			${f.orgId ? sql`and e.org_id = ${f.orgId}` : sql``}
 			${f.mine && v.id ? sql`and (e.created_by = ${v.id} or exists(select 1 from event_attendance a where a.event_id = e.id and a.user_id = ${v.id}))` : sql``}
 		limit 1500`;

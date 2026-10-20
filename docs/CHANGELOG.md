@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Abschnitt 8.1: Kartenebenen, Orte abonnieren, Treffen am Spielplatz
+
+**Was**
+- Familienkarte (M10): Knopf „Ebenen“ mit Kartenart (Karte/Luftbild) und Zusatzebenen: Termine der nächsten 7 Tage (je Termin das nächste Datum, nur was die Person sehen darf, abgesagte nicht), Kinderwagenrouten als Linien (nur geprüfte), Marktplatz und Hilfe (nur angemeldet, nur Anzahl je Gegend am Mittelpunkt der Region, Blockierte zählen nicht). Antippen öffnet eine Karte mit Link; die Liste zeigt die Einträge nach Entfernung. Auswahl teilbar per `?ebenen=` und im Browser gemerkt.
+- Orte abonnieren (M11/M05): „Abonnieren“ auf jeder Ortsseite (merkt den Ort mit). Mitteilung (Push nur mit Schalter „Radar“) bei neuem Hinweis (defekt/gesperrt, auch unbestätigt – ohne Freitext), Bestätigung durch Redaktion/amtlich, Aufhebung, neuem Termin an diesem Ort (nicht bei privaten Terminen, nicht an den Auslöser). Übersicht und „Abo beenden“ im Familienradar; Datenexport enthält das Abo.
+- „Treffen hier“ (M11/M06) auf der Ortsseite: Treffen per QR mit Name und Treffpunkt des Ortes vorausgefüllt.
+- Korrektur Wiederholungen (M12): Startzeiten mit Sekunden (z. B. aus Kalender-Importen) ließen den ersten Termin einer Serie wegfallen.
+- STATUS: Anruf über Mobilfunk – Ton beim Test am 20.10. nicht bestätigt (Bild ja); bleibt offen bis zum Test mit Mikrofon-Freigabe.
+**Warum** Offene „vorgesehen“-Punkte aus STATUS (Abschnitt 8 „Lücken schließen“); Grundsätze D-061, D-062.
+**Module** M05, M06, M10, M11, M12 · **DB-Migration** ja – `0010_luecken.sql` (place_favorites.notify)
+**Tests** svelte-check 0 Fehler; 192 Unit/DB-Tests (neu 1 Unit: Serie mit Sekunden; 4 DB: Termine-Ebene Sichtbarkeit/nächstes Datum/Ausschnitt/abgesagt, Marktplatz/Hilfe nur Mitglieder je Gegend ohne Blockierte, Routen erst nach Prüfung, Ort abonnieren mit allen Auslösern/ohne Auslöser/privat/Abo beenden/Export); Rauchtest 265 Prüfungen mit echtem Synapse (neu: Ebenen ohne/mit Anmeldung, zu großer Ausschnitt, Abo, „Treffen hier“, Radar-Liste); Bildschirmfotos Karte mit Ebenen (mobil); Build
 ## 2026-10-20 · Test-/Fehler-/Änderungsbereich (`docs/FEEDBACK.md`)
 
 **Was** Neue Sammelliste für Beobachtungen aus dem Testen (Fehler, Ändern, Entfernen, Dazu, Fragen) mit IDs, Priorität, Status und festem Ablauf „sammeln → ein Sammel-Update“. `CLAUDE.md` verweist darauf, damit jeder neue Chat offene Einträge mitmeldet.

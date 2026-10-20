@@ -9,6 +9,7 @@ import { rateLimit } from '$lib/server/ratelimit';
 import { cleanText } from '$lib/server/validate';
 import { audit } from '$lib/server/audit';
 import { REPORT_KINDS } from '$lib/places';
+import { setPlaceNotify } from '$lib/server/follows';
 import { tileState } from '$lib/server/import/tiles';
 import { addPlacePhoto, deleteReview, placeExperiences, saveReview } from '$lib/server/community/reviews';
 import { PostError } from '$lib/server/community/posts';
@@ -80,6 +81,13 @@ export const actions: Actions = {
 			await report(db(), user.id, t === 'media' ? 'media' : 'review', id, String(f.get('reason') ?? ''), cleanText(f.get('message'), 500));
 			return { expReported: true };
 		});
+	},
+	abo: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		const f = await event.request.formData();
+		const on = await setPlaceNotify(db(), user.id, event.params.id, f.get('on') === '1');
+		return { notify: on, favorite: on ? true : undefined };
 	},
 	merken: async (event) => {
 		const user = requireMember(event);

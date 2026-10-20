@@ -2,7 +2,8 @@
 	import { replaceState } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import NavChooser from '$lib/components/NavChooser.svelte';
-	import FamilyMap, { type MapFeature, type MapView } from '$lib/components/FamilyMap.svelte';
+	import FamilyMap, { type MapFeature, type MapView, type ExtraPoint } from '$lib/components/FamilyMap.svelte';
+	import { LAYER_STYLE } from '$lib/map/markers';
 	import { KINDS, KIND_FILTERS, FILTER_FEATURES, FEATURES, distanceM, distanceText, type Kind } from '$lib/places';
 
 	let { data } = $props();
@@ -47,6 +48,98 @@
 	);
 	let urlTimer: ReturnType<typeof setTimeout> | null = null;
 
+	// Zusatzebenen: Termine (7 Tage), Kinderwagenrouten, Marktplatz und Hilfe (nur Mitglieder, je Gegend)
+	type LayerKey = 'termine' | 'routen' | 'marktplatz' | 'hilfe';
+	const LAYER_CHIPS: { key: LayerKey; label: string; members: boolean }[] = [
+		{ key: 'termine', label: 'Termine (7 Tage)', members: false },
+		{ key: 'routen', label: 'Kinderwagenrouten', members: false },
+		{ key: 'marktplatz', label: 'Marktplatz', members: true },
+		{ key: 'hilfe', label: 'Hilfe', members: true }
+	];
+	interface XPoint extends ExtraPoint { sub: string; href: string }
+	interface XLine { id: string; title: string; sub: string; href: string; coords: [number, number][] }
+	let layers = $state<LayerKey[]>([]);
+	let layerOpen = $state(false);
+	let xPoints = $state<XPoint[]>([]);
+	let xLines = $state<XLine[]>([]);
+	let xSel = $state<{ layer: string; title: string; sub: string; href: string } | null>(null);
+	let xState = $state<'ok' | 'error' | 'loading' | ''>('');
+	let xTimer: ReturnType<typeof setTimeout> | null = null;
+	let xCtrl: AbortController | null = null;
+	$effect(() => {
+		// Gewählte Ebenen aus der Adresse übernehmen (teilbar), sonst die eigene letzte Auswahl
+		let v = new URL(location.href).searchParams.get('ebenen');
+		if (v === null) {
+			try {
+				v = localStorage.getItem('kd_ebenen');
+			} catch {
+				v = null;
+			}
+		}
+		const ok = (v ?? '').split(',').filter((k): k is LayerKey => LAYER_CHIPS.some((c) => c.key === k && (!c.members || data.loggedIn)));
+		if (ok.length) layers = ok;
+	});
+	function toggleLayer(k: LayerKey) {
+		layers = layers.includes(k) ? layers.filter((x) => x !== k) : [...layers, k];
+		try {
+			localStorage.setItem('kd_ebenen', layers.join(','));
+		} catch {
+			/* egal */
+		}
+		if (!layers.length) {
+			xPoints = [];
+			xLines = [];
+			xSel = null;
+			xState = '';
+		}
+		loadLayers(true);
+	}
+	function loadLayers(now = false) {
+		if (xTimer) clearTimeout(xTimer);
+		xTimer = setTimeout(async () => {
+			const v = mapRef?.getView();
+			if (!v || !layers.length) return;
+			if (v.zoom < 9) {
+				xPoints = [];
+				xLines = [];
+				xState = '';
+				return;
+			}
+			const [w, sth, e, n] = v.bounds;
+			const px = (e - w) * 0.25, py = (n - sth) * 0.25;
+			const bbox = [w - px, sth - py, e + px, n + py].map((x) => x.toFixed(4)).join(',');
+			xCtrl?.abort();
+			xCtrl = new AbortController();
+			xState = 'loading';
+			try {
+				const r = await fetch(`/api/karte/ebenen?bbox=${bbox}&e=${layers.join(',')}`, { signal: xCtrl.signal });
+				if (!r.ok) throw new Error(String(r.status));
+				const d = await r.json();
+				xPoints = d.points;
+				xLines = d.lines;
+				xState = 'ok';
+			} catch (err) {
+				if ((err as Error).name !== 'AbortError') xState = 'error';
+			}
+		}, now ? 0 : 350);
+	}
+	function pickExtra(id: string) {
+		const p = xPoints.find((x) => x.id === id);
+		if (!p) return;
+		selected = null;
+		xSel = { layer: p.layer, title: p.title, sub: p.sub, href: p.href };
+	}
+	function pickLine(id: string) {
+		const l = xLines.find((x) => x.id === id);
+		if (!l) return;
+		selected = null;
+		xSel = { layer: 'routen', title: l.title, sub: l.sub, href: l.href };
+	}
+	const xList = $derived([
+		...xPoints.map((p) => ({ id: p.id, layer: p.layer, title: p.title, sub: p.sub, href: p.href, m: distanceM(ref, [p.lon, p.lat]) })),
+		...xLines.map((l) => ({ id: l.id, layer: 'routen', title: l.title, sub: l.sub, href: l.href, m: Math.min(...l.coords.map((c) => distanceM(ref, c))) }))
+	].sort((a, b) => a.m - b.m).slice(0, 40));
+
 	const ref = $derived<[number, number]>(me ?? viewC);
 	const sorted = $derived(
 		items
@@ -62,6 +155,7 @@
 
 	function onView(v: MapView) {
 		viewC = v.center;
+		if (layers.length) loadLayers();
 		if (urlTimer) clearTimeout(urlTimer);
 		urlTimer = setTimeout(() => {
 			const u = new URL(location.href);
@@ -209,6 +303,17 @@
 					{/each}
 				{/if}
 			</ul>
+			{#if layers.length}
+				<h2 class="xh">Ebenen{xState === 'loading' ? ' …' : ''}</h2>
+				{#if xState === 'error'}<p class="state">Ebenen konnten nicht geladen werden.</p>
+				{:else if xState === 'ok' && !xList.length}<p class="state">Im Ausschnitt nichts {layers.map((l) => LAYER_CHIPS.find((c) => c.key === l)?.label).join(', ')}.</p>
+				{:else if !xState}<p class="state">Zum Anzeigen der Ebenen näher heranzoomen.</p>{/if}
+				<ul>
+					{#each xList as x (x.id)}
+						<li><a href={x.href}><span class="dot" style:background={LAYER_STYLE[x.layer as LayerKey].color}></span><span class="t"><b>{x.title}</b><small>{x.sub}</small></span><span class="d">{distanceText(x.m)}</span></a></li>
+					{/each}
+				</ul>
+			{/if}
 			<a class="suggest" href="/orte/neu"><Icon name="plus" size={18} />Ort fehlt? Vorschlagen</a>
 		</div>
 	</aside>
@@ -225,8 +330,13 @@
 			label="Familienkarte mit Spielplätzen und Familienorten"
 			{basemap}
 			aerialAttribution={data.aerial.attribution}
-			onSelect={(f) => (selected = f)}
-			onData={(f, s) => ((items = f), (dataState = s))}
+			onSelect={(f) => ((selected = f), f && (xSel = null))}
+			onData={(f, s) => ((items = f), (dataState = s), layers.length && !xState && loadLayers(true))}
+			extra={xPoints}
+			onExtra={pickExtra}
+			lines={xLines.map((l) => ({ id: l.id, coords: l.coords }))}
+			fitLines={false}
+			onLine={pickLine}
 			{onView}
 		/>
 		{#if !data.tiles}
@@ -236,16 +346,48 @@
 			<p class="banner"><Icon name="hinweis" size={18} />Für Bremen gibt es kein frei nutzbares Luftbild – hier siehst du die Karte.</p>
 		{/if}
 		<div class="fabs">
-			<button type="button" class="fab" onclick={toggleBasemap} aria-pressed={basemap === 'luftbild'} aria-label={basemap === 'luftbild' ? 'Zur Kartenansicht wechseln' : 'Zum Luftbild wechseln'}>
-				<Icon name="ebenen" /><span class="fab-t">{basemap === 'luftbild' ? 'Karte' : 'Luftbild'}</span>
+			<button type="button" class="fab" onclick={() => (layerOpen = !layerOpen)} aria-expanded={layerOpen} aria-controls="ebenen">
+				<Icon name="ebenen" /><span class="fab-t">Ebenen{layers.length ? ` · ${layers.length}` : ''}</span>
 			</button>
 			<button type="button" class="fab" onclick={locate} aria-label="Meinen Standort zeigen" disabled={locating}><Icon name="standort" /></button>
 			<button type="button" class="fab list-toggle" onclick={() => (listOpen = !listOpen)} aria-expanded={listOpen}>
 				<Icon name={listOpen ? 'karte' : 'liste'} /><span>{listOpen ? 'Karte' : 'Liste'}</span>
 			</button>
 		</div>
+		{#if layerOpen}
+			<section class="layerbox" id="ebenen" aria-label="Ebenen">
+				<button type="button" class="close" onclick={() => (layerOpen = false)} aria-label="Schließen"><Icon name="schliessen" size={20} /></button>
+				<h2>Kartenart</h2>
+				<div class="seg" role="group" aria-label="Kartenart">
+					<button type="button" aria-pressed={basemap === 'karte'} onclick={() => basemap !== 'karte' && toggleBasemap()}>Karte</button>
+					<button type="button" aria-pressed={basemap === 'luftbild'} onclick={() => basemap !== 'luftbild' && toggleBasemap()}>Luftbild</button>
+				</div>
+				<h2>Zusätzlich zeigen</h2>
+				<ul>
+					{#each LAYER_CHIPS as c}
+						<li>
+							{#if !c.members || data.loggedIn}
+								<label><input type="checkbox" checked={layers.includes(c.key)} onchange={() => toggleLayer(c.key)} /><span class="ldot" style:background={LAYER_STYLE[c.key].color}></span>{c.label}</label>
+							{:else}
+								<span class="off"><span class="ldot" style:background={LAYER_STYLE[c.key].color}></span>{c.label} <small>– <a href="/anmelden?weiter=/karte">nur angemeldet</a></small></span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<p class="hint">Marktplatz und Hilfe zeigen nur die Anzahl je Gegend – nie, wo jemand wohnt.</p>
+			</section>
+		{/if}
 		{#if locError}<p class="banner err" role="alert">{locError}</p>{/if}
 
+		{#if xSel && !selected}
+			<section class="sheet" aria-label="Ausgewählter Eintrag">
+				<button type="button" class="close" onclick={() => (xSel = null)} aria-label="Schließen"><Icon name="schliessen" size={20} /></button>
+				<p class="kind"><span class="badge" style:background={LAYER_STYLE[xSel.layer as LayerKey].color} style:color="#fff"><Icon name={LAYER_STYLE[xSel.layer as LayerKey].icon} size={16} /></span>{LAYER_CHIPS.find((c) => c.key === xSel?.layer)?.label}</p>
+				<h2>{xSel.title}</h2>
+				<p class="xsub">{xSel.sub}</p>
+				<div class="row"><a class="btn" href={xSel.href}>Ansehen</a></div>
+			</section>
+		{/if}
 		{#if selected}
 			{@const k = kindOf(selected.k)}
 			<section class="sheet" aria-label="Ausgewählter Ort">
@@ -435,6 +577,93 @@
 	:global([data-theme='dark']) .chip[aria-pressed='true']::before {
 		color: var(--navy);
 	}
+	.layerbox {
+		position: absolute;
+		z-index: 10;
+		right: var(--sp-3);
+		bottom: calc(var(--sp-3) + 64px);
+		width: min(320px, calc(100% - 2 * var(--sp-3)));
+		padding: var(--sp-4);
+		background: var(--surface);
+		border-radius: var(--radius-l);
+		box-shadow: var(--shadow);
+	}
+	.layerbox h2 {
+		margin: 0 0 var(--sp-2);
+		font-size: var(--fs-s);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--ink-2);
+	}
+	.layerbox h2:first-of-type {
+		min-height: 40px;
+		display: flex;
+		align-items: center;
+		margin-top: calc(-1 * var(--sp-2));
+	}
+	.layerbox ul {
+		list-style: none;
+		margin: 0 0 var(--sp-2);
+		padding: 0;
+	}
+	.layerbox label,
+	.layerbox .off {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
+		min-height: 44px;
+		font-weight: 600;
+	}
+	.layerbox .off {
+		color: var(--ink-2);
+		font-weight: 500;
+	}
+	.layerbox input {
+		width: 22px;
+		height: 22px;
+	}
+	.seg {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4px;
+		padding: 4px;
+		margin-bottom: var(--sp-4);
+		background: var(--surface-2);
+		border-radius: 999px;
+	}
+	.seg button {
+		min-height: 40px;
+		border: 0;
+		border-radius: 999px;
+		background: none;
+		font: inherit;
+		font-weight: 650;
+		color: var(--ink);
+		cursor: pointer;
+	}
+	.seg button[aria-pressed='true'] {
+		background: var(--navy);
+		color: #fff;
+	}
+	:global([data-theme='dark']) .seg button[aria-pressed='true'] {
+		background: var(--yellow);
+		color: var(--navy);
+	}
+	.ldot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.7);
+	}
+	.xh {
+		margin: var(--sp-4) 0 0;
+		font-size: var(--fs-m);
+	}
+	.xsub {
+		margin: 0 0 var(--sp-3);
+		color: var(--ink-2);
+		font-size: var(--fs-s);
+	}
 	.chip.reset {
 		border-style: dashed;
 	}
@@ -568,7 +797,7 @@
 	.fab-t {
 		font-size: var(--fs-s);
 	}
-	.fab[aria-pressed='true'] {
+	.fab[aria-expanded='true'] {
 		box-shadow: var(--shadow), inset 0 0 0 2px var(--yellow);
 	}
 	.fab.list-toggle {

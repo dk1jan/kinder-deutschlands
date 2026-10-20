@@ -30,7 +30,7 @@ export async function exportAccount(sql: Sql, userId: string) {
 	const sessions = await sql`select created_at, last_seen_at, expires_at, user_agent from sessions where user_id = ${userId}`;
 	const roles = await sql`select role_key, scope_type, scope_id, granted_at, expires_at, revoked_at from role_assignments where user_id = ${userId}`;
 	const log = await sql`select at, action from audit_log where actor_id = ${userId} order by at desc limit 500`;
-	const merkliste = await sql`select p.id, p.kind, p.name, f.created_at from place_favorites f join places p on p.id = f.place_id where f.user_id = ${userId}`;
+	const merkliste = await sql`select p.id, p.kind, p.name, f.notify as abonniert, f.created_at from place_favorites f join places p on p.id = f.place_id where f.user_id = ${userId}`;
 	const vorschlaege = await sql`select id, kind, name, status, created_at from places where created_by = ${userId}`;
 	const meldungen = await sql`select place_id, kind, message, status, created_at from place_reports where user_id = ${userId}`;
 	const beitraege = await sql`select id, kind, title, body, topic_key, region_code, status, created_at from posts where author_id = ${userId}`;

@@ -1,5 +1,6 @@
 // Orte lesen und von Mitgliedern ergänzen (M10/M11/M13). Öffentliche Daten – private Angaben kommen hier nicht vor.
 import type { Sql } from './db';
+import { notifyPlaceFollowers } from './follows';
 import { displayName, isKind, KINDS, KIND_FILTERS, FEATURES, type Kind } from '$lib/places';
 
 export interface Bbox {
@@ -106,7 +107,7 @@ export async function getPlace(sql: Sql, id: string, viewerId: string | null) {
 				and ST_DWithin(t.location::geography, (select location from places where id = ${id})::geography, 300)
 				order by m limit 3`
 			: Promise.resolve([]),
-		viewerId ? sql`select 1 from place_favorites where user_id = ${viewerId} and place_id = ${id}` : Promise.resolve([]),
+		viewerId ? sql`select notify from place_favorites where user_id = ${viewerId} and place_id = ${id}` : Promise.resolve([]),
 		sql`select count(*)::int as n from place_favorites where place_id = ${id}`
 	]);
 	return {
@@ -144,6 +145,7 @@ export async function getPlace(sql: Sql, id: string, viewerId: string | null) {
 		notices: notices.map((n) => ({ kind: n.kind as string, origin: n.origin as string, text: n.text as string | null, sourceUrl: n.source_url as string | null, at: n.created_at as Date, until: n.valid_until as Date | null })),
 		nearToilets: (nearToilet as { id: string; name: string | null; m: number; wickeln: boolean }[]).map((t) => ({ id: t.id, name: t.name ?? 'Toilette', m: t.m, wickeln: t.wickeln })),
 		favorite: (fav as unknown[]).length > 0,
+		notify: !!(fav as { notify: boolean }[])[0]?.notify,
 		favoriteCount: favCount[0].n as number
 	};
 }
@@ -170,9 +172,11 @@ export async function reportPlace(sql: Sql, userId: string, placeId: string, kin
 	// Defekt/Sperrung sofort als unbestätigter Nutzerhinweis sichtbar – ohne Freitext (der geht nur an die Redaktion)
 	if (kind === 'defekt' || kind === 'gesperrt') {
 		const [open] = await sql`select 1 from place_notices where place_id = ${placeId} and kind = ${kind} and ended_at is null`;
-		if (!open)
+		if (!open) {
 			await sql`insert into place_notices (place_id, kind, origin, report_id, created_by, valid_until)
 				values (${placeId}, ${kind}, 'nutzer', ${r.id}, ${userId}, now() + interval '30 days')`;
+			await notifyPlaceFollowers(sql, placeId, `{ort}: ${kind === 'gesperrt' ? 'gesperrt' : 'etwas ist defekt'} (Hinweis eines Mitglieds, unbestätigt)`, null, userId);
+		}
 	}
 	return r.id as string;
 }

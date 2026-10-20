@@ -7,6 +7,15 @@
 		lon: number;
 		lat: number;
 	}
+	/** Zusatzebene (Termine, Marktplatz, Hilfe …): Punkt mit Symbol, optional Anzahl */
+	export interface ExtraPoint {
+		id: string;
+		layer: string;
+		title: string;
+		lon: number;
+		lat: number;
+		count?: number;
+	}
 	export interface MapView {
 		center: [number, number];
 		zoom: number;
@@ -21,7 +30,7 @@
 	import type { Map as MlMap, GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { buildStyle, currentTheme, ATTRIBUTION_PLACES, type MapTheme, type Basemap } from '$lib/map/style';
-	import { addMarkerImages } from '$lib/map/markers';
+	import { addLayerImages, addMarkerImages } from '$lib/map/markers';
 
 	interface Props {
 		mode?: 'browse' | 'mini' | 'pick' | 'draw';
@@ -32,6 +41,11 @@
 		draft?: [number, number][];
 		onDrawClick?: (lon: number, lat: number) => void;
 		onLine?: (id: string) => void;
+		/** Ausschnitt an die Linien anpassen (Routen-Seiten ja, Familienkarte nein) */
+		fitLines?: boolean;
+		/** Zusatzebenen der Familienkarte */
+		extra?: ExtraPoint[];
+		onExtra?: (id: string) => void;
 		center: [number, number];
 		zoom: number;
 		filters?: string[];
@@ -68,8 +82,16 @@
 		lines = [],
 		draft = [],
 		onDrawClick,
-		onLine
+		onLine,
+		fitLines = true,
+		extra = [],
+		onExtra
 	}: Props = $props();
+
+	const extraData = (ps: ExtraPoint[]): GeoJSON.FeatureCollection => ({
+		type: 'FeatureCollection',
+		features: ps.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: p.id, l: p.layer, n: p.count ? String(p.count) : '' } }))
+	});
 
 	const lineData = (ls: { coords: [number, number][]; id?: string }[]): GeoJSON.FeatureCollection => ({
 		type: 'FeatureCollection',
@@ -98,6 +120,7 @@
 	function overlay() {
 		if (!map) return;
 		addMarkerImages(map, theme);
+		addLayerImages(map, theme);
 		map.addSource('orte', {
 			type: 'geojson',
 			data: mode === 'browse' ? data : {
@@ -144,6 +167,27 @@
 				'symbol-sort-key': ['case', ['==', ['get', 'id'], selected ?? ''], 1, 0]
 			}
 		});
+		map.addSource('extra', { type: 'geojson', data: extraData(extra) });
+		map.addLayer(
+			{
+				id: 'extra',
+				type: 'symbol',
+				source: 'extra',
+				layout: {
+					'icon-image': ['concat', 'l-', ['get', 'l']],
+					'icon-allow-overlap': true,
+					// Marktplatz und Hilfe liegen beide am Mittelpunkt der Gegend – nebeneinander statt übereinander
+					'icon-offset': ['match', ['get', 'l'], 'marktplatz', ['literal', [-17, 0]], 'hilfe', ['literal', [17, 0]], ['literal', [0, 0]]],
+					'text-field': ['get', 'n'],
+					'text-font': ['Noto Sans Medium'],
+					'text-size': 12,
+					'text-offset': ['match', ['get', 'l'], 'marktplatz', ['literal', [-1.4, 1.6]], 'hilfe', ['literal', [1.4, 1.6]], ['literal', [0, 1.6]]],
+					'text-allow-overlap': true
+				},
+				paint: { 'text-color': dark ? '#ffffff' : '#0f2238', 'text-halo-color': dark ? '#0a1626' : '#ffffff', 'text-halo-width': 2 }
+			},
+			'orte'
+		);
 		map.addSource('linien', { type: 'geojson', data: lineData(lines) });
 		map.addLayer({ id: 'linien-rand', type: 'line', source: 'linien', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0a1626' : '#ffffff', 'line-width': 8 } }, 'orte');
 		map.addLayer({ id: 'linien', type: 'line', source: 'linien', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1f7468', 'line-width': 5 } }, 'orte');
@@ -267,11 +311,16 @@
 		const d = lineData(lines);
 		if (!ready || !map) return;
 		(map.getSource('linien') as GeoJSONSource | undefined)?.setData(d);
-		if (mode !== 'draw' && lines.length && lines.some((l) => l.coords.length > 1)) {
+		if (fitLines && mode !== 'draw' && lines.length && lines.some((l) => l.coords.length > 1)) {
 			const all = lines.flatMap((l) => l.coords);
 			const lons = all.map((c) => c[0]), lats = all.map((c) => c[1]);
 			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 40, maxZoom: 16, duration: 0 });
 		}
+	});
+	$effect(() => {
+		const d = extraData(extra);
+		if (!ready || !map) return;
+		(map.getSource('extra') as GeoJSONSource | undefined)?.setData(d);
 	});
 	$effect(() => {
 		const d = draftData(draft);
@@ -371,7 +420,7 @@
 						onSelect?.({ id: p.id, k: p.k, n: p.n, f: p.f ?? '', lon, lat });
 					});
 					m.on('click', (e) => {
-						const hits = m.queryRenderedFeatures(e.point, { layers: ['orte', 'cluster'] });
+						const hits = m.queryRenderedFeatures(e.point, { layers: ['orte', 'cluster', 'extra', 'linien'] });
 						if (!hits.length) onSelect?.(null);
 					});
 					for (const l of ['orte', 'cluster']) {

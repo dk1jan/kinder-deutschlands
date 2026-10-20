@@ -10,7 +10,8 @@
 	let { data, form } = $props();
 	const p = $derived(data.place);
 	const k = $derived(KINDS[p.kind]);
-	const fav = $derived(form && 'favorite' in form ? !!form.favorite : p.favorite);
+	const notifyOn = $derived(form && 'notify' in form ? !!form.notify : p.notify);
+	const fav = $derived(form && 'favorite' in form && form.favorite !== undefined ? !!form.favorite : notifyOn || p.favorite);
 	const fmt = (d: string | Date) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 	const groups = $derived.by(() => {
@@ -77,11 +78,23 @@
 			{:else}
 				<a class="act" href="/anmelden?weiter=/orte/{p.id}"><Icon name="stern" size={20} /><span>Merken</span></a>
 			{/if}
+			{#if data.member}
+				<form method="POST" action="?/abo" use:enhance>
+					<input type="hidden" name="on" value={notifyOn ? '0' : '1'} />
+					<button class="act" type="submit" aria-pressed={notifyOn} title="Bei neuen Hinweisen oder Terminen hier benachrichtigen">
+						<Icon name="glocke" size={20} /><span>{notifyOn ? 'Abonniert' : 'Abonnieren'}</span>
+					</button>
+				</form>
+				{#if p.status === 'aktiv'}
+					<a class="act" href="/nachrichten/treffen/neu?ort={p.id}"><Icon name="qr" size={20} /><span>Treffen hier</span></a>
+				{/if}
+			{/if}
 			<NavChooser lat={p.lat} lon={p.lon} name={p.name} variant="tile" />
 			<button class="act" type="button" onclick={share}><Icon name="extern" size={20} /><span>Teilen</span></button>
 			<a class="act" href="#melden"><Icon name="flagge" size={20} /><span>Melden</span></a>
 		</div>
 		{#if shareMsg}<p class="muted small" role="status">{shareMsg}</p>{/if}
+		{#if form && 'notify' in form}<p class="muted small" role="status">{form.notify ? 'Abonniert: Du bekommst eine Mitteilung bei neuen Hinweisen (defekt, gesperrt) und neuen Terminen an diesem Ort.' : 'Abo beendet. Der Ort bleibt gemerkt.'}</p>{/if}
 	</header>
 
 	{#each p.notices as n}
