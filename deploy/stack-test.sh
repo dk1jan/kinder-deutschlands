@@ -110,7 +110,7 @@ for i in $(seq 1 30); do
 done
 [ "$l" = healthy ] || { dc logs --tail 40 livekit; fail "LiveKit nicht gesund ($l)"; }
 dc exec -T web sh -c 'grep -q "udp_port: 49210" /synapse-config/livekit.yaml && grep -q "auto_create: false" /synapse-config/livekit.yaml' || fail "LiveKit-Konfiguration fehlt"
-dc exec -T web node -e '
+lkout=$(dc exec -T web node -e '
 const { hkdfSync, createHmac } = require("crypto");
 const sec = Buffer.from(hkdfSync("sha256", process.env.APP_SECRET, "kinder-deutschlands", "chat:livekit", 32)).toString("base64url");
 const b = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -125,10 +125,12 @@ const jwt = (c) => { const n = Math.floor(Date.now() / 1000), h = b({ alg: "HS25
 	const bad = await fetch("http://127.0.0.1:3000/livekit/rtc/validate?access_token=" + t.slice(0, -4) + "AAAA");
 	if (bad.status === 200) { console.error("falsches Token angenommen"); process.exit(1); }
 	const tw = await fetch("http://127.0.0.1:3000/livekit/twirp/livekit.RoomService/ListRooms", { method: "POST" });
-	if (tw.status !== 404) { console.error("Verwaltung von außen erreichbar", tw.status); process.exit(1); }
+	// vor der Ersteinrichtung leitet die App alles auf /setup um (303), danach 404 – nie die LiveKit-Verwaltung
+	if (tw.status !== 404 && tw.status !== 303) { console.error("Verwaltung von außen erreichbar", tw.status); process.exit(1); }
 	console.log("OK  LiveKit: Raum nur über die App, Token geprüft, Signalweg /livekit/rtc über die App, Verwaltung nicht erreichbar");
-})().catch((e) => { console.error(e); process.exit(1); });
-' || fail "Gruppenanrufe (LiveKit)"
+})().catch((e) => { console.error(String(e)); process.exit(1); });
+' 2>&1) || fail "Gruppenanrufe (LiveKit): $(echo "$lkout" | tr '\n' ' ' | cut -c1-300)"
+echo "$lkout"
 docker port kdstack-livekit-1 | grep -q "49210/udp" || fail "LiveKit-Port 49210/udp nicht veröffentlicht"
 echo "OK  LiveKit läuft, Port 49210 UDP/TCP veröffentlicht"
 
