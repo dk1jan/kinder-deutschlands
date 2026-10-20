@@ -23,8 +23,10 @@ Regeln
 | F-007 | Dazu | Verwaltung → Nutzer, M24 | Vom Admin-Board aus einem Nutzer über die Familien-ID eine Nachricht schicken können (ohne E-Mail), z. B. bei Moderationsfällen. | P2 | neu |
 | F-008 | Dazu | M01 Profil/QR, Kontakte | Partner/Familie verbinden: Familien-ID des Partners per QR scannen, Beziehung „Partnerschaft“ oder „Familie“ wählen, damit erkennbar ist, wer zusammengehört. Wer so ein Paar/eine Familie sieht, soll beiden gemeinsam schreiben können. | P2 | neu |
 | F-011 | Ändern | Karte, Luftbild (`lib/server/aerial.ts`, Konstante `AREA`) | Luftbild ist im Code auf Bremen + Niedersachsen begrenzt (Rechteck 6,5–11,8° O, 51,2–54,1° N). Außerhalb kommt eine leere Kachel. Auf ganz Deutschland erweitern? Klärung 20.10.: Jans Eindruck „ganz DE“ kam von der Übersichtsansicht der Grundkarte (siehe F-012); Luftbild ist weiterhin auf HB+NI begrenzt (Luftbild außerhalb nicht getestet). Erweiterung nur zusammen mit F-012 sinnvoll. | P3 | neu |
-| F-012 | Frage | Karte, Grundkarte („Kartenhintergrund“), Verwaltung → Daten | Grundkarte ist ein fester Ausschnitt: Gebiet `6.6,51.29,11.62,53.9` (HB+NI), Build 20261018, 1.399 MB, bis Zoom 15, geladen 18.10. Außerhalb leer; Berlin/Osten und München nur in der groben Übersicht sichtbar, beim Heranzoomen leer (Kachelraster, kein Ladefehler). Soll die Grundkarte auf ganz Deutschland? **Entschieden (Jan, 20.10.): Weg 3**, ganz Deutschland bis Zoom 15, per Einstellung in Verwaltung → Daten → Kartenhintergrund (kein Code). Vorbehalt: freier Speicher auf dem Server (siehe Details). | P2 | geplant |
+| F-012 | Frage | Karte, Grundkarte („Kartenhintergrund“), Verwaltung → Daten | Grundkarte ist ein fester Ausschnitt: Gebiet `6.6,51.29,11.62,53.9` (HB+NI), Build 20261018, 1.399 MB, bis Zoom 15, geladen 18.10. Außerhalb leer; Berlin/Osten und München nur in der groben Übersicht sichtbar, beim Heranzoomen leer (Kachelraster, kein Ladefehler). Soll die Grundkarte auf ganz Deutschland? **Entschieden (D-068): Grundkarte ganz Deutschland, Zoom 15 überall.** Ablauf: (1) Jan stellt in Verwaltung → Daten → Kartenhintergrund Gebiet `5.8,47.2,15.1,55.1`, Zoom 15 um und klickt „Jetzt abrufen“ (kein Code; Platz geprüft: 313 GB frei); (2) Jan testet; (3) danach schnell DE-weit ausrollen, dann nachbessern. Prüfliste unter „Testnotizen“. | P2 | geplant |
 | F-013 | Fehler | Verwaltung → Daten, Quelle „Verwaltungsgebiete (VG250)“ | Letzter Abruf 19.10. fehlgeschlagen: „sgx.geodatenzentrum.de: DNS vorübergehend nicht erreichbar“. Bestand Regionen: nur 2 Kreise, 16 Länder, 1 Staat, überall „mit Grenze 0“ – die amtlichen Grenzen/Gemeinden sind auf dem Server also noch nicht geladen. Nächster Versuch automatisch 20.10. 18:11; Jan kann „Jetzt abrufen“ drücken. Wiederholt sich der DNS-Fehler: Docker-/Server-DNS prüfen. STATUS.md zeigt Regionsmodell „getestet“ – das gilt für den Test mit Nachbau, nicht für den echten Abruf auf dem Server. | P2 | bestätigt |
+| F-014 | Dazu | Betrieb, `DEPLOYMENT.md`, Skript | Komplette Umzugsanleitung mit Skript für einen anderen Server: Sicherungen erstellen/kopieren, Stack aus Git ausrollen, Datenbank/Bilder/Chat zurückspielen, `APP_SECRET` und `POSTGRES_PASSWORD` unverändert übernehmen, Domain/Plesk/TURN-Ports prüfen. Heute stehen nur die einzelnen Wiederherstellungsschritte da. | P3 | geplant |
+| F-015 | Frage | Orte (Spielplätze, Toiletten …), Datenzentrale | Orte-Import ist auf HB+NI begrenzt. Soll der Bestand parallel zur Grundkarte auf ganz Deutschland? Folgen: sehr viel mehr Einträge (heute z. B. 15.039 Spielplätze), längere Abrufe, mehr Prüf- und Dublettenarbeit. Entscheidung Jan. | P3 | neu |
 
 ## Details und offene Fragen
 
@@ -55,6 +57,15 @@ Regeln
 | Datum | Bereich | Gerät/Browser | Ergebnis |
 |---|---|---|---|
 | – | – | – | (noch leer) |
+
+### Prüfliste „Karte ganz Deutschland“ (nach dem Abruf, vor dem DE-Rollout)
+- Verwaltung → Daten: „Kartenhintergrund“ zeigt Gebiet `5.8,47.2,15.1,55.1`, Zoom 15, Größe, Ladedatum; Zustand „in Ordnung“.
+- Karte, Zoom Stadtniveau (Straßen, Beschriftung): München, Berlin, Köln, Hamburg, Dresden, Görlitz, Flensburg, Freiburg. Keine leeren Flächen innerhalb Deutschlands.
+- Hell und Dunkel, Handy und Desktop; Ladezeit beim Verschieben spürbar zäh?
+- Luftbild: außerhalb HB+NI aktuell leer (F-011) – Befund notieren.
+- Orte-Ebene außerhalb HB+NI: leer (F-015) – erwartet.
+- Platz: `df -h /var/lib/docker` und `docker system df -v | grep kinder-deutschlands_` vorher/nachher.
+- Befunde als neue F-Nummern eintragen.
 
 ## Erledigt / verworfen
 
