@@ -348,7 +348,7 @@
 	}
 	.mini.x {
 		text-decoration: line-through;
-		opacity: 0.6;
+		color: var(--ink-2);
 	}
 	.more {
 		font-size: 0.7rem;

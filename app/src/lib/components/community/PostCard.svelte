@@ -87,12 +87,12 @@
 		font-weight: 700;
 	}
 	.k-frage {
-		background: color-mix(in srgb, var(--sky) 55%, var(--surface)) !important;
-		color: var(--navy);
+		background: color-mix(in srgb, var(--sky) 40%, var(--surface)) !important;
+		color: var(--ink);
 	}
 	.k-erfahrung {
-		background: color-mix(in srgb, var(--yellow) 45%, var(--surface)) !important;
-		color: var(--navy);
+		background: color-mix(in srgb, var(--yellow) 35%, var(--surface)) !important;
+		color: var(--ink);
 	}
 	.solved {
 		color: var(--ok);

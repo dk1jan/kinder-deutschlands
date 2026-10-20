@@ -27,6 +27,9 @@
 		{ href: '/profil', label: 'Profil', icon: 'profil' }
 	];
 
+	// Vollflächige Seiten (Karte, Unterhaltung) ohne Fußzeile
+	const fullscreen = $derived(page.url.pathname === '/karte' || page.url.pathname.startsWith('/nachrichten/chat/'));
+
 	function active(href: string) {
 		const p = page.url.pathname;
 		return href === '/' ? p === '/' : p === href || p.startsWith(href + '/');
@@ -65,6 +68,16 @@
 <main id="inhalt" tabindex="-1">
 	{@render children()}
 	<CallOverlay />
+	{#if !fullscreen}
+		<footer class="foot">
+			<nav aria-label="Rechtliches">
+				<a href="/impressum">Impressum</a>
+				<a href="/datenschutz">Datenschutz</a>
+				<a href="/partnerlinks">Partnerlinks</a>
+				<a href="/karte/quellen">Datenquellen</a>
+			</nav>
+		</footer>
+	{/if}
 </main>
 
 <nav class="tabs" aria-label="Hauptnavigation">
@@ -180,6 +193,22 @@
 	main {
 		outline: none;
 		padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+	}
+
+	.foot {
+		max-width: var(--wide);
+		margin: var(--sp-7) auto 0;
+		padding: var(--sp-4) var(--gutter) var(--sp-5);
+		border-top: 1px solid var(--line);
+		font-size: var(--fs-s);
+	}
+	.foot nav {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sp-2) var(--sp-5);
+	}
+	.foot a {
+		color: var(--ink-2);
 	}
 
 	/* Mobil: Leiste unten, einhändig */

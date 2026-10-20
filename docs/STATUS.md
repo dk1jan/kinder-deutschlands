@@ -28,21 +28,21 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | Anmeldung Passwort + TOTP, Replay-Schutz, Rate-Limit | getestet | |
 | Passkeys (Registrieren, Anmelden ohne Passwort, Entfernen) | getestet | lokal mit virtuellem Authenticator (`scripts/passkey-check.py`), nicht in CI |
 | Registrierung, E-Mail-Bestätigung, Passwort zurücksetzen | getestet | keine Preisgabe vorhandener Adressen (D-016); echter Versand erst mit SMTP |
-| Sitzungen (gehasht, gleitend, Abmelden) | getestet | Geräteliste und Sitzungen beenden: umgesetzt (noch ohne eigenen automatischen Test) |
+| Sitzungen (gehasht, gleitend, Abmelden) | getestet | Geräteliste, einzeln/alle abmelden getestet (8.3) |
 | Datenexport, Kontolöschung, Löschliste nach Wiederherstellung | getestet | DB-Tests + E2E (Löschung); D-018 |
 | Rechte Rolle × Geltungsbereich × Aktion, befristet, Entzug, Protokoll | getestet | zweite Freigabe kritischer Aktionen getestet (D-057) |
 | Regionsmodell (AGS/ARS) | getestet | Länder/Kreise/Gemeinden HB+NI amtlich aus VG250, Stadtteile Bremen/Bremerhaven aus OSM (D-020). Stadtteile Niedersachsen: vorgesehen |
 | Audit-Protokoll (ohne private Inhalte, IP gehasht) | getestet | |
 | Designsystem „Wimpelkette“, Hell/Dunkel/System ohne Aufblitzen | getestet | Startseite + Unterseiten neu gestaltet (D-013); Admin/Setup nutzen dieselben Tokens |
-| Mobile Tab-Leiste (5 Ziele), Desktop-Kopfleiste | umgesetzt | Screenshots geprüft; Screenreader-Test: vorgesehen |
+| Mobile Tab-Leiste (5 Ziele), Desktop-Kopfleiste | umgesetzt | Screenshots geprüft; automatische Barrierefreiheitsprüfung (axe, WCAG 2.1 AA) ohne schwere Verstöße (8.3); Test mit Screenreader und Menschen: vorgesehen |
 | Sicherheitsheader, CSP, CSRF, noindex | getestet | |
 | Luftbild (LGLN Niedersachsen, optional Esri) | getestet | mit Nachbau des WMS; Bremen nur mit Esri-Schlüssel |
 | Navigation an externe Apps | getestet | Google, Apple, Waze, OSM, geo: |
-| Kartenoberfläche hell/dunkel, mobil/desktop | getestet | Bildschirmfotos geprüft; Screenreader-Test: vorgesehen |
+| Kartenoberfläche hell/dunkel, mobil/desktop | getestet | Bildschirmfotos geprüft; axe-Prüfung ohne schwere Verstöße; Screenreader-Test: vorgesehen |
 | PWA | umgesetzt | Manifest mit PNG-Symbolen, Service Worker (nur Push, kein Offline-Speicher), Push-Gateway getestet (Testablage), iOS-Installationshilfe. Echte Zustellung über Apple/Google/Mozilla erst auf dem Server prüfbar |
 | Mehrsprachigkeit / einfache Sprache | vorgesehen | Oberfläche Deutsch |
 | E-Mail-Versand (SMTP) | getestet | Einstellung in Verwaltung → Einstellungen (Passwort verschlüsselt, Verbindungsprüfung, Test-Mail); Rückfall Portainer-Variablen. Echter Versand: wartet auf Eintrag durch Jan |
-| Datenschutzerklärung, Impressum | vorgesehen | Inhalte brauchen rechtliche Prüfung durch Betreiber |
+| Datenschutzerklärung, Impressum | umgesetzt | Pflegbar in Verwaltung → Rechtstexte, Entwurf aus den Systemfunktionen, öffentlich „Entwurf“ bis zur Bestätigung (D-067). Getestet; **rechtliche Prüfung und Betreiberangaben: Jan** |
 
 ## Module
 
@@ -80,7 +80,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 1. **Jan:** Mailserver in Verwaltung → Einstellungen eintragen, dann Test-E-Mail. Bis dahin ist die Registrierung geschlossen.
 2. Nach dem Ausrollen: Verwaltung → Übersicht → „Chat-Server“ muss „In Ordnung“ zeigen. Dann mit zwei Konten testen: Kontakt verbinden → „Nachricht“ → Wiederherstellungsschlüssel aufbewahren.
 2a. Abschnitt 5 ist leer, bis Inhalte kommen (keine erfundenen Termine): erste Einrichtungen anmelden lassen (`/einrichtungen/antrag`) und unter Verwaltung → Einrichtungen prüfen; Redaktion kann Hinweise unter Verwaltung → Hinweise veröffentlichen. Weitere Terminquellen (z. B. familiennetz bremen) nur nach Lizenzklärung.
-2b. Abschnitt 6: Marktplatz und Hilfe sind leer, bis Mitglieder etwas einstellen. Kompass startet mit Inhalten aus dem Familienportal des Bundes; regionale Ergänzungen (Bremen/Niedersachsen) über Verwaltung → Lebenslagen. Abschnitt 7 ist fertig. Abschnitt 8 („Lücken schließen“) läuft: 8.1 fertig (Kartenebenen, Orte abonnieren, Treffen am Ort), 8.2 fertig (Stufe „Gruppen“, Partnerorganisationen, Mitgliederhinweise, Chat-Suche).
+2b. Abschnitt 6: Marktplatz und Hilfe sind leer, bis Mitglieder etwas einstellen. Kompass startet mit Inhalten aus dem Familienportal des Bundes; regionale Ergänzungen (Bremen/Niedersachsen) über Verwaltung → Lebenslagen. Abschnitt 7 ist fertig. Abschnitt 8 („Lücken schließen“) läuft: 8.1 fertig (Kartenebenen, Orte abonnieren, Treffen am Ort), 8.2 fertig (Stufe „Gruppen“, Partnerorganisationen, Mitgliederhinweise, Chat-Suche), 8.3 fertig (Rechtstexte, Barrierefreiheit, Geräteliste). **Jan:** Verwaltung → Rechtstexte ausfüllen und rechtlich prüfen lassen.
 2c. **Jan (Abschnitt 7):** Anrufe brauchen offene Ports 3479 UDP+TCP und 49160–49200 UDP am Server (IONOS-Firewall, falls aktiv; Befehl in DEPLOYMENT.md). Danach Videoanruf zwischen zwei Handys (WLAN ↔ Mobilfunk) testen. Partnerlinks bleiben aus, bis PartnerNet-Konto + Prüfung der Amazon-Bedingungen erledigt sind (Verwaltung → Affiliate). Zweite Freigabe greift erst, wenn es zwei Betreiber gibt.
 3. Beobachten, ob das Löschen alter Image-Versionen mit `GITHUB_TOKEN` greift (Schritt läuft fehlertolerant; erst ab 4 Versionen sichtbar).
 4. Annahmen bestätigen (DECISIONS.md D-009, D-010): TURN auf demselben Server, Mail über Plesk. Chat-Architektur ist mit D-034 festgelegt.

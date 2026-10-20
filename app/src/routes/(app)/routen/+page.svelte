@@ -142,7 +142,7 @@
 	.warn {
 		font-size: var(--fs-xs);
 		font-weight: 700;
-		color: #d63d31;
+		color: var(--danger);
 	}
 	.empty {
 		padding: var(--sp-5);

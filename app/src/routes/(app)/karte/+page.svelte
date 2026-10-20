@@ -560,22 +560,14 @@
 		cursor: pointer;
 	}
 	.chip[aria-pressed='true'] {
-		background: var(--navy);
-		border-color: var(--navy);
-		color: #fff;
+		background: var(--solid);
+		border-color: var(--solid);
+		color: var(--on-solid);
 	}
 	.chip[aria-pressed='true']::before {
 		content: '✓';
 		font-weight: 800;
-		color: var(--yellow);
-	}
-	:global([data-theme='dark']) .chip[aria-pressed='true'] {
-		background: var(--yellow);
-		border-color: var(--yellow);
-		color: var(--navy);
-	}
-	:global([data-theme='dark']) .chip[aria-pressed='true']::before {
-		color: var(--navy);
+		color: var(--solid-mark);
 	}
 	.layerbox {
 		position: absolute;
@@ -642,12 +634,8 @@
 		cursor: pointer;
 	}
 	.seg button[aria-pressed='true'] {
-		background: var(--navy);
-		color: #fff;
-	}
-	:global([data-theme='dark']) .seg button[aria-pressed='true'] {
-		background: var(--yellow);
-		color: var(--navy);
+		background: var(--solid);
+		color: var(--on-solid);
 	}
 	.ldot {
 		width: 12px;
@@ -801,13 +789,9 @@
 		box-shadow: var(--shadow), inset 0 0 0 2px var(--yellow);
 	}
 	.fab.list-toggle {
-		background: var(--navy);
-		color: #fff;
+		background: var(--solid);
+		color: var(--on-solid);
 		padding: 0 var(--sp-5);
-	}
-	:global([data-theme='dark']) .fab.list-toggle {
-		background: var(--yellow);
-		color: var(--navy);
 	}
 	.sheet {
 		position: absolute;

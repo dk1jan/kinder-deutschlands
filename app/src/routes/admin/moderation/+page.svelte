@@ -28,7 +28,8 @@
 </form>
 
 {#if data.cases.length}
-	<div class="scroll">
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 		<table class="data">
 			<thead><tr><th scope="col">Prio</th><th scope="col">Grund</th><th scope="col">Inhalt</th><th scope="col">Herkunft</th><th scope="col">Bereich</th><th scope="col">Eingang</th><th scope="col">Status</th></tr></thead>
 			<tbody>

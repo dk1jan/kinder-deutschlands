@@ -199,15 +199,11 @@
 		border-radius: 50%;
 		display: grid;
 		place-items: center;
-		background: var(--navy);
-		color: var(--yellow);
+		background: var(--solid);
+		color: var(--solid-mark);
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: var(--fs-l);
-	}
-	:global([data-theme='dark']) .avatar {
-		background: var(--yellow);
-		color: var(--navy);
 	}
 	.body {
 		flex: 1;

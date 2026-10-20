@@ -61,6 +61,12 @@
 	--ok: #1e6b45;
 	--warn: #7a5000;
 	--shadow: 0 1px 2px rgb(15 34 56 / 0.06), 0 12px 32px -16px rgb(15 34 56 / 0.28);
+	/* Gefüllte Akzentflächen (aktive Chips, Umschalter): hell Navy, dunkel Gelb – gilt auch für „System“ */
+	--sea-ink: #1f7468;
+	--solid: #0f2238;
+	--on-solid: #ffffff;
+	--solid-mark: #ffc53d;
+	--ctrl-filter: none;
 	color-scheme: light;
 }
 
@@ -79,6 +85,11 @@
 		--ok: #82d6a6;
 		--warn: #f0c060;
 		--shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px -18px rgb(0 0 0 / 0.8);
+		--sea-ink: #7fd1c2;
+		--solid: #ffc53d;
+		--on-solid: #0f2238;
+		--solid-mark: #0f2238;
+		--ctrl-filter: invert(0.92) hue-rotate(180deg);
 		color-scheme: dark;
 	}
 }
@@ -96,6 +107,11 @@
 	--ok: #82d6a6;
 	--warn: #f0c060;
 	--shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px -18px rgb(0 0 0 / 0.8);
+	--sea-ink: #7fd1c2;
+	--solid: #ffc53d;
+	--on-solid: #0f2238;
+	--solid-mark: #0f2238;
+	--ctrl-filter: invert(0.92) hue-rotate(180deg);
 	color-scheme: dark;
 }
 

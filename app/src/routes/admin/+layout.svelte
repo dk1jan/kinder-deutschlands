@@ -21,6 +21,7 @@
 			{ href: '/admin/daten', label: 'Daten und Orte', icon: 'daten', show: data.may.data },
 			{ href: '/admin/protokoll', label: 'Protokoll', icon: 'protokoll', show: data.may.audit },
 			{ href: '/admin/affiliate', label: 'Affiliate', icon: 'extern', show: data.may.affiliate },
+			{ href: '/admin/rechtstexte', label: 'Rechtstexte', icon: 'schild', show: data.may.affiliate },
 			{ href: '/admin/einstellungen', label: 'Einstellungen', icon: 'einstellungen', show: data.may.settings }
 		].filter((i) => i.show)
 	);

@@ -9,7 +9,8 @@
 <h1>Wissenseinträge</h1>
 <p class="muted">Geprüfte Einträge mit Quellen. Aus Beiträgen nur mit Zustimmung (Knopf „Als Wissen aufbereiten“ am Beitrag), nie aus Gruppen.</p>
 <p><a class="btn small" href="/admin/wissen/neu">Neuer Eintrag</a></p>
-<div class="scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 	<table class="data">
 		<thead><tr><th scope="col">Titel</th><th scope="col">Thema</th><th scope="col">Status</th><th scope="col">Sichtbar</th><th scope="col">Zustimmung</th><th scope="col">Geprüft</th></tr></thead>
 		<tbody>

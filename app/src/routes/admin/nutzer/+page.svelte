@@ -7,7 +7,8 @@
 <h1>Nutzer</h1>
 <p class="muted">E-Mail-Adressen sind nur hier für berechtigte Verwaltung sichtbar, nie im Profil. Gelöschte Konten erscheinen anonymisiert.</p>
 
-<div class="scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 	<table class="data">
 		<thead>
 			<tr><th scope="col">E-Mail</th><th scope="col">Familien-ID</th><th scope="col">Status</th><th scope="col">Bestätigt</th><th scope="col">Anmeldeschutz</th><th scope="col">Rollen</th><th scope="col">Angelegt</th><th scope="col">Letzte Anmeldung</th><th scope="col"><span class="visually-hidden">Aktion</span></th></tr>

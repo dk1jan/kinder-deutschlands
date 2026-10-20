@@ -65,7 +65,8 @@
 
 <section aria-labelledby="laeufe">
 	<h2 id="laeufe">Abrufe</h2>
-	<div class="scroll">
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 		<table class="data">
 			<thead><tr><th scope="col">Beginn</th><th scope="col">Auslöser</th><th scope="col">Status</th><th scope="col">Ergebnis</th></tr></thead>
 			<tbody>

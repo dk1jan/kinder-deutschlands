@@ -85,7 +85,8 @@
 
 <section aria-labelledby="aktiv" class="block">
 	<h2 id="aktiv">Vergebene Rollen</h2>
-	<div class="scroll">
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 		<table class="data">
 			<thead><tr><th scope="col">Konto</th><th scope="col">Rolle</th><th scope="col">Geltungsbereich</th><th scope="col">Gültig bis</th><th scope="col">Grund</th><th scope="col"><span class="visually-hidden">Aktionen</span></th></tr></thead>
 			<tbody>

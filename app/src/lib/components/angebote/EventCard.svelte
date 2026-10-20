@@ -63,7 +63,6 @@
 	}
 	.ev.cancelled {
 		border-left-color: var(--line);
-		opacity: 0.8;
 	}
 	.ev.cancelled .title {
 		text-decoration: line-through;
@@ -90,7 +89,7 @@
 	.kind {
 		font-size: var(--fs-xs);
 		font-weight: 700;
-		color: var(--sea);
+		color: var(--sea-ink);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 	}
@@ -100,7 +99,7 @@
 	.abgesagt {
 		display: inline-block;
 		text-decoration: none;
-		background: var(--red);
+		background: #b3261e;
 		color: #fff;
 		font-size: var(--fs-xs);
 		padding: 1px 8px;

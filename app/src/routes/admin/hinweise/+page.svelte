@@ -56,7 +56,8 @@
 	{/key}
 </details>
 
-<div class="scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 	<table class="data">
 		<thead><tr><th scope="col">Hinweis</th><th scope="col">Herkunft</th><th scope="col">Region</th><th scope="col">Frist</th><th scope="col">Seit</th><th scope="col"></th></tr></thead>
 		<tbody>

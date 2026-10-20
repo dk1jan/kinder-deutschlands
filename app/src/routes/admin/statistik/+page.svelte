@@ -24,7 +24,9 @@
 </form>
 
 {#each data.groups as g}
-	<section class="card">
+	<!-- Breite Tabellen scrollen auf dem Handy: per Tastatur erreichbar (tabindex) und benannt -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+	<section class="card" tabindex="0" aria-label={g.title}>
 		<h2>{g.title}</h2>
 		<table class="data">
 			<thead><tr><th scope="col">Kennzahl</th><th scope="col" class="num">{data.days} Tage</th><th scope="col" class="num">Davor</th><th scope="col" class="num"><abbr title="Veränderung zum Vorzeitraum">±</abbr></th></tr></thead>

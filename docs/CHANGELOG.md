@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-20 · Abschnitt 8.3: Impressum/Datenschutz pflegbar, Barrierefreiheit automatisch geprüft, Geräteliste getestet
+
+**Was**
+- Rechtstexte (Querschnitt): Verwaltung → Rechtstexte (Recht `settings.manage`) mit Impressum-Feldern (Pflicht: Name, Anschrift, E-Mail), Hoster/Serverstandort, Aufsichtsbehörde und Bestätigung „rechtlich geprüft“ (gespeichert mit Datum und Familien-ID, nie E-Mail). Öffentliche Seiten `/impressum` und `/datenschutz`. Die Datenschutzerklärung startet als **Entwurf, der aus den tatsächlichen Funktionen erzeugt wird** (Konto, Profil-Sichtbarkeit, Community, Chat/Anrufe E2EE inkl. Hinweis auf IP-Sichtbarkeit bei direkten Anrufen, Push ohne Inhalt, Standort nur im Browser, eigene Kacheln/Luftbild-Proxy/Linkvorschau, Protokolle mit gehashter IP, Löschfristen, Sicherungen 14 Tage, Rechte); fehlende Betreiberangaben stehen sichtbar als „fehlt“. Wahlweise eigener Text (einfaches Format, keine HTML-Eingabe). Solange nicht bestätigt, zeigen beide Seiten öffentlich „Entwurf“; jede inhaltliche Änderung hebt die Bestätigung auf.
+- Fußzeile auf allen Seiten (außer Karte und Unterhaltung): Impressum, Datenschutz, Partnerlinks, Datenquellen.
+- Barrierefreiheit: neues Prüfskript `scripts/a11y-check.py` (axe-core 4.10.3, WCAG 2.1 A/AA) über 38 Seitenaufrufe – ohne Anmeldung, als Mitglied, Verwaltung; hell/dunkel; 390 px/1280 px. Gefundene schwere Verstöße behoben: Kontraste (Beitragsart-Etiketten im Dunkelmodus, abgesagte Termine, Marktplatz-Status, Routen-Warnung), seitlich scrollbare Tabellen per Tastatur erreichbar (Statistik + 11 Verwaltungstabellen). Ergebnis: keine schweren Verstöße.
+- Dunkelmodus „System“: Akzentflächen (aktive Filter, Umschalter, Kartenknöpfe, Avatare) nutzen jetzt Farbtokens und stimmen auch, wenn das Gerät dunkel ist und kein Modus gewählt wurde (vorher nur bei ausdrücklich gewähltem Dunkelmodus).
+- Geräteliste (Querschnitt): erstmals automatisch getestet – Gerät einzeln abmelden, „alle anderen abmelden“, eigenes Gerät bleibt angemeldet.
+**Warum** Offene Punkte aus STATUS (Abschnitt 8); Rechtstexte brauchen ein Gerüst, damit der Betreiber nur noch Angaben ergänzen und prüfen lassen muss. Grundsatz D-067.
+**Module** Querschnitt (Recht, Barrierefreiheit, Sitzungen), M24 · **DB-Migration** nein (Einstellung `legal` in `settings`)
+**Tests** svelte-check 0 Fehler; 199 Unit/DB-Tests (neu 1 DB: Rechtstexte Entwurf/Pflichtangaben/E-Mail-Format/Prüfung mit Familien-ID/Aufhebung bei Änderung/eigener Text); Rauchtest 286 Prüfungen mit echtem Synapse (neu: Datenschutz-Entwurf mit Fehlstellen, Impressum ohne Angaben, Fußzeile, Speichern + geprüft, Änderung hebt Prüfung auf, Geräteliste einzeln/alle); Barrierefreiheit `a11y-check.py`: 0 schwere Verstöße; Browsertest `call-check.py`; Bildschirmfotos; Build
+
 ## 2026-10-20 · Abschnitt 8.2: Freigabestufe „Gruppen“, Partnerorganisationen, Hinweise von Mitgliedern, Suche im Chat
 
 **Was**

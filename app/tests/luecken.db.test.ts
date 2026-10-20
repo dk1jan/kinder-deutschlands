@@ -230,4 +230,33 @@ d('Lücken schließen (Datenbank)', async () => {
 		await deleteAccount(sql, u.eva);
 		expect((await sql`select 1 from notices where source_kind = 'mitglied'`).length).toBe(0);
 	});
+
+	// ---------- 8.3 ----------
+	it('Rechtstexte: Entwurf aus Systemfunktionen, Prüfung nur mit Pflichtangaben, Änderung hebt Prüfung auf', async () => {
+		const LG = await import('../src/lib/server/legal');
+		let l = await LG.getLegal(sql);
+		expect(LG.imprintComplete(l.imprint)).toBe(false);
+		const draft = LG.privacyDraft(l, 'https://kinder.example.org');
+		expect(draft).toContain('[Name/Firma – fehlt, bitte in der Verwaltung eintragen]');
+		expect(draft).toContain('Ende-zu-Ende-verschlüsselt');
+		expect(draft).toContain('14 Tage');
+		const blocks = LG.legalBlocks(draft);
+		expect(blocks.filter((b) => b.t === 'h').length).toBeGreaterThan(8);
+		const base = { hosting: 'Testhoster', authority: 'Testbehörde', imprintExtra: '', privacyText: null, resetPrivacy: true, note: null };
+		await expect(LG.saveLegal(sql, u.red, { ...base, imprint: { provider: 'Betreiber' }, checked: true })).rejects.toBeInstanceOf(LG.LegalError);
+		await expect(LG.saveLegal(sql, u.red, { ...base, imprint: { provider: 'B', street: 'S 1', city: '28195 Bremen', email: 'kein-mail' }, checked: false })).rejects.toBeInstanceOf(LG.LegalError);
+		l = await LG.saveLegal(sql, u.red, { ...base, imprint: { provider: 'Betreiber e. V.', street: 'Weg 1', city: '28195 Bremen', email: 'info@example.org' }, checked: true, note: 'geprüft' });
+		expect(l.checked_at).not.toBeNull();
+		expect(l.checked_by).toMatch(/^[0-9A-Z]{3}-[0-9A-Z]{3}-[0-9A-Z]{3}$/); // Familien-ID, nie E-Mail
+		expect(LG.privacyDraft(l, 'x')).toContain('Betreiber e. V., Weg 1, 28195 Bremen');
+		// unverändert speichern → bleibt geprüft; Inhalt ändern → Prüfung weg
+		l = await LG.saveLegal(sql, u.red, { ...base, imprint: {}, checked: false });
+		expect(l.checked_at).not.toBeNull();
+		l = await LG.saveLegal(sql, u.red, { ...base, imprint: { phone: '0421 000' }, checked: false });
+		expect(l.checked_at).toBeNull();
+		// eigener Text
+		l = await LG.saveLegal(sql, u.red, { ...base, resetPrivacy: false, privacyText: '## Eigene Fassung\nText', imprint: {}, checked: false });
+		expect(LG.legalBlocks(l.privacy_text!)).toEqual([{ t: 'h', text: 'Eigene Fassung' }, { t: 'p', text: 'Text' }]);
+	});
 });
+

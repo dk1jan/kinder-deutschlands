@@ -547,8 +547,8 @@
 		width: 40px;
 		height: 40px;
 	}
-	:global([data-theme='dark']) .wrap :global(.maplibregl-ctrl-group),
-	:global([data-theme='dark']) .wrap :global(.maplibregl-ctrl-attrib) {
-		filter: invert(0.92) hue-rotate(180deg);
+	.wrap :global(.maplibregl-ctrl-group),
+	.wrap :global(.maplibregl-ctrl-attrib) {
+		filter: var(--ctrl-filter);
 	}
 </style>

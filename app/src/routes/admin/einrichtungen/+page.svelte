@@ -39,7 +39,8 @@
 {/each}
 
 <h2>Alle Einrichtungen</h2>
-<div class="scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 	<table class="data">
 		<thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Team</th><th scope="col">Seit</th><th scope="col">Aktion</th></tr></thead>
 		<tbody>

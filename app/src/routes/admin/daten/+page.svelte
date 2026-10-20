@@ -44,7 +44,8 @@
 
 <section aria-labelledby="quellen">
 	<h2 id="quellen">Quellen</h2>
-	<div class="scroll">
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 		<table class="data">
 			<thead><tr><th scope="col">Quelle</th><th scope="col">Zustand</th><th scope="col">Bestand</th><th scope="col">Letzter Abruf</th><th scope="col">Nächster</th><th scope="col"><span class="visually-hidden">Aktionen</span></th></tr></thead>
 			<tbody>

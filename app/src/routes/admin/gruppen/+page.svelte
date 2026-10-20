@@ -13,7 +13,8 @@
 {#if form?.ok}<Notice kind="ok">{form.ok}</Notice>{/if}
 {#if form?.error}<Notice kind="error">{form.error}</Notice>{/if}
 
-<div class="scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="scroll" tabindex="0" role="region" aria-label="Tabelle (seitlich scrollbar)">
 	<table class="data">
 		<thead><tr><th scope="col">Gruppe</th><th scope="col">Art</th><th scope="col">Mitglieder</th><th scope="col">Anfragen</th><th scope="col">Moderation</th><th scope="col">ID</th><th scope="col"></th></tr></thead>
 		<tbody>

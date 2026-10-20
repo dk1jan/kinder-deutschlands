@@ -101,7 +101,7 @@ ss -lunpt | grep -E ':3479|:4916|:4917|:4918|:4919|:4920' ; docker logs --tail 3
 ```
 Falls eine Firewall aktiv ist (ufw / IONOS-Cloud-Firewall), diese Ports freigeben, z. B. `ufw allow 3479 && ufw allow 49160:49200/udp`. Hostname = Host aus `APP_URL` (muss auf die öffentliche IP zeigen). Abschalten: `TURN_ENABLED=false`.
 
-Lokaler Anruftest (zwei Browser, künstliche Kamera), nach dem Rauchtest: `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`.
+Lokale Browsertests nach dem Rauchtest – Barrierefreiheit: `TEST_DATABASE_URL=… python3 scripts/a11y-check.py` (axe-core, WCAG 2.1 AA). Anruftest (zwei Browser, künstliche Kamera, plus Chat-Suche): `TEST_DATABASE_URL=… SYNAPSE_PYTHON=/opt/synvenv/bin/python python3 scripts/call-check.py`.
 
 ## E-Mail-Versand einrichten (Pflicht für Registrierung und Passwort-Zurücksetzen)
 1. Plesk → `jan-krueger.org` → **E-Mail-Adressen** → **E-Mail-Adresse erstellen**: `noreply@jan-krueger.org`, starkes Passwort.

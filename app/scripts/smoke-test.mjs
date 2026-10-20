@@ -833,6 +833,41 @@ try {
 	check(r.status === 200 && r.body.includes('Partnerorganisation'), 'Gruppenverwaltung: Partnerorganisation wählbar');
 	r = await D.req('/einrichtungen/verwalten');
 	check(r.status === 200, 'Meine Einrichtungen lädt');
+
+	// ---------- Abschnitt 8.3: Rechtstexte, Fußzeile, Geräteliste ----------
+	r = await X2.req('/datenschutz');
+	check(r.status === 200 && r.body.includes('Entwurf') && r.body.includes('Ende-zu-Ende-verschlüsselt') && r.body.includes('fehlt, bitte in der Verwaltung eintragen'), 'Datenschutz: Entwurf aus Systemfunktionen, fehlende Angaben sichtbar markiert');
+	r = await X2.req('/impressum');
+	check(r.status === 200 && r.body.includes('werden gerade eingetragen'), 'Impressum ohne Angaben: ehrlicher Hinweis');
+	r = await X2.req('/hinweise');
+	check(r.body.includes('href="/impressum"') && r.body.includes('href="/datenschutz"'), 'Fußzeile mit Impressum und Datenschutz');
+	r = await req('/admin/rechtstexte?/speichern', { form: { i_provider: 'Smoke Betreiber', i_street: 'Teststraße 1', i_city: '28195 Bremen', i_country: 'Deutschland', i_email: 'kontakt@example.org', hosting: 'Testserver', authority: 'Testbehörde', checked: 'on' } });
+	check(r.status === 200, 'Rechtstexte gespeichert und als geprüft bestätigt');
+	r = await X2.req('/impressum');
+	check(r.body.includes('Smoke Betreiber') && r.body.includes('28195 Bremen') && !r.body.includes('Entwurf'), 'Impressum zeigt Angaben, geprüft');
+	r = await X2.req('/datenschutz');
+	check(r.body.includes('Testbehörde') && !r.body.includes('Entwurf –'), 'Datenschutz übernimmt Betreiberangaben, geprüft');
+	r = await req('/admin/rechtstexte?/speichern', { form: { i_provider: 'Smoke Betreiber GmbH', i_street: 'Teststraße 1', i_city: '28195 Bremen', i_email: 'kontakt@example.org', hosting: 'Testserver', authority: 'Testbehörde' } });
+	r = await X2.req('/impressum');
+	check(r.body.includes('Entwurf'), 'Änderung hebt „geprüft“ wieder auf');
+	// Geräteliste: zweites und drittes Gerät abmelden
+	const D2 = client();
+	await D2.req('/anmelden?/anmelden', { form: { email: 'dora@example.org', password: pwC }, headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1' } });
+	r = await D2.req('/profil');
+	check(r.status === 200, 'Zweites Gerät angemeldet');
+	r = await D.req('/profil/sicherheit');
+	const others = [...r.body.matchAll(/action="\?\/geraetAbmelden"><input type="hidden" name="id" value="([0-9a-f]{12})"/g)].map((m) => m[1]);
+	check(others.length >= 1 && r.body.includes('iPhone'), `Geräteliste zeigt weitere Geräte (${others.length})`);
+	for (const id of others) await D.req('/profil/sicherheit?/geraetAbmelden', { form: { id } });
+	r = await D2.req('/radar');
+	check(r.status === 303 && r.location.startsWith('/anmelden'), 'Abgemeldetes Gerät muss sich neu anmelden');
+	r = await D.req('/radar');
+	check(r.status === 200, 'Eigenes Gerät bleibt angemeldet');
+	const D3 = client();
+	await D3.req('/anmelden?/anmelden', { form: { email: 'dora@example.org', password: pwC } });
+	r = await D.req('/profil/sicherheit?/alleAbmelden', { form: {} });
+	r = await D3.req('/radar');
+	check(r.status === 303 && (await D.req('/radar')).status === 200, '„Alle anderen abmelden“ wirkt, eigenes Gerät bleibt');
 	await sqlT.end();
 	const sqlT2 = postgres(DB, { max: 1, onnotice: () => {} });
 

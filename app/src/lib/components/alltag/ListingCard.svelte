@@ -42,8 +42,8 @@
 		text-decoration: none;
 		height: 100%;
 	}
-	.lc.off {
-		opacity: 0.75;
+	.lc.off .img :global(img) {
+		opacity: 0.6;
 	}
 	.img {
 		position: relative;
