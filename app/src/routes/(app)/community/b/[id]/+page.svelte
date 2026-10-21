@@ -44,6 +44,7 @@
 	<header class="head">
 		<p class="meta">
 			<span class="kind">{KIND[p.kind]}</span>
+			{#if p.land}<span class="land">{p.land.invited ? `Eingeladen · ${p.land.name}` : `Nur ${p.land.name}`}</span>{/if}
 			{#if p.solvedComment}<span class="ok">✓ gelöst</span>{/if}
 			{#if p.pinned}<span>angeheftet</span>{/if}
 			{#if p.closed}<span>geschlossen</span>{/if}
@@ -122,6 +123,29 @@
 				<form method="POST" action="?/wissen"><button class="btn small secondary">Als Wissen aufbereiten</button></form>
 			{/if}
 		</div>
+		{#if p.land && p.status === 'sichtbar'}
+			<!-- F-023: Landes-Beitrag – gezielt Personen aus anderen Ländern einladen -->
+			<section class="invite" aria-labelledby="inv-t">
+				<h2 id="inv-t" class="small-h">Nur für {p.land.name}</h2>
+				<p class="muted small">Lesen können Mitglieder aus {p.land.name} und Eingeladene. Kennst du jemanden, den das Thema interessiert? Lade die Person mit ihrer Familien-ID ein – sie sieht dann genau diesen Beitrag und kann mitschreiben.</p>
+				{#if form && 'invited' in form}<Notice kind="ok">{form.invited} ist eingeladen und bekommt eine Mitteilung.</Notice>{/if}
+				<form method="POST" action="?/einladen" use:enhance class="inv-form">
+					<label for="inv-id" class="sr">Familien-ID</label>
+					<input id="inv-id" name="familien_id" required maxlength="20" autocomplete="off" placeholder="Familien-ID, z. B. K7M 4QX 2HD" />
+					<button class="btn small">Einladen</button>
+				</form>
+				{#if p.own && p.invites.length}
+					<ul class="inv-list">
+						{#each p.invites as i (i.userId)}
+							<li>
+								<span>{i.name} <small class="muted">· eingeladen von {i.by}</small></span>
+								<form method="POST" action="?/einladungZurueck" use:enhance><input type="hidden" name="user" value={i.userId} /><button class="btn small secondary">Zurücknehmen</button></form>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</section>
+		{/if}
 		{#if p.canAppeal}
 			<details class="appeal">
 				<summary>Einspruch einlegen</summary>
@@ -461,5 +485,54 @@
 	}
 	.small {
 		font-size: var(--fs-s);
+	}
+	.meta .land {
+		background: var(--ink);
+		color: var(--paper);
+		padding: 1px 10px;
+		border-radius: 999px;
+		font-weight: 700;
+	}
+	.invite {
+		margin-top: var(--sp-4);
+		padding: var(--sp-3) var(--sp-4);
+		border: 2px dashed var(--line);
+		border-radius: var(--radius-m);
+		display: grid;
+		gap: var(--sp-2);
+	}
+	.small-h {
+		margin: 0;
+		font-size: var(--fs-m, 1.05rem);
+	}
+	.inv-form {
+		display: flex;
+		gap: var(--sp-2);
+		flex-wrap: wrap;
+	}
+	.inv-form input {
+		flex: 1 1 14rem;
+		min-height: 44px;
+	}
+	.inv-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: var(--sp-1);
+	}
+	.inv-list li {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--sp-2);
+	}
+	.sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
 	}
 </style>

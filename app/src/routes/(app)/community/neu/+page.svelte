@@ -5,7 +5,7 @@
 	import RegionPicker from '$lib/components/RegionPicker.svelte';
 
 	let { data, form } = $props();
-	interface V { kind: string; title: string; body: string; topic: string; group: string; region: string; link: string; tags: string; poll: string[] }
+	interface V { kind: string; title: string; body: string; topic: string; group: string; region: string; link: string; tags: string; poll: string[]; sichtbar?: string }
 	const v = $derived((form && 'values' in form ? form.values : null) as V | null);
 	// svelte-ignore state_referenced_locally
 	let kind = $state(v?.kind ?? data.prefill.kind);
@@ -44,6 +44,20 @@
 			{/each}
 		</fieldset>
 
+		{#if !group}
+			<!-- F-023: lokal (nur eigenes Bundesland + Eingeladene) oder ganz Deutschland -->
+			<fieldset class="scope">
+				<legend>Wer soll das lesen?</legend>
+				{#if data.land}
+					<label class="opt"><input type="radio" name="sichtbar" value="land" checked={(v?.sichtbar ?? 'land') === 'land'} /><span><b>Nur {data.land.name}</b><small>Mitglieder aus {data.land.name} – andere lädst du gezielt ein.</small></span></label>
+					<label class="opt"><input type="radio" name="sichtbar" value="de" checked={v?.sichtbar === 'de'} /><span><b>Ganz Deutschland</b><small>Alle angemeldeten Mitglieder.</small></span></label>
+				{:else}
+					<input type="hidden" name="sichtbar" value="de" />
+					<p class="hint">Sichtbar für ganz Deutschland. Für Beiträge nur in deinem Bundesland trag zuerst deine <a href="/profil/bearbeiten">Wohnregion im Profil</a> ein.</p>
+				{/if}
+			</fieldset>
+		{/if}
+
 		<div class="field">
 			<label for="title">{kind === 'frage' ? 'Deine Frage in einem Satz' : 'Titel'}</label>
 			<input id="title" name="title" required minlength="3" maxlength="160" value={v?.title ?? data.prefill.title} placeholder={kind === 'frage' ? 'z. B. Wie lange hat bei euch die Kita-Eingewöhnung gedauert?' : ''} />
@@ -75,7 +89,7 @@
 			<div class="field">
 				<label for="group">Wo posten?</label>
 				<select id="group" name="group" bind:value={group}>
-					<option value="">In der Community (alle Mitglieder)</option>
+					<option value="">In der Community</option>
 					{#each data.groups as g}<option value={g.id}>{g.kind === 'geschuetzt' ? '🔒 ' : ''}Gruppe: {g.name}</option>{/each}
 				</select>
 				{#if selectedGroup?.kind === 'geschuetzt'}<span class="hint">Nur Gruppenmitglieder sehen den Beitrag – du erscheinst als „{selectedGroup.pseudonym}“.</span>{/if}
@@ -104,7 +118,7 @@
 
 		<fieldset class="imgs">
 			<legend>Bilder <span class="muted">(optional, bis zu 4)</span></legend>
-			<input type="file" name="images" accept="image/jpeg,image/png,image/webp,image/avif" multiple onchange={onFiles} />
+			<input type="file" name="images" aria-label="Bilder auswählen (bis zu 4)" accept="image/jpeg,image/png,image/webp,image/avif" multiple onchange={onFiles} />
 			{#if previews.length}
 				<div class="thumbs">
 					{#each previews as p, i}<figure><img src={p} alt="" /><input name="alt" maxlength="200" placeholder="Bildbeschreibung (für Screenreader)" aria-label="Beschreibung Bild {i + 1}" /></figure>{/each}
@@ -155,6 +169,14 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
 		gap: var(--sp-2);
+	}
+	.scope {
+		display: grid;
+		gap: var(--sp-2);
+		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	}
+	.scope legend {
+		grid-column: 1 / -1;
 	}
 	.kinds legend {
 		grid-column: 1 / -1;

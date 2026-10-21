@@ -56,8 +56,21 @@ export interface ProfileInput {
 	visibility: Visibility;
 }
 
+/** Wechselt die neue Wohnregion das Bundesland? Dann höchstens einmal in 30 Tagen (F-023). Gibt eine Fehlermeldung oder null zurück. */
+export async function checkLandChange(sql: Sql, userId: string, regionCode: string | null): Promise<string | null> {
+	const [r] = await sql`select kd_land_of(region_code) as old, kd_land_of(${regionCode}) as neu, land_changed_at,
+		land_changed_at > now() - interval '30 days' as recent, (land_changed_at + interval '30 days')::date as next
+		from user_profiles where user_id = ${userId}`;
+	if (!r || !r.old || r.old === r.neu) return null;
+	if (r.recent) return `Dein Bundesland kannst du nur einmal im Monat wechseln – wieder ab ${new Date(r.next).toLocaleDateString('de-DE')}. Andere Region im selben Land geht jederzeit.`;
+	return null;
+}
+
 export async function updateProfile(sql: Sql, userId: string, i: ProfileInput) {
 	const visibility = i.preset === 'individuell' ? i.visibility : PRESETS[i.preset];
+	// Bundeslandwechsel vermerken (nicht beim ersten Eintragen)
+	await sql`update user_profiles set land_changed_at = now() where user_id = ${userId}
+		and kd_land_of(region_code) is not null and kd_land_of(region_code) is distinct from kd_land_of(${i.regionCode})`;
 	await sql`update user_profiles set
 		display_name = ${i.displayName}, can_help = ${i.canHelp}, looking_for = ${i.lookingFor},
 		interests = ${i.interests}, child_ages = ${i.childAges}, region_code = ${i.regionCode},

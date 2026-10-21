@@ -5,7 +5,7 @@ import { requireMember } from '$lib/server/guard';
 import { isUuid } from '$lib/server/contacts';
 import { rateLimit } from '$lib/server/ratelimit';
 import { userCan } from '$lib/server/roles';
-import { addComment, deleteOwnComment, deleteOwnPost, editComment, editPost, getPost, markSolved, PostError, toggleBookmark, toggleHelpful, vote } from '$lib/server/community/posts';
+import { addComment, deleteOwnComment, deleteOwnPost, editComment, editPost, getPost, inviteToPost, markSolved, PostError, revokeInvite, toggleBookmark, toggleHelpful, vote } from '$lib/server/community/posts';
 import { appeal, decide, report, ACTIONS, type ModAction } from '$lib/server/community/moderation';
 import { draftFromPost } from '$lib/server/community/knowledge';
 import { tagFor } from '$lib/server/affiliate';
@@ -58,6 +58,14 @@ export const actions: Actions = {
 	loesung: (e) => run(e, (uid, f) => markSolved(db(), uid, e.params.id, f.get('id') ? uuid(f.get('id')) : null)),
 	abstimmen: (e) => run(e, (uid, f) => vote(db(), uid, e.params.id, f.getAll('choice').map(Number))),
 	merken: (e) => run(e, async (uid) => ({ bookmarked: await toggleBookmark(db(), uid, e.params.id) })),
+	// F-023: in einen Landes-Beitrag einladen / Einladung zurücknehmen
+	einladen: (e) =>
+		run(e, async (uid, f) => {
+			if (!rateLimit(`einladen:${uid}`, 60, 3600 * 1000)) throw new PostError('Bitte kurz warten.');
+			const r = await inviteToPost(db(), uid, e.params.id, String(f.get('familien_id') ?? ''));
+			return { invited: r.name };
+		}),
+	einladungZurueck: (e) => run(e, async (uid, f) => (await revokeInvite(db(), uid, e.params.id, uuid(f.get('user'))), { revoked: true })),
 	melden: (e) =>
 		run(e, async (uid, f) => {
 			if (!rateLimit(`melden:${uid}`, 30, 24 * 3600 * 1000)) throw new PostError('Heute schon viele Meldungen – danke!');

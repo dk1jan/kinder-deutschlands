@@ -22,7 +22,7 @@ env = dict(os.environ, DATABASE_URL=DB, APP_URL=BASE, ORIGIN=BASE, APP_SECRET='s
            BACKUP_DIR='/tmp/kd-smoke-backups', TILES_DIR='/tmp/kd-smoke-tiles', TURN_ENABLED='false', NO_PROXY='127.0.0.1,localhost', no_proxy='127.0.0.1,localhost')
 
 PUBLIC = ['/', '/+MENU', '/mehr', '/karte', '/anmelden', '/registrieren', '/kompass', '/kompass/geburt', '/routen', '/hinweise', '/impressum', '/datenschutz', '/partnerlinks', '/veranstaltungen']
-MEMBER = ['/', '/+MENU', '/mehr', '/profil/familie', '/profil/sicherheit', '/nachrichten/sicherheit', '/community', '/nachrichten', '/profil', '/profil/bearbeiten', '/marktplatz', '/hilfe', '/hinweise/neu', '/routen/neu', '/einladungen', '/radar', '/veranstaltungen', '/einrichtungen', '/ORT']
+MEMBER = ['/', '/+MENU', '/mehr', '/community/neu', '/profil/familie', '/profil/sicherheit', '/nachrichten/sicherheit', '/community', '/nachrichten', '/profil', '/profil/bearbeiten', '/marktplatz', '/hilfe', '/hinweise/neu', '/routen/neu', '/einladungen', '/radar', '/veranstaltungen', '/einrichtungen', '/ORT']
 ADMIN = ['/admin', '/admin/statistik', '/admin/rechtstexte', '/admin/hinweise', '/admin/moderation', '/admin/nutzer', '/admin/rechte', '/admin/gruppen', '/admin/freigaben', '/admin/protokoll', '/admin/routen', '/admin/affiliate']
 
 def wait_http(url, n=150):

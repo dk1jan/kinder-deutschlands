@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
-import { cleanTags, createPost, PostError, type PostKind } from '$lib/server/community/posts';
+import { cleanTags, createPost, PostError, userLand, type PostKind } from '$lib/server/community/posts';
 import { MediaError } from '$lib/server/community/media';
 import { rateLimit } from '$lib/server/ratelimit';
 import { audit } from '$lib/server/audit';
@@ -24,10 +24,12 @@ export const load: PageServerLoad = async (event) => {
 	// Teilen-Menü des Handys (PWA share_target): url/text/title
 	const shared = [q.get('url'), q.get('text')].filter(Boolean).join(' ');
 	const sharedUrl = /https?:\/\/\S+/.exec(shared)?.[0] ?? null;
+	const land = await userLand(sql, user.id);
 	const { getAffiliate } = await import('$lib/server/affiliate');
 	const aff = await getAffiliate(sql);
 	return {
 		affiliate: aff.enabled && !!aff.amazon_tag,
+		land,
 		topics,
 		groups,
 		prefill: {
@@ -59,7 +61,8 @@ export const actions: Actions = {
 			region: String(f.get('region_code') ?? ''),
 			link: String(f.get('link') ?? ''),
 			tags: String(f.get('tags') ?? ''),
-			poll: f.getAll('poll').map(String)
+			poll: f.getAll('poll').map(String),
+			sichtbar: f.get('sichtbar') === 'de' ? 'de' : 'land'
 		};
 		if (total > 24 * 1024 * 1024) return fail(400, { error: 'Bilder zusammen höchstens 24 MB.', values });
 		const sql = db();
@@ -72,6 +75,7 @@ export const actions: Actions = {
 				regionCode: values.region || null,
 				groupId: isUuid(values.group) ? values.group : null,
 				placeId: isUuid(String(f.get('place') ?? '')) ? String(f.get('place')) : null,
+				landOnly: values.sichtbar === 'land' && f.has('sichtbar'),
 				labels: f.getAll('labels').map(String),
 				tags: cleanTags(values.tags),
 				linkUrl: values.link.trim() || null,

@@ -121,6 +121,24 @@ export async function notify(sql: Sql, userId: string | null, kind: string, text
 		.catch(() => {});
 }
 
+// ---------- Bundesland (F-023) ----------
+
+/** Bundesland der Wohnregion im Profil (Code wie '04'), oder null. */
+export async function userLand(sql: Sql, userId: string): Promise<{ code: string; name: string } | null> {
+	const [r] = await sql`select l.code, l.name from user_profiles p join regions l on l.code = kd_land_of(p.region_code) where p.user_id = ${userId}`;
+	return r ? { code: r.code as string, name: landName(r.name as string) } : null;
+}
+/** „Bremen (Land)“ → „Bremen“ für die Anzeige */
+export const landName = (n: string) => n.replace(/\s*\(Land\)$/, '');
+
+/** Darf diese Person einen Landes-Beitrag lesen? (Verfasserin, gleiches Land, eingeladen) */
+async function landAccess(sql: Sql, viewerId: string, p: { id: string; land_code: string | null; author_id: string | null }): Promise<boolean> {
+	if (!p.land_code || p.author_id === viewerId) return true;
+	const [r] = await sql`select (kd_land_of((select region_code from user_profiles where user_id = ${viewerId})) = ${p.land_code}) as same,
+		exists(select 1 from post_invites where post_id = ${p.id} and user_id = ${viewerId}) as invited`;
+	return !!(r?.same || r?.invited);
+}
+
 // ---------- Beitrag anlegen ----------
 
 export interface NewPost {
@@ -131,6 +149,8 @@ export interface NewPost {
 	regionCode: string | null;
 	groupId: string | null;
 	placeId: string | null;
+	/** F-023: nur Mitglieder des eigenen Bundeslands (+ Eingeladene) lesen den Beitrag */
+	landOnly?: boolean;
 	labels: string[];
 	tags: string[];
 	linkUrl: string | null;
@@ -181,6 +201,16 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 		if (!g || (!g.member && !g.moderator)) throw new PostError('Du bist nicht Mitglied dieser Gruppe.');
 	}
 	if (!p.topicKey && !p.regionCode && !p.groupId) throw new PostError('Bitte ein Thema, eine Region oder eine Gruppe wählen, damit der Beitrag gefunden wird.');
+	let landCode: string | null = null;
+	if (p.landOnly && !p.groupId) {
+		const land = await userLand(sql, authorId);
+		if (!land) throw new PostError('Für „Nur mein Bundesland“ bitte zuerst deine Wohnregion im Profil eintragen.');
+		if (p.regionCode) {
+			const [r] = await sql`select kd_land_of(${p.regionCode}) as l`;
+			if (r?.l !== land.code) throw new PostError(`Die gewählte Region liegt nicht in ${land.name}. Wähle „Ganz Deutschland“ oder eine Region in ${land.name}.`);
+		}
+		landCode = land.code;
+	}
 	if (p.kind === 'umfrage') {
 		const opts = (p.poll?.options ?? []).map((o) => o.trim()).filter(Boolean);
 		if (opts.length < 2 || opts.length > 10) throw new PostError('Eine Umfrage braucht 2 bis 10 Antwortmöglichkeiten.');
@@ -194,9 +224,9 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 	const held = holdMessage(flags);
 	const card = url ? await linkPreview(sql, url, authorId) : null;
 	const labels = p.labels.filter((l) => l in LABELS);
-	const [row] = await sql`insert into posts (kind, title, body, topic_key, region_code, group_id, place_id, author_id, labels, tags, link_url, link_card, status)
+	const [row] = await sql`insert into posts (kind, title, body, topic_key, region_code, group_id, place_id, author_id, labels, tags, link_url, link_card, status, land_code)
 		values (${p.kind}, ${title}, ${p.body.trim()}, ${p.topicKey}, ${p.regionCode}, ${p.groupId}, ${p.placeId}, ${authorId}, ${labels}, ${p.tags},
-			${card?.url ?? null}, ${card ? sql.json(card as never) : null}, ${held ? 'pruefung' : 'sichtbar'})
+			${card?.url ?? null}, ${card ? sql.json(card as never) : null}, ${held ? 'pruefung' : 'sichtbar'}, ${landCode})
 		returning id`;
 	const id = row.id as string;
 	if (p.kind === 'umfrage' && p.poll) {
@@ -212,7 +242,9 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 
 /** SQL-Bedingung: für diese Person sichtbare Beiträge (Gruppen nur als aktives Mitglied). */
 function visible(sql: Sql, viewerId: string) {
-	return sql`p.status = 'sichtbar' and (p.group_id is null or p.group_id in (select group_id from group_members where user_id = ${viewerId} and status = 'aktiv'))`;
+	return sql`p.status = 'sichtbar' and (p.group_id is null or p.group_id in (select group_id from group_members where user_id = ${viewerId} and status = 'aktiv'))
+		and (p.land_code is null or p.author_id = ${viewerId} or p.land_code = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))
+			or exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}))`;
 }
 
 function subtree(sql: Sql, code: string) {
@@ -221,6 +253,8 @@ function subtree(sql: Sql, code: string) {
 
 export interface FeedQuery {
 	mode: 'abos' | 'neu' | 'geloest' | 'lesezeichen';
+	/** F-023: 'de' = ganz Deutschland (+ Einladungen), 'land' = Beiträge aus dem eigenen Bundesland */
+	scope?: 'de' | 'land' | null;
 	topic?: string | null;
 	region?: string | null;
 	groupId?: string | null;
@@ -241,11 +275,18 @@ export async function feed(sql: Sql, viewerId: string, f: FeedQuery) {
 	const q = f.q?.trim().slice(0, 120) || null;
 	const rows = await sql`
 		select p.id, p.kind, p.title, p.body, p.topic_key, t.name as topic_name, p.region_code, r.name as region_name, p.group_id, g.name as group_name, g.kind as group_kind, g.slug as group_slug,
+			p.land_code, (select name from regions where code = p.land_code) as land_name,
+			exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}) as invited,
 			p.author_id, p.labels, p.tags, p.link_card, p.pinned, p.closed, p.archived, p.solved_comment is not null as solved, p.comment_count, p.created_at, p.activity_at,
 			(select count(*)::int from media m where m.post_id = p.id and m.status = 'sichtbar' and m.purpose = 'beitrag') as images,
 			exists(select 1 from bookmarks b where b.post_id = p.id and b.user_id = ${viewerId}) as bookmarked
 		from posts p left join topics t on t.key = p.topic_key left join regions r on r.code = p.region_code left join community_groups g on g.id = p.group_id
 		where ${visible(sql, viewerId)}
+			${f.scope === 'de' && !f.groupId && !f.region ? sql`and (p.land_code is null or exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}))` : sql``}
+			${f.scope === 'land' && !f.groupId && !f.region
+				? sql`and p.group_id is null and (p.land_code = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))
+					or (p.land_code is null and p.region_code is not null and kd_land_of(p.region_code) = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))))`
+				: sql``}
 			${f.mode !== 'lesezeichen' && !f.groupId ? sql`and not p.archived` : sql``}
 			${f.topic ? sql`and p.topic_key = ${f.topic}` : sql``}
 			${f.region ? sql`and p.region_code in ${subtree(sql, f.region)}` : sql``}
@@ -285,6 +326,7 @@ export async function feed(sql: Sql, viewerId: string, f: FeedQuery) {
 			topic: r.topic_key ? { key: r.topic_key as string, name: r.topic_name as string } : null,
 			region: r.region_code ? { code: r.region_code as string, name: r.region_name as string } : null,
 			group: r.group_id ? { slug: r.group_slug as string, name: r.group_name as string, kind: r.group_kind as string } : null,
+			land: r.land_code ? { code: r.land_code as string, name: landName(r.land_name as string), invited: r.invited as boolean } : null,
 			author: names.get(r.group_kind === 'geschuetzt' ? r.group_id : '')?.get(r.author_id) ?? { name: 'Ein Mitglied', pseudonym: false, contactId: null, region: null },
 			labels: r.labels as string[],
 			tags: r.tags as string[],
@@ -317,6 +359,7 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 	}
 	const own = p.author_id === viewerId;
 	if (p.status !== 'sichtbar' && !own && !moderator) return null;
+	if (!moderator && !(await landAccess(sql, viewerId, p as never))) return null;
 	const comments = await sql`select c.id, c.author_id, c.body, c.status, c.mod_note, c.helpful, c.created_at, c.edited_at,
 			exists(select 1 from helpful_marks h where h.comment_id = c.id and h.user_id = ${viewerId}) as marked
 		from comments c where c.post_id = ${id} ${moderator ? sql`` : sql`and (c.status = 'sichtbar' or c.author_id = ${viewerId})`}
@@ -335,6 +378,9 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 	const media = await sql`select id, width, height, alt, status from media where post_id = ${id} and purpose = 'beitrag' ${moderator || own ? sql`` : sql`and status = 'sichtbar'`} order by created_at`;
 	const [bm] = await sql`select 1 as x from bookmarks where user_id = ${viewerId} and post_id = ${id}`;
 	const [openAppeal] = own ? await sql`select 1 as x from mod_cases where target_type = 'post' and target_id = ${id} and source = 'einspruch' and status in ('offen', 'in_arbeit')` : [];
+	const [landRow] = p.land_code ? await sql`select name from regions where code = ${p.land_code}` : [];
+	const invites = own && p.land_code ? await listInvites(sql, viewerId, id) : [];
+	const [inv] = p.land_code ? await sql`select 1 as x from post_invites where post_id = ${id} and user_id = ${viewerId}` : [];
 	return {
 		id: p.id as string,
 		kind: p.kind as PostKind,
@@ -343,6 +389,8 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 		topic: p.topic_key ? { key: p.topic_key as string, name: p.topic_name as string } : null,
 		region: p.region_code ? { code: p.region_code as string, name: p.region_name as string } : null,
 		group: p.group_id ? { id: p.group_id as string, slug: p.group_slug as string, name: p.group_name as string, kind: p.group_kind as string } : null,
+		land: p.land_code ? { code: p.land_code as string, name: landName((landRow?.name as string) ?? p.land_code), invited: !!inv } : null,
+		invites,
 		placeId: p.place_id as string | null,
 		author: names.get(p.author_id) ?? { name: 'Ein Mitglied', pseudonym: false, contactId: null, region: null },
 		own,
@@ -378,8 +426,9 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 }
 
 async function readablePost(sql: Sql, viewerId: string, postId: string) {
-	const [p] = await sql`select p.id, p.author_id, p.status, p.closed, p.archived, p.group_id, p.region_code, p.topic_key, p.title, p.solved_comment from posts p where p.id = ${postId}`;
+	const [p] = await sql`select p.id, p.author_id, p.status, p.closed, p.archived, p.group_id, p.region_code, p.topic_key, p.title, p.solved_comment, p.land_code from posts p where p.id = ${postId}`;
 	if (!p) throw new PostError('Beitrag nicht gefunden.');
+	if (!(await landAccess(sql, viewerId, p as never))) throw new PostError('Beitrag nicht gefunden.');
 	if (p.group_id) {
 		const g = await groupAccess(sql, viewerId, p.group_id);
 		if (!g?.member && !g?.moderator) throw new PostError('Beitrag nicht gefunden.');
@@ -541,4 +590,57 @@ export async function canSeeMedia(sql: Sql, viewerId: string | null, mediaId: st
 		const [p] = await sql`select region_code, topic_key, group_id from posts where id = ${m.post_id}`;
 		return p ? canModerate(sql, viewerId, { regionCode: p.region_code, topicKey: p.topic_key, groupId: p.group_id }) : false;
 	}
+}
+
+// ---------- Einladungen in Landes-Beiträge (F-023) ----------
+
+export const INVITES_PER_DAY = 20;
+
+/** Jemanden per Familien-ID in einen Landes-Beitrag einladen: liest und antwortet genau dort. */
+export async function inviteToPost(sql: Sql, inviterId: string, postId: string, contactInput: string): Promise<{ name: string }> {
+	const p = await readablePost(sql, inviterId, postId);
+	if (!p.land_code) throw new PostError('Dieser Beitrag ist für ganz Deutschland sichtbar – dafür braucht es keine Einladung. Teile einfach den Link.');
+	if (p.status !== 'sichtbar') throw new PostError('Einladen geht erst, wenn der Beitrag sichtbar ist.');
+	if (await mutedUntil(sql, inviterId)) throw new PostError('Du kannst gerade niemanden einladen (zeitweise eingeschränkt durch die Moderation).');
+	const { normalizeContactId } = await import('../contactid');
+	const cid = normalizeContactId(contactInput);
+	if (!cid) throw new PostError('Bitte eine gültige Familien-ID eingeben (z. B. K7M 4QX 2HD).');
+	const [t] = await sql`select p.user_id from user_profiles p join users u on u.id = p.user_id and u.status = 'active' where p.contact_id = ${cid}`;
+	// Gleiche Antwort für „gibt es nicht“ und „blockiert“ – verrät nichts über fremde Konten
+	const notFound = new PostError('Diese Familien-ID können wir nicht einladen.');
+	if (!t || t.user_id === inviterId) throw notFound;
+	const target = t.user_id as string;
+	const [blocked] = await sql`select 1 as x from blocks where (blocker = ${target} and blocked = ${inviterId}) or (blocker = ${inviterId} and blocked = ${target})
+		or (blocker = ${target} and blocked = ${p.author_id}) or (blocker = ${p.author_id} and blocked = ${target})`;
+	if (blocked) throw notFound;
+	if (await landAccess(sql, target, { id: postId, land_code: p.land_code, author_id: p.author_id })) throw new PostError('Diese Person kann den Beitrag schon lesen.');
+	const [{ n }] = await sql`select count(*)::int as n from post_invites where invited_by = ${inviterId} and created_at > now() - interval '1 day'`;
+	if (n >= INVITES_PER_DAY) throw new PostError(`Höchstens ${INVITES_PER_DAY} Einladungen am Tag. Bitte morgen weiter.`);
+	await sql`insert into post_invites (post_id, user_id, invited_by) values (${postId}, ${target}, ${inviterId}) on conflict do nothing`;
+	const [land] = await sql`select name from regions where code = ${p.land_code}`;
+	const inviterName = (await authorViews(sql, target, [inviterId], null, false)).get(inviterId)?.name ?? 'Ein Mitglied';
+	await notify(sql, target, 'einladung_beitrag', `${inviterName} lädt dich zu „${p.title}“ ein (${landName((land?.name as string) ?? '')})`, `/community/b/${postId}`);
+	const targetName = (await authorViews(sql, inviterId, [target], null, false)).get(target)?.name ?? 'Ein Mitglied';
+	return { name: targetName };
+}
+
+/** Eingeladene eines Beitrags – nur für die Verfasserin. */
+export async function listInvites(sql: Sql, viewerId: string, postId: string) {
+	const [p] = await sql`select author_id from posts where id = ${postId}`;
+	if (!p || p.author_id !== viewerId) return [];
+	const rows = await sql`select user_id, invited_by, created_at from post_invites where post_id = ${postId} order by created_at`;
+	const names = await authorViews(sql, viewerId, rows.flatMap((r) => [r.user_id, r.invited_by].filter(Boolean)), null, false);
+	return rows.map((r) => ({
+		userId: r.user_id as string,
+		name: names.get(r.user_id)?.name ?? 'Ein Mitglied',
+		by: r.invited_by === viewerId ? 'dir' : (names.get(r.invited_by)?.name ?? 'einem Mitglied'),
+		at: r.created_at as Date
+	}));
+}
+
+/** Verfasserin nimmt eine Einladung zurück; die Person kann den Beitrag danach nicht mehr lesen. */
+export async function revokeInvite(sql: Sql, authorId: string, postId: string, userId: string) {
+	const [p] = await sql`select author_id from posts where id = ${postId}`;
+	if (!p || p.author_id !== authorId) throw new PostError('Nur die Verfasserin oder der Verfasser kann Einladungen zurücknehmen.');
+	await sql`delete from post_invites where post_id = ${postId} and user_id = ${userId}`;
 }

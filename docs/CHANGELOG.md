@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-21 · Community nach „Ganz Deutschland“ und Bundesland, Einladung je Beitrag (F-023, D-076)
+
+**Was**
+- Community oben mit zwei Bereichen: **[eigenes Bundesland]** (Standard, aus der Wohnregion im Profil) und **Ganz Deutschland**; Ansichten (Für dich, Neu, Gelöst, Gemerkt), Themen und Suche gelten jeweils im gewählten Bereich. Ohne Wohnregion: nur „Ganz Deutschland“ mit Hinweis aufs Profil.
+- Beim Schreiben: **„Wer soll das lesen?“** – „Nur [Land]“ (vorausgewählt) oder „Ganz Deutschland“; gewählte Region muss im eigenen Land liegen. Landes-Beiträge sind für alle anderen unsichtbar (Feed, Suche, direkter Link, Antworten, Merken, Bilder).
+- **Einladen:** Unter einem Landes-Beitrag „Familien-ID … Einladen“. Die Person bekommt eine Mitteilung und kann genau diesen Beitrag lesen und beantworten; er erscheint bei ihr im Bereich „Ganz Deutschland“ mit „Eingeladen · Bremen“. Höchstens 20 Einladungen am Tag; Blockierungen verhindern die Einladung (gleiche Meldung wie „unbekannt“). Die Verfasserin sieht, wer eingeladen ist und von wem, und kann zurücknehmen.
+- **Bundesland wechseln** höchstens einmal in 30 Tagen (Profil → Wohnregion); innerhalb des Landes jederzeit.
+- Marke „Nur Bremen“ / „Eingeladen · Bremen“ an Beitragskarte und Beitrag. Datenschutz-Entwurf ergänzt. Nebenbei behoben: Bilder-Feld der Schreibseite ohne Beschriftung für Screenreader (axe, kritisch).
+**Warum** Jan: lokale Themen besprechen, die „eine aus Bayern nicht lesen muss“, aber Einzelne gezielt einladen können.
+**Module** M03 Regionale Community, M02 Profil, Querschnitt (Datenschutz-Entwurf, Barrierefreiheit) · **DB-Migration** ja (`0014_community_land.sql`: `posts.land_code`, `post_invites`, `user_profiles.land_changed_at`, Funktion `kd_land_of`)
+**Tests** svelte-check 0 Fehler; 239 Unit/DB-Tests (neu `community-land.db.test.ts`, 8 Tests: Land aus Stadtteil, Lesen nur gleiches Land, ohne Wohnregion/falsche Region abgelehnt, Antworten/Merken gesperrt, Feeds je Bereich, Suche findet Fremdes nicht, Einladung mit Mitteilung + Antworten + nur dieser Beitrag, Regeln schon lesbar/unbekannt/blockiert/Deutschland-Beitrag/nicht lesbar/Tageslimit, Zurücknehmen, Landwechsel 1×/Monat, alte Beiträge sichtbar); Rauchtest 330 Prüfungen; Bildschirmfotos Computer + Handy (Community, Schreiben, Beitrag mit Einladen) angesehen und Marke korrigiert; Barrierefreiheit `a11y-check.py` (jetzt mit Schreibseite): keine schweren Verstöße; Build. **Nicht getestet:** mit echten Mitgliedern auf dem Server.
+
 ## 2026-10-21 · Korrektur: Web-Container 6 GB Arbeitsspeicher für osmium (F-022)
 
 **Was** Download des Auszugs klappte (4,87 GB, Prüfsumme ok), aber `osmium tags-filter` wurde zweimal vom Speicherlimit des Containers beendet (`Memory cgroup out of memory: Killed process … (osmium)` bei ~2 GB; Server: 31 GB, 14 GB frei). `mem_limit` des Web-Containers 2 GB → 6 GB (Node bleibt bei 1,5 GB). Fehlermeldung bei vom System beendeten Programmen jetzt verständlich („abgebrochen (SIGKILL – vermutlich zu wenig Arbeitsspeicher im Container)“ statt „Fehlercode null“).

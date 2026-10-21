@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
-import { ensureProfile, getProfile, updateProfile } from '$lib/server/profiles';
+import { ensureProfile, getProfile, updateProfile, checkLandChange } from '$lib/server/profiles';
 import { cleanText } from '$lib/server/validate';
 import { CHILD_AGES, PRESETS, sanitizeVisibility, type Preset } from '$lib/visibility';
 import { audit } from '$lib/server/audit';
@@ -46,6 +46,9 @@ export const actions: Actions = {
 			const [r] = await sql`select 1 from regions where code = ${regionCode}`;
 			if (!r) return fail(400, { error: 'Unbekannte Region.' });
 		}
+		// F-023: Bundesland (aus der Wohnregion) höchstens einmal im Monat wechseln – sonst könnte man fremde Landes-Beiträge mitlesen
+		const landCheck = await checkLandChange(sql, user.id, regionCode);
+		if (landCheck) return fail(400, { error: landCheck });
 		const displayName = cleanText(f.get('display_name'), 60);
 		if (displayName && /[@]|\d{6,}/.test(displayName)) {
 			return fail(400, { error: 'Bitte keine E-Mail-Adresse oder Telefonnummer im Anzeigenamen. Kontakt läuft über die Familien-ID.' });

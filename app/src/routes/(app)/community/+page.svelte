@@ -17,6 +17,8 @@
 	const href = (params: Record<string, string | null | undefined>) => {
 		const u = new URLSearchParams();
 		for (const [k, v] of Object.entries(params)) if (v) u.set(k, v);
+		// Bereich (F-023) bleibt beim Wechsel von Ansicht/Thema/Suche erhalten
+		if (data.member && !('bereich' in params) && data.scope === 'de' && data.land) u.set('bereich', 'de');
 		const s = u.toString();
 		return `/community${s ? '?' + s : ''}`;
 	};
@@ -76,7 +78,23 @@
 				</div>
 			{/if}
 
+			{#if !data.filter.region}
+				<!-- F-023: Bereich -->
+				<nav class="scope" aria-label="Bereich">
+					{#if data.land}
+						<a href={href({ bereich: 'land', ansicht: data.mode === 'abos' ? null : data.mode, thema: data.filter.topic?.key, q: data.filter.q, schlagwort: data.filter.tag })} aria-current={data.scope === 'land' ? 'page' : undefined}><Icon name="standort" size={18} /> {data.land.name}</a>
+					{/if}
+					<a href={href({ bereich: data.land ? 'de' : null, ansicht: data.mode === 'abos' ? null : data.mode, thema: data.filter.topic?.key, q: data.filter.q, schlagwort: data.filter.tag })} aria-current={data.scope === 'de' ? 'page' : undefined}><Icon name="entdecken" size={18} /> Ganz Deutschland</a>
+				</nav>
+				<p class="scope-hint muted">
+					{#if data.scope === 'land' && data.land}Beiträge aus {data.land.name} – nur für Mitglieder aus {data.land.name} und Eingeladene.
+					{:else if data.land}Beiträge für alle Mitglieder in Deutschland, dazu Themen, zu denen du eingeladen wurdest.
+					{:else}Trag deine <a href="/profil/bearbeiten">Wohnregion im Profil</a> ein, dann bekommst du einen eigenen Bereich für dein Bundesland.{/if}
+				</p>
+			{/if}
+
 			<form class="search" role="search" method="GET" action="/community">
+				{#if data.scope === 'de' && data.land}<input type="hidden" name="bereich" value="de" />{/if}
 				<label class="sf"><Icon name="suche" size={20} /><span class="sr">Community durchsuchen</span>
 					<input type="search" name="q" value={data.filter.q ?? ''} placeholder="Suchen, z. B. „Eingewöhnung Kita“" />
 				</label>
@@ -302,6 +320,33 @@
 	.sf:focus-within {
 		outline: 3px solid var(--focus);
 		outline-offset: 2px;
+	}
+	.scope {
+		display: flex;
+		gap: var(--sp-2);
+		flex-wrap: wrap;
+		margin-bottom: var(--sp-1);
+	}
+	.scope a {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 44px;
+		padding: 0 var(--sp-4);
+		border-radius: 999px;
+		border: 2px solid var(--line);
+		color: var(--ink);
+		text-decoration: none;
+		font-weight: 700;
+	}
+	.scope a[aria-current='page'] {
+		background: var(--ink);
+		border-color: var(--ink);
+		color: var(--paper);
+	}
+	.scope-hint {
+		margin: 0 0 var(--sp-3);
+		font-size: var(--fs-s);
 	}
 	.tabs {
 		display: flex;

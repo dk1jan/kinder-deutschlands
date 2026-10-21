@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
-import { feed, PostError, setSubscription, subscriptions } from '$lib/server/community/posts';
+import { feed, PostError, setSubscription, subscriptions, userLand } from '$lib/server/community/posts';
 import { listKnowledge } from '$lib/server/community/knowledge';
 
 const MODES = ['abos', 'neu', 'geloest', 'lesezeichen'] as const;
@@ -21,8 +21,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const q = url.searchParams.get('q');
 	const tag = url.searchParams.get('schlagwort');
 	const mode = (MODES as readonly string[]).includes(m ?? '') ? (m as (typeof MODES)[number]) : topic || region || q || tag ? 'neu' : 'abos';
+	// F-023: „Ganz Deutschland“ oder das eigene Bundesland (Standard, wenn eins eingetragen ist)
+	const land = await userLand(sql, uid);
+	const b = url.searchParams.get('bereich');
+	const scope: 'de' | 'land' = b === 'de' || !land ? 'de' : b === 'land' ? 'land' : 'land';
 	const [f, subs, groups, regionRow, topicRow] = await Promise.all([
-		feed(sql, uid, { mode, topic, region, q, tag, before: url.searchParams.get('vor') }),
+		feed(sql, uid, { mode, topic, region, q, tag, scope: region ? null : scope, before: url.searchParams.get('vor') }),
 		subscriptions(sql, uid),
 		sql`select g.slug, g.name, g.kind from group_members m join community_groups g on g.id = m.group_id where m.user_id = ${uid} and m.status = 'aktiv' order by g.name`,
 		region ? sql`select code, name, level from regions where code = ${region}` : Promise.resolve([]),
@@ -32,6 +36,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		member: true as const,
 		topics,
 		mode,
+		land,
+		scope,
 		filter: { topic: topicRow[0] ?? null, region: regionRow[0] ?? null, q, tag },
 		feed: f,
 		subs,
