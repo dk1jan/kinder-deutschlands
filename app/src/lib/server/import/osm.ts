@@ -14,6 +14,50 @@ export type Selector = 'spielplatz' | 'toilette' | 'wickeln' | 'indoor' | 'ausfl
 
 const NOT_PRIVATE = '["access"!~"^(private|no)$"]';
 
+/** Typische Namen von Indoorspielplätzen (F-021) – nur zusammen mit Freizeit-/Ausflugsmerkmal, nie bei Kitas/Schulen/Geschäften. */
+export const INDOOR_NAMES = /indoor.?spiel|spielparadies|kinderland|tobeland|kinderwelt|spielscheune|kinderspielhalle|indoorpark|spielarena/i;
+const INDOOR_SKIP_LEISURE = /^(playground|park|pitch|garden|indoor_play|nature_reserve|stadium|track)$/;
+
+const notPrivate = (t: Record<string, string>) => !/^(private|no)$/.test(t.access ?? '');
+
+/**
+ * Dieselbe Auswahl wie die Overpass-Abfragen, aber auf einzelne Objekte angewandt – für den Abruf aus der
+ * Deutschland-Datei (F-022). Muss zu buildQuery passen (Tests prüfen beides).
+ */
+export function matches(selector: Selector, t: Record<string, string>, type: OsmElement['type']): boolean {
+	switch (selector) {
+		case 'spielplatz':
+			return (t.leisure === 'playground' && t.indoor !== 'yes' && notPrivate(t)) || (type === 'node' && !!t.playground && t.leisure !== 'playground');
+		case 'toilette':
+			return t.amenity === 'toilets' && notPrivate(t);
+		case 'wickeln':
+			return t.changing_table === 'yes' && t.amenity !== 'toilets' && notPrivate(t);
+		case 'indoor':
+			if (!notPrivate(t)) return false;
+			if (t.leisure === 'indoor_play' || t.leisure === 'trampoline_park' || (t.leisure === 'playground' && t.indoor === 'yes')) return true;
+			if (!INDOOR_NAMES.test(t.name ?? '')) return false;
+			return (!!t.leisure && !INDOOR_SKIP_LEISURE.test(t.leisure)) || t.tourism === 'attraction';
+		case 'ausflug':
+			return (
+				t.tourism === 'zoo' ||
+				t.tourism === 'theme_park' ||
+				t.leisure === 'water_park' ||
+				(t.leisure === 'sports_centre' && /swimming/.test(t.sport ?? '')) ||
+				t.amenity === 'public_bath' ||
+				(t.leisure === 'miniature_golf' && notPrivate(t)) ||
+				(t.leisure === 'sports_centre' && /climbing/.test(t.sport ?? '') && notPrivate(t))
+			);
+		case 'familiencafe':
+			return /^(cafe|restaurant|ice_cream)$/.test(t.amenity ?? '') && /^(yes|designated|limited)$/.test(t.kids_area ?? '') && notPrivate(t);
+		case 'stillen':
+			return /^(yes|room)$/.test(t.baby_feeding ?? '') && notPrivate(t);
+		case 'bibliothek':
+			return t.amenity === 'library' && notPrivate(t);
+		case 'familienzentrum':
+			return t.community_centre === 'family_centre' && notPrivate(t);
+	}
+}
+
 /** Overpass-Abfragen je Auswahl. Spielplätze mit Umriss und Spielgeräten, alles andere als Punkt. */
 export function buildQuery(selector: Selector, iso: string): string {
 	if (!/^DE-[A-Z]{2}$/.test(iso)) throw new Error(`Ungültiges Gebiet: ${iso}`);
@@ -21,13 +65,14 @@ export function buildQuery(selector: Selector, iso: string): string {
 	const head = '[out:json][timeout:600][maxsize:536870912];';
 	switch (selector) {
 		case 'spielplatz':
-			return `${head}${area}nwr["leisure"="playground"]${NOT_PRIVATE}(area.a);out geom qt;node["playground"](area.a);out qt;`;
+			return `${head}${area}nwr["leisure"="playground"]["indoor"!="yes"]${NOT_PRIVATE}(area.a);out geom qt;node["playground"](area.a);out qt;`;
 		case 'toilette':
 			return `${head}${area}nwr["amenity"="toilets"]${NOT_PRIVATE}(area.a);out center qt;`;
 		case 'wickeln':
 			return `${head}${area}nwr["changing_table"="yes"]["amenity"!="toilets"]${NOT_PRIVATE}(area.a);out center qt;`;
 		case 'indoor':
-			return `${head}${area}nwr["leisure"="indoor_play"]${NOT_PRIVATE}(area.a);out center qt;`;
+			// F-021: auch Spielplätze „drinnen“, Trampolinhallen und typische Namen an Freizeit-/Ausflugsobjekten
+			return `${head}${area}(nwr["leisure"="indoor_play"]${NOT_PRIVATE}(area.a);nwr["leisure"="playground"]["indoor"="yes"]${NOT_PRIVATE}(area.a);nwr["leisure"="trampoline_park"]${NOT_PRIVATE}(area.a);nwr["leisure"]["leisure"!~"^(playground|park|pitch|garden|indoor_play|nature_reserve|stadium|track)$"]["name"~"${INDOOR_NAMES.source}",i]${NOT_PRIVATE}(area.a);nwr["tourism"="attraction"]["name"~"${INDOOR_NAMES.source}",i]${NOT_PRIVATE}(area.a););out center qt;`;
 		case 'ausflug':
 			return `${head}${area}(nwr["tourism"="zoo"](area.a);nwr["tourism"="theme_park"](area.a);nwr["leisure"="water_park"](area.a);nwr["leisure"="sports_centre"]["sport"~"swimming"](area.a);nwr["amenity"="public_bath"](area.a);nwr["leisure"="miniature_golf"]${NOT_PRIVATE}(area.a);nwr["leisure"="sports_centre"]["sport"~"climbing"]${NOT_PRIVATE}(area.a););out center qt;`;
 		// F-018: Merkmale laut OSM-Wiki (kids_area, baby_feeding, community_centre=family_centre)
@@ -194,7 +239,7 @@ const EINRICHTUNG: Record<string, string> = {
 export function toRecords(selector: Selector, elements: OsmElement[]): ImportRecord[] {
 	const out: ImportRecord[] = [];
 	if (selector === 'spielplatz') {
-		const areas = elements.filter((e) => e.tags?.leisure === 'playground');
+		const areas = elements.filter((e) => e.tags?.leisure === 'playground' && e.tags?.indoor !== 'yes');
 		const equipment = elements.filter((e) => e.type === 'node' && e.tags?.playground && e.tags?.leisure !== 'playground');
 		// Grobes Gitter, damit die Zuordnung der Spielgeräte auch bei vielen Spielplätzen schnell bleibt
 		const grid = new Map<string, OsmElement[]>();
@@ -266,7 +311,9 @@ export function toRecords(selector: Selector, elements: OsmElement[]): ImportRec
 			if (typ) f.einrichtung = typ;
 			r = base(e, 'wickelraum', f, t.name ?? null);
 		} else if (selector === 'indoor') {
-			r = base(e, 'indoorspielplatz', common(t), t.name ?? null);
+			const f = familyExtras(t, common(t));
+			if (t.leisure === 'trampoline_park') f.einrichtung = 'Trampolinhalle';
+			r = base(e, 'indoorspielplatz', f, t.name ?? null);
 		} else if (selector === 'ausflug') {
 			const climbing = t.leisure === 'sports_centre' && /climbing/.test(t.sport ?? '') && !/swimming/.test(t.sport ?? '');
 			const bath = t.leisure === 'water_park' || (t.leisure === 'sports_centre' && !climbing) || t.amenity === 'public_bath';

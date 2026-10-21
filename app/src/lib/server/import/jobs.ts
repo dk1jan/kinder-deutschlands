@@ -5,6 +5,7 @@ import { db } from '../db';
 import { appUrl } from '../config';
 import { runPlaceSource, pruneRuns, assignRegions, type SourceRow } from './engine';
 import { overpass, toRecords, buildQuery, type Selector } from './osm';
+import { fetchFromExtract, osmSource, osmiumAvailable } from './osmfile';
 import { importOsmDistricts, importVg250 } from './regions';
 import { refreshTiles } from './tiles';
 import { pruneAerialCache } from '../aerial';
@@ -25,6 +26,26 @@ function overpassEndpoints(): string[] | undefined {
 
 async function fetchOsm(src: SourceRow, signal: AbortSignal) {
 	const selector = src.config.selector as Selector;
+	// F-022: zuerst aus dem Deutschland-Auszug (eigener Server), Overpass nur als Rückfall
+	const mode = osmSource();
+	let fileError = '';
+	if (mode === 'datei' || (mode === 'auto' && (await osmiumAvailable()))) {
+		try {
+			return toRecords(selector, await fetchFromExtract(selector, userAgent(), signal));
+		} catch (e) {
+			fileError = (e as Error).message;
+			if (mode === 'datei') throw e;
+			console.warn(`[import] ${src.key}: OSM-Auszug nicht nutzbar (${fileError}) – versuche Overpass`);
+		}
+	}
+	try {
+		return await fetchOverpass(src, selector, signal);
+	} catch (e) {
+		throw fileError ? new Error(`Auszug: ${fileError} · Overpass: ${(e as Error).message}`.slice(0, 500)) : e;
+	}
+}
+
+async function fetchOverpass(src: SourceRow, selector: Selector, signal: AbortSignal) {
 	const areas = (src.config.areas as string[] | undefined) ?? ['DE-HB'];
 	const out = [];
 	for (const [i, iso] of areas.entries()) {

@@ -130,10 +130,11 @@ Rückfall: Ist in der Verwaltung nichts gespeichert, gelten die Portainer-Variab
 Läuft von selbst. Nach dem ersten Ausrollen holt die App nacheinander: Regionen (VG250, Stadtteile), dann die Kartenkacheln (~1,5 GB in das Volume `tiles`, wenige Minuten), dann die Orte (Spielplätze, Toiletten …, je nach Overpass-Auslastung 5–30 Minuten). Stand sichtbar unter **Verwaltung → Daten und Orte**; dort auch „Jetzt abrufen“ und „Pausieren“.
 - Speicher: `tiles` ≈ 1,5 GB + beim Erneuern kurz dieselbe Menge zusätzlich (Prüfung: mindestens 3 GB frei).
 - Arbeitsspeicher: Web-Container 2 GB (Niedersachsen-Import).
-- Ausgehende Verbindungen des Web-Containers: overpass-api.de (+ Ausweichserver), sgx.geodatenzentrum.de, build.protomaps.com, opendata.lgln.niedersachsen.de (Luftbild), optional ibasemaps-api.arcgis.com. Beim Kartenaufruf der Besucher: keine direkten Anfragen an Dritte.
+- Ausgehende Verbindungen des Web-Containers: download.geofabrik.de (OSM-Auszug), overpass-api.de (+ Ausweichserver, Rückfall und Stadtteile), sgx.geodatenzentrum.de, build.protomaps.com, opendata.lgln.niedersachsen.de (Luftbild), optional ibasemaps-api.arcgis.com. Beim Kartenaufruf der Besucher: keine direkten Anfragen an Dritte.
 - Luftbild Bremen: Verwaltung → Einstellungen → Esri-API-Schlüssel (optional).
 - Abruffehler prüfen: Meldung in Verwaltung → Daten und Orte. Netz testen: `docker exec kinder-deutschlands-web-1 wget -qO- "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities" | head -c 200`
-- Nur zum Testen (nie in Produktion setzen): `SCHEDULER=off`, `OVERPASS_URL`, `VG250_URL`, `PROTOMAPS_BUILDS_URL`, `PROTOMAPS_BUILD_BASE`, `PMTILES_BIN`.
+- **Orte aus dem Deutschland-Auszug (F-022):** Seit 21.10. holt die App die OSM-Orte nicht mehr per Overpass (überlastet, für automatische Abrufe nicht gedacht), sondern lädt einmal pro Woche `germany-latest.osm.pbf` von Geofabrik (~4,5 GB, MD5 geprüft) nach `/data/tiles/osm-auszug/` (Volume `tiles`) und wertet ihn mit `osmium` im Container aus. Der erste Abruf nach dem Ausrollen dauert dadurch einige Minuten länger (Download + Filtern), alle weiteren Quellen nutzen dasselbe Ergebnis. Platz: dauerhaft ~5 GB, beim Erneuern kurz mehr (Prüfung: mindestens 12 GB frei). Overpass bleibt Rückfall. Schalter `OSM_SOURCE` (`auto` Standard, `overpass`, `datei`).
+- Nur zum Testen (nie in Produktion setzen): `SCHEDULER=off`, `OVERPASS_URL`, `VG250_URL`, `PROTOMAPS_BUILDS_URL`, `PROTOMAPS_BUILD_BASE`, `PMTILES_BIN`, `OSM_EXTRACT_URL`, `OSM_DIR`, `OSMIUM_BIN`.
 
 ## Veranstaltungen, Einrichtungen, Radar (ab Abschnitt 5)
 Läuft von selbst im Web-Container, keine neuen Container oder Variablen.
@@ -165,7 +166,7 @@ Die Abrufe wiederholen sich bei DNS-Aussetzern automatisch (bis zu 5 Versuche, d
 docker exec kinder-deutschlands-web-1 node -e "require('dns').lookup('sgx.geodatenzentrum.de',(e,a)=>console.log(e?e.code:a))"
 cat /etc/resolv.conf
 ```
-Kommt dort ein Fehler, liegt es am DNS des Servers (nicht an der App).
+Kommt dort ein Fehler, liegt es am DNS des Servers (nicht an der App). Sonderfall `EAI_AGAIN`, obwohl `nslookup` auf dem Server eine IPv4-Adresse zeigt (SERVFAIL nur für IPv6): Die App versucht es seit 21.10. automatisch nur über IPv4 (F-020).
 
 ## Falsches Zertifikat / „Nicht sicher“
 Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):
@@ -202,6 +203,7 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 | `LIVEKIT_ENABLED` | nein | Standard `true`; `false` schaltet Gruppenanrufe ab |
 | `LIVEKIT_NODE_IP` | nein | öffentliche IP für Gruppenanrufe, nur falls die automatische Ermittlung (DNS des APP_URL-Hosts) nicht stimmt |
 | `LIVEKIT_MAX_PARTICIPANTS` | nein | Standard `25` Personen je Gruppenanruf |
+| `OSM_SOURCE` | nein | `auto` (Standard: Deutschland-Auszug, Overpass als Rückfall), `overpass`, `datei` (F-022) |
 
 ## Domainwechsel später
 Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung. Chats bleiben erhalten (feste Chat-Serverkennung, D-035); Push-Abos melden sich auf der neuen Adresse neu an.

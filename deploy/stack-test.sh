@@ -10,6 +10,8 @@ sed "s#__WEB_IMAGE__#${IMG}#" "$ROOT/deploy/docker-compose.yml" > "$DIR/docker-c
 	echo "APP_URL=http://127.0.0.1:3120"
 	echo "APP_SECRET=$(openssl rand -hex 32)"
 	echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+	# Kein 4,5-GB-Download im Test (F-022): osmium wird unten direkt geprüft
+	echo "OSM_SOURCE=overpass"
 } > "$DIR/.env"
 cd "$DIR"
 dc() { docker compose -p kdstack "$@"; }
@@ -101,6 +103,9 @@ echo "OK  TURN-Server läuft"
 # Volumes für die App beschreibbar (Dienst „init“), sonst scheitern Bild-Uploads und Sicherungen vor Migrationen
 dc exec -T web sh -c 'test -w /data/media && test -w /backups' || fail "Volumes media/backups für die App nicht beschreibbar"
 echo "OK  Volumes media und backups beschreibbar"
+# F-022: osmium im Container (aus dem Quellcode gebaut) und Ordner für den OSM-Auszug beschreibbar
+dc exec -T web sh -c 'osmium --version >/dev/null && mkdir -p /data/tiles/osm-auszug && test -w /data/tiles/osm-auszug' || fail "osmium fehlt im Container oder OSM-Ordner nicht beschreibbar"
+echo "OK  osmium im Container, OSM-Ordner beschreibbar"
 
 # Gruppenanrufe (D-072): LiveKit läuft mit der Konfiguration der App, Signalweg nur über /livekit/rtc der App
 for i in $(seq 1 30); do

@@ -2,6 +2,15 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-21 · Orte aus dem Deutschland-Auszug statt Overpass (F-022, D-075) + Indoorspielplätze breiter (F-021)
+
+**Was**
+- **F-022:** Die Orte-Quellen holen OpenStreetMap-Daten jetzt aus dem Deutschland-Auszug von Geofabrik: wöchentlich laden (~4,5 GB, MD5-Prüfung, Platzprüfung ≥ 12 GB frei, alte Datei bleibt bei Fehlern stehen), einmal mit `osmium tags-filter` alle benötigten Merkmale filtern, als GeoJSON-Zeilen exportieren; jede Quelle liest daraus nur ihre Auswahl (dieselben Regeln wie die Overpass-Abfragen). Overpass nur noch Rückfall; Schalter `OSM_SOURCE`. osmium wird im Docker-Build aus dem Quellcode gebaut (Commits fest geprüft); Stack-Test prüft osmium im Container.
+- **F-021 Weg 1:** Indoorspielplätze zusätzlich als Spielplatz mit `indoor=yes`, Trampolinhallen (`leisure=trampoline_park`) und über typische Namen (Indoorspielplatz, Spielparadies, Kinderland, Tobeland, Kinderwelt, Spielscheune …) – nur an Freizeit-/Ausflugsobjekten, nie an Kitas, Schulen, Geschäften oder Haltestellen. Solche Spielplätze erscheinen nicht mehr zusätzlich als Außenspielplatz.
+**Warum** Overpass am 21.10. überlastet („for automated or high-volume use, run a local Overpass API instance“), Zeitüberschreitungen bei Spielplätzen/Toiletten; Jan: „grade indoor haben wir noch nix“.
+**Module** M23 Datenversorgung, M24 Betrieb · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler; 229 Unit/DB-Tests (neu `osmfile.unit.test.ts`: Mini-Auszug mit echtem osmium über lokalen HTTP-Server mit MD5 – ein Download für alle Quellen, jede Quelle genau ihre Orte, Spielplatzfläche mit Spielgerät, Relation mit Mittelpunkt, veraltete Datei neu, falsche Prüfsumme bricht ab und lässt alte Datei stehen; Auswahlregeln Indoor inkl. Ausschlüsse; Umwandlung Knoten/Weg/Relation); Rauchtest 330 Prüfungen (Overpass-Weg); CI installiert osmium für die Tests; Build. **Nicht getestet:** Docker-Build von osmium (lokal nicht erlaubt, läuft in der CI), echter 4,5-GB-Auszug und Laufzeit auf dem Server.
+
 ## 2026-10-21 · Mehr Kartendaten: neue Ortsarten aus OpenStreetMap (F-018, D-074)
 
 **Was**

@@ -33,6 +33,7 @@ const env = {
 	SCHEDULER: 'off',
 	TILES_DIR: '/tmp/kd-smoke-tiles',
 	OVERPASS_URL: 'http://127.0.0.1:3998/overpass',
+	OSM_SOURCE: 'overpass', // Rauchtest nutzt das Overpass-Double; Datei-Weg prüft tests/osmfile.unit.test.ts
 	VG250_URL: 'http://127.0.0.1:3998/vg250',
 	PROTOMAPS_BUILDS_URL: 'http://127.0.0.1:3998/builds.json',
 	PROTOMAPS_BUILD_BASE: 'http://127.0.0.1:3998/build/',

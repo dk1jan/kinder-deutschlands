@@ -67,6 +67,9 @@ services:
       LIVEKIT_URL: http://livekit:7880
       LIVEKIT_NODE_IP: ${LIVEKIT_NODE_IP:-}
       LIVEKIT_MAX_PARTICIPANTS: ${LIVEKIT_MAX_PARTICIPANTS:-25}
+      # Orte aus OpenStreetMap (F-022): auto = Deutschland-Auszug von Geofabrik (wöchentlich, ~4,5 GB im Kachel-Volume),
+      # Overpass nur als Rückfall; overpass = nur Overpass; datei = nur Auszug
+      OSM_SOURCE: ${OSM_SOURCE:-auto}
       # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
       NODE_OPTIONS: --max-old-space-size=1536
     ports:
