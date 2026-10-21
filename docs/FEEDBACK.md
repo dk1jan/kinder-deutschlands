@@ -15,6 +15,7 @@ Regeln
 | ID | Art | Wo (Seite/Modul) | Was stört / soll sein | Prio | Status |
 |---|---|---|---|---|---|
 | F-012 | Frage | Karte, Grundkarte („Kartenhintergrund“), Verwaltung → Daten | Grundkarte ist ein fester Ausschnitt: Gebiet `6.6,51.29,11.62,53.9` (HB+NI), Build 20261018, 1.399 MB, bis Zoom 15, geladen 18.10. Außerhalb leer; Berlin/Osten und München nur in der groben Übersicht sichtbar, beim Heranzoomen leer (Kachelraster, kein Ladefehler). Soll die Grundkarte auf ganz Deutschland? **Entschieden (D-068): Grundkarte ganz Deutschland, Zoom 15 überall.** Ablauf: (1) Jan stellt in Verwaltung → Daten → Kartenhintergrund Gebiet `5.8,47.2,15.1,55.1`, Zoom 15 um und klickt „Jetzt abrufen“ (kein Code; Platz geprüft: 313 GB frei); (2) Jan testet; (3) danach schnell DE-weit ausrollen, dann nachbessern. Prüfliste unter „Testnotizen“. | P2 | geplant |
+| F-017 | Fehler | Nachrichten, Chat-Schlüssel (KeyCard, `client.svelte.ts`) | Jan sieht „Passwort geändert – ältere Nachrichten behalten?“, obwohl er nur das Login-Passwort eingegeben hat; dazu die rote Meldung „Das Passwort passt nicht …“ aus dem vorherigen Kasten. Annahme (nicht am Gerät geprüft): Sicherung stammt aus der Zeit vor D-066 (Wiederherstellungsschlüssel, keine Passphrase-Info) → `keyFromSecret` liefert immer null → Zustand „abweichend“ mit falschem Text. Soll: eigener Zustand „frühere Version“ (Schlüssel eingeben oder neu beginnen), Fehlermeldung beim Wechsel löschen, Test dafür. | P2 | neu |
 
 ## Details und offene Fragen
 
