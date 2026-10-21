@@ -53,7 +53,12 @@ function run(cmd: string, args: string[], signal?: AbortSignal): Promise<string>
 		p.stdout.on('data', (d) => (out += d));
 		p.stderr.on('data', (d) => (err = (err + d).slice(-2000)));
 		p.on('error', (e) => reject(new Error(`${cmd}: ${(e as NodeJS.ErrnoException).code === 'ENOENT' ? 'nicht installiert' : e.message}`)));
-		p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(`${cmd} ${args[0]}: ${err.trim().split('\n').pop() || `Fehlercode ${code}`}`))));
+		p.on('close', (code, sig) => {
+			if (code === 0) return resolve(out);
+			// Vom System beendet (z. B. Speicherlimit des Containers): sonst stünde hier nur „Fehlercode null“
+			const why = sig ? `abgebrochen (${sig}${sig === 'SIGKILL' ? ' – vermutlich zu wenig Arbeitsspeicher im Container' : ''})` : err.trim().split('\n').pop() || `Fehlercode ${code}`;
+			reject(new Error(`${cmd} ${args[0]}: ${why}`));
+		});
 	});
 }
 

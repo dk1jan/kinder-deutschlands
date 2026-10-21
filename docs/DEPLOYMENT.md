@@ -129,7 +129,7 @@ Rückfall: Ist in der Verwaltung nichts gespeichert, gelten die Portainer-Variab
 ## Karte und Datenabrufe (ab Abschnitt 2)
 Läuft von selbst. Nach dem ersten Ausrollen holt die App nacheinander: Regionen (VG250, Stadtteile), dann die Kartenkacheln (~1,5 GB in das Volume `tiles`, wenige Minuten), dann die Orte (Spielplätze, Toiletten …, je nach Overpass-Auslastung 5–30 Minuten). Stand sichtbar unter **Verwaltung → Daten und Orte**; dort auch „Jetzt abrufen“ und „Pausieren“.
 - Speicher: `tiles` ≈ 1,5 GB + beim Erneuern kurz dieselbe Menge zusätzlich (Prüfung: mindestens 3 GB frei).
-- Arbeitsspeicher: Web-Container 2 GB (Niedersachsen-Import).
+- Arbeitsspeicher: Web-Container bis 6 GB (osmium filtert den Deutschland-Auszug, F-022; Node selbst 1,5 GB).
 - Ausgehende Verbindungen des Web-Containers: download.geofabrik.de (OSM-Auszug), overpass-api.de (+ Ausweichserver, Rückfall und Stadtteile), sgx.geodatenzentrum.de, build.protomaps.com, opendata.lgln.niedersachsen.de (Luftbild), optional ibasemaps-api.arcgis.com. Beim Kartenaufruf der Besucher: keine direkten Anfragen an Dritte.
 - Luftbild Bremen: Verwaltung → Einstellungen → Esri-API-Schlüssel (optional).
 - Abruffehler prüfen: Meldung in Verwaltung → Daten und Orte. Netz testen: `docker exec kinder-deutschlands-web-1 wget -qO- "https://sgx.geodatenzentrum.de/wfs_vg250?service=WFS&request=GetCapabilities" | head -c 200`

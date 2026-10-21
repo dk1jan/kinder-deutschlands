@@ -81,7 +81,8 @@ services:
       - media:/data/media
       - synapse-config:/synapse-config
     networks: [backend, frontend]
-    mem_limit: 2g
+    # 6 GB: osmium filtert den Deutschland-Auszug (F-022, braucht > 2 GB); Node selbst bleibt bei 1,5 GB (NODE_OPTIONS)
+    mem_limit: 6g
     logging: *logging
 
   db:

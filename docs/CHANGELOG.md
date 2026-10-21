@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-21 · Korrektur: Web-Container 6 GB Arbeitsspeicher für osmium (F-022)
+
+**Was** Download des Auszugs klappte (4,87 GB, Prüfsumme ok), aber `osmium tags-filter` wurde zweimal vom Speicherlimit des Containers beendet (`Memory cgroup out of memory: Killed process … (osmium)` bei ~2 GB; Server: 31 GB, 14 GB frei). `mem_limit` des Web-Containers 2 GB → 6 GB (Node bleibt bei 1,5 GB). Fehlermeldung bei vom System beendeten Programmen jetzt verständlich („abgebrochen (SIGKILL – vermutlich zu wenig Arbeitsspeicher im Container)“ statt „Fehlercode null“).
+**Warum** Live-Befund per SSH (dmesg, Laufprotokoll).
+**Module** M23, M24 Betrieb · **DB-Migration** nein
+**Tests** svelte-check, Unit-Tests Auszug/Orte, CI-Stack-Test. **Nicht getestet:** tatsächlicher Speicherbedarf von osmium für ganz Deutschland – zeigt der nächste Lauf.
+
 ## 2026-10-21 · Korrektur: OSM-Auszug mit Prüfsumme des datierten Stands (F-022)
 
 **Was** Erster Lauf auf dem Server scheiterte mit „download.geofabrik.de: HTTP 404“: Geofabrik bietet für `germany-latest.osm.pbf` keine `.md5` an, nur für datierte Stände (`germany-261019.osm.pbf.md5`). Jetzt: erst `latest.md5` versuchen, sonst den neuesten datierten Stand der letzten 14 Tage samt Prüfsumme laden.
