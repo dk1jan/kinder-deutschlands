@@ -92,22 +92,8 @@ export async function applyRun(sql: Sql, runId: number, actorId: string | null):
 				}
 				continue;
 			}
+			if (it.action === 'neu') continue; // neue Orte unten paketweise (F-019)
 			const area = d.area ? JSON.stringify(d.area) : null;
-			if (it.action === 'neu') {
-				const [p] = await tx`
-					insert into places (kind, name, location, area, address, features, opening_hours, website, status, confirmation, checked_at)
-					values (${d.kind}, ${d.name},
-						${area ? tx`ST_PointOnSurface(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(${area}), 4326)))` : tx`ST_SetSRID(ST_MakePoint(${d.lon}, ${d.lat}), 4326)`},
-						${area ? tx`ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(${area}), 4326))` : null},
-						${tx.json(d.address as never)}, ${tx.json(d.features as never)}, ${d.openingHours}, ${d.website}, 'aktiv', 'importiert', now())
-					returning id`;
-				await tx`insert into place_sources (source_key, external_id, place_id, external_url, hash, raw)
-					values (${key}, ${it.external_id}, ${p.id}, ${d.url}, ${d.hash}, ${tx.json(d.raw as never)})
-					on conflict (source_key, external_id) do update set place_id = excluded.place_id, hash = excluded.hash, raw = excluded.raw,
-						external_url = excluded.external_url, last_seen_at = now(), changed_at = now(), gone_at = null`;
-				touched.push(p.id);
-				continue;
-			}
 			// geändert (oder wieder aufgetaucht)
 			const [ps] = await tx`update place_sources set hash = ${d.hash}, raw = ${tx.json(d.raw as never)}, external_url = ${d.url},
 				last_seen_at = now(), changed_at = now(), gone_at = null
@@ -146,6 +132,8 @@ export async function applyRun(sql: Sql, runId: number, actorId: string | null):
 				where id = ${ps.place_id}`;
 			touched.push(ps.place_id);
 		}
+		// Neue Orte paketweise anlegen (F-019): 1.000 je Anweisung statt zwei Anweisungen je Ort.
+		touched.push(...(await insertNew(tx as unknown as Sql, key, items.filter((i) => i.action === 'neu') as unknown as { external_id: string; data: unknown }[])));
 		// Unveränderte als gesehen markieren
 		await tx`update place_sources set last_seen_at = now() where source_key = ${key} and gone_at is null
 			and last_seen_at < (select started_at from import_runs where id = ${runId})
@@ -154,6 +142,8 @@ export async function applyRun(sql: Sql, runId: number, actorId: string | null):
 			where s.place_id = p.id and s.source_key = ${key} and s.gone_at is null`;
 		let dubletten = 0;
 		if (touched.length) {
+			// Viele neue Zeilen: Statistik auffrischen, sonst wählt die Datenbank für Regionen/Dubletten einen schlechten Plan (F-019)
+			if (touched.length > 1000) await tx`analyze places`;
 			await assignRegions(tx as unknown as Sql, touched);
 			dubletten = await detectDuplicates(tx as unknown as Sql, touched);
 		}
@@ -164,6 +154,55 @@ export async function applyRun(sql: Sql, runId: number, actorId: string | null):
 	})) as RunCounts;
 }
 
+const NEW_CHUNK = 1000;
+
+/** Legt neue Orte samt Herkunft paketweise an und gibt ihre IDs zurück. */
+async function insertNew(sql: Sql, key: string, items: { external_id: string; data: unknown }[]): Promise<string[]> {
+	const ids: string[] = [];
+	for (let i = 0; i < items.length; i += NEW_CHUNK) {
+		const rows = items.slice(i, i + NEW_CHUNK).map((it) => {
+			const d = it.data as ImportRecord & { hash: string };
+			return {
+				ext: it.external_id,
+				kind: d.kind,
+				name: d.name ?? null,
+				lon: d.lon ?? null,
+				lat: d.lat ?? null,
+				area: d.area ?? null,
+				address: d.address ?? {},
+				features: d.features ?? {},
+				oh: d.openingHours ?? null,
+				web: d.website ?? null,
+				url: d.url ?? null,
+				hash: d.hash,
+				raw: d.raw ?? {}
+			};
+		});
+		const r = await sql`
+			with input as materialized (
+				select gen_random_uuid() as id, x.*,
+					case when x.area is not null then ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(x.area::text), 4326)) end as geom
+				from jsonb_to_recordset(${sql.json(rows as never)}) as x(ext text, kind text, name text, lon float8, lat float8, area jsonb,
+					address jsonb, features jsonb, oh text, web text, url text, hash text, raw jsonb)
+			), p as (
+				insert into places (id, kind, name, location, area, address, features, opening_hours, website, status, confirmation, checked_at)
+				select id, kind, name, coalesce(ST_PointOnSurface(geom), ST_SetSRID(ST_MakePoint(lon, lat), 4326)), geom,
+					address, features, oh, web, 'aktiv', 'importiert', now()
+				from input
+				returning id
+			), s as (
+				insert into place_sources (source_key, external_id, place_id, external_url, hash, raw)
+				select ${key}, i.ext, p.id, i.url, i.hash, i.raw from input i join p on p.id = i.id
+				on conflict (source_key, external_id) do update set place_id = excluded.place_id, hash = excluded.hash, raw = excluded.raw,
+					external_url = excluded.external_url, last_seen_at = now(), changed_at = now(), gone_at = null
+				returning place_id
+			)
+			select place_id as id from s`;
+		for (const x of r) ids.push(x.id as string);
+	}
+	return ids;
+}
+
 /** Feinste passende Region (Stadtteil vor Gemeinde vor Kreis vor Land) über die Geometrie. */
 export async function assignRegions(sql: Sql, placeIds?: string[]) {
 	await sql`update places p set region_code = (
@@ -172,14 +211,21 @@ export async function assignRegions(sql: Sql, placeIds?: string[]) {
 		where ${placeIds ? sql`p.id = any(${placeIds}::uuid[])` : sql`true`}`;
 }
 
+/** Grober Vorfilter in Grad für den Kartenindex: 0,0005° ≥ 30 m in jeder Richtung zwischen 47° und 55° Nord (Ost-West ca. 32–38 m). */
+const DUP_DEG = 0.0005;
+
 /** Gleiche Art, höchstens 30 m entfernt, beide sichtbar → Prüffall. Bereits entschiedene Paare bleiben entschieden. */
 export async function detectDuplicates(sql: Sql, placeIds: string[]): Promise<number> {
 	const r = await sql`
 		insert into place_duplicates (place_a, place_b, distance_m)
 		select least(a.id, b.id), greatest(a.id, b.id), ST_Distance(a.location::geography, b.location::geography)
-		from places a join places b on b.kind = a.kind and b.id <> a.id
+		from unnest(${placeIds}::uuid[]) as t(id)
+		join places a on a.id = t.id
+		join places b on b.kind = a.kind and b.id <> a.id
+			-- erst über den Geometrie-Index grob, dann genau in Metern (F-019: ohne Vorfilter jeder gegen jeden)
+			and ST_DWithin(a.location, b.location, ${DUP_DEG}::float8)
 			and ST_DWithin(a.location::geography, b.location::geography, 30)
-		where a.id = any(${placeIds}::uuid[]) and a.status in ('aktiv', 'pruefung') and b.status in ('aktiv', 'pruefung')
+		where a.status in ('aktiv', 'pruefung') and b.status in ('aktiv', 'pruefung')
 		on conflict do nothing`;
 	return r.count;
 }

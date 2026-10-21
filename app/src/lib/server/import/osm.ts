@@ -2,7 +2,7 @@
 // Daten © OpenStreetMap-Mitwirkende, Lizenz ODbL 1.0 – Namensnennung an Karte und Detailseite.
 import { CHANGING_LOCATIONS, SURFACES, type Features, type Kind } from '$lib/places';
 import type { ImportRecord } from './types';
-import { netError } from './net';
+import { fetchIpv4, netCode, netError } from './net';
 
 export const OVERPASS_DEFAULT = [
 	'https://overpass-api.de/api/interpreter',
@@ -270,7 +270,8 @@ export interface FetchOptions {
 /** Overpass abfragen – mit Ausweich-Servern und wachsender Wartezeit bei Überlastung (429/502/504). */
 export async function overpass(query: string, o: FetchOptions): Promise<OsmElement[]> {
 	const eps = o.endpoints?.length ? o.endpoints : OVERPASS_DEFAULT;
-	const f = o.fetchImpl ?? fetch;
+	const v4 = new Set<string>();
+	const f = (ep: string, init: RequestInit) => (v4.has(ep) ? fetchIpv4(ep, init) : (o.fetchImpl ?? fetch)(ep, init));
 	const retries = o.retries ?? 4;
 	const wait = o.waitMs ?? ((a: number) => 30000 * 2 ** a);
 	let last = '';
@@ -299,6 +300,8 @@ export async function overpass(query: string, o: FetchOptions): Promise<OsmEleme
 				return data.elements;
 			} catch (e) {
 				last = netError(e, new URL(ep).host);
+				// IPv6-Anfrage scheitert beim Namensserver (F-020): beim nächsten Versuch nur über IPv4
+				if (!o.fetchImpl && netCode(e) === 'EAI_AGAIN') v4.add(ep);
 			}
 		}
 		if (attempt < retries - 1) await new Promise((r) => setTimeout(r, wait(attempt)));

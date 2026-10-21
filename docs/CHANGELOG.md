@@ -2,6 +2,15 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-21 · Übernahme großer Abrufe in Sekunden statt Stunden (F-019) + IPv4-Rückfall bei DNS (F-020)
+
+**Was**
+- **F-019:** Der Spielplatz-Abruf für ganz Deutschland (119.887 gelesen, 104.040 neu) hing live über 7,5 Stunden in der Dublettenprüfung und blockierte alle anderen Abrufe. Ursache: der Abstandsvergleich in Metern (`geography`) nutzt den Kartenindex nicht → jeder neue Ort gegen alle. Jetzt: erst grober Vorfilter über den Index (0,0005°, deckt 30 m in ganz Deutschland ab), dann genaue Prüfung in Metern; vor Regionen-Zuordnung und Dublettenprüfung wird bei mehr als 1.000 neuen Orten die Statistik aufgefrischt (sonst wählt die Datenbank innerhalb der Übernahme einen schlechten Plan); neue Orte werden in Paketen zu 1.000 angelegt statt mit zwei Anweisungen je Ort. Ergebnis gleich (Dubletten bis 30 m, Flächen, Herkunft), Ablauf weiter in einer Transaktion.
+- **F-020:** VG250 seit 19.10. nicht abrufbar: Der Namensserver antwortet für `sgx.geodatenzentrum.de` auf die IPv6-Anfrage mit SERVFAIL, im Container scheitert dadurch die ganze Auflösung (`EAI_AGAIN`), obwohl die IPv4-Adresse da ist. Abrufe (VG250, Kachel-Builds, Overpass) versuchen es dann sofort noch einmal nur über IPv4.
+**Warum** Live-Befund in der Datenzentrale (Spielplätze „läuft“, Bestand 15.039 trotz 104.040 neuen; VG250 „DNS vorübergehend nicht erreichbar“), Diagnose per SSH mit Jan.
+**Module** M23 Datenversorgung · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler; 219 Unit/DB-Tests (neu `import-mass.db.test.ts`: 6.005 Orte inkl. Fläche, 3 Dubletten erkannt, 1 knapp außerhalb nicht, Felder vollständig, zweiter Lauf ohne Änderung; Abfrageplan nutzt `places_location_idx`; neu `net.unit.test.ts`: IPv4-Abruf mit Status/Kopfzeilen/POST/Fehlern, Rückfall nur bei `EAI_AGAIN`, ohne Wartezeit); Messung 110.000 Orte: Abgleich 1 s, Zwischenspeicher 2,6 s, Übernahme 15 s (alte Dublettenprüfung: 600 Orte gegen 6.000 bereits 7,2 s); Rauchtest 327 Prüfungen; Build. **Nicht getestet:** echter BKG-Server und echte OSM-Daten (Flächen sind aufwendiger als Punkte) – zeigt der nächste Lauf auf dem Server.
+
 ## 2026-10-20 · Menü mit Gruppen, Startseite mit Kopf zuerst (F-016, D-073)
 
 **Was**
