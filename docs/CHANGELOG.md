@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-21 · Mehr Kartendaten: neue Ortsarten aus OpenStreetMap (F-018, D-074)
+
+**Was**
+- Neue Quellen für ganz Deutschland (je 16 Länder, wöchentlich, gestaffelt 15–45 Min nach dem Ausrollen): **Familiencafés** (Cafés, Restaurants, Eiscafés mit Spielecke – `kids_area`), **Stillmöglichkeiten** (`baby_feeding` yes/room), **Bibliotheken** (`amenity=library`, ohne Hochschul-/Instituts-/Archivbibliotheken), **Familienzentren** (`community_centre=family_centre`).
+- „Zoos, Freizeitparks, Bäder“ holt zusätzlich **Minigolf** und **Kletterhallen** (als Ausflugsort mit Art); Kletterhallen landen nicht mehr fälschlich bei Bädern.
+- Neue Arten **Bibliothek** und **Familienzentrum** mit eigenem Kartensymbol (Buch, Haus mit Herz) und Filter auf der Karte; Filter „Familiencafés“ heißt jetzt „Cafés & Stillen“. Neue Merkmale: Spielecke, Hochstuhl, eigener Stillraum (dreiwertig, „unbekannt“ bleibt ehrlich unbekannt).
+- Google Maps verworfen (Nutzungsbedingungen, REQUIREMENTS, Quelle/Lizenz je Ort).
+**Warum** Jan: „wir brauchen jetzt Daten für die Karte“.
+**Module** M23 Datenversorgung, M03 Karte · **DB-Migration** ja (`0013_ortsarten.sql`: Ortsarten erweitert, 4 Quellen, Name der Ausflugsquelle)
+**Tests** svelte-check 0 Fehler; 224 Unit/DB-Tests (neu: Abfragen und Übersetzung für Familiencafé, Stillen, Bibliothek inkl. Ausschluss Hochschule/Institut, Familienzentrum, Minigolf/Kletterhalle/Schwimmhalle; Quellenkatalog 13); Rauchtest 330 Prüfungen (neu: Kartenfilter, 4 Quellen mit 16 Ländern, Ortsseite einer Bibliothek); Symbole gerendert und angesehen; Build. **Nicht getestet:** echte Overpass-Abfragen (aus der Arbeitsumgebung nicht erreichbar) – Anzahl und Qualität zeigt der erste Lauf auf dem Server.
+
 ## 2026-10-21 · Übernahme großer Abrufe in Sekunden statt Stunden (F-019) + IPv4-Rückfall bei DNS (F-020)
 
 **Was**

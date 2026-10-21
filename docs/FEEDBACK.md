@@ -16,7 +16,6 @@ Regeln
 |---|---|---|---|---|---|
 | F-012 | Frage | Karte, Grundkarte („Kartenhintergrund“), Verwaltung → Daten | Grundkarte ist ein fester Ausschnitt: Gebiet `6.6,51.29,11.62,53.9` (HB+NI), Build 20261018, 1.399 MB, bis Zoom 15, geladen 18.10. Außerhalb leer; Berlin/Osten und München nur in der groben Übersicht sichtbar, beim Heranzoomen leer (Kachelraster, kein Ladefehler). Soll die Grundkarte auf ganz Deutschland? **Entschieden (D-068): Grundkarte ganz Deutschland, Zoom 15 überall.** Ablauf: (1) Jan stellt in Verwaltung → Daten → Kartenhintergrund Gebiet `5.8,47.2,15.1,55.1`, Zoom 15 um und klickt „Jetzt abrufen“ (kein Code; Platz geprüft: 313 GB frei); (2) Jan testet; (3) danach schnell DE-weit ausrollen, dann nachbessern. Prüfliste unter „Testnotizen“. | P2 | geplant |
 | F-017 | Fehler | Nachrichten, Chat-Schlüssel (KeyCard, `client.svelte.ts`) | Jan sieht „Passwort geändert – ältere Nachrichten behalten?“, obwohl er nur das Login-Passwort eingegeben hat; dazu die rote Meldung „Das Passwort passt nicht …“ aus dem vorherigen Kasten. Annahme (nicht am Gerät geprüft): Sicherung stammt aus der Zeit vor D-066 (Wiederherstellungsschlüssel, keine Passphrase-Info) → `keyFromSecret` liefert immer null → Zustand „abweichend“ mit falschem Text. Soll: eigener Zustand „frühere Version“ (Schlüssel eingeben oder neu beginnen), Fehlermeldung beim Wechsel löschen, Test dafür. | P2 | neu |
-| F-018 | Dazu | Karte, Orte-Import (`import/osm.ts`) | Jan: mehr Daten für die Karte, z. B. aus Google Maps. Google verworfen (Nutzungsbedingungen, REQUIREMENTS „Nicht einfach Google Maps … kopieren“). Vorschlag: (1) prüfen, ob DE-Abruf vollständig (15.039 Spielplätze wirkt niedrig – Annahme), (2) weitere OSM-Arten: Familiencafés + Stillmöglichkeit (Arten existieren, werden nicht befüllt), Bibliotheken, Familienzentren, Tierparks, Minigolf/Klettern, (3) kommunale Open Data später. Bau erst nach „go“. | P2 | Vorschlag |
 
 ## Details und offene Fragen
 
@@ -61,6 +60,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-018 | erledigt (Code): Familiencafés (kids_area), Stillmöglichkeiten (baby_feeding), Bibliotheken, Familienzentren (community_centre=family_centre), Minigolf + Kletterhallen bei Ausflügen – ganz Deutschland; Google verworfen. Anzahl zeigt der erste Lauf auf dem Server | CHANGELOG 21.10. Ortsarten |
 | F-019 | erledigt: Dublettenprüfung über den Kartenindex, neue Orte paketweise, Statistik vor der Prüfung; 110.000 Orte ca. 15 s im Test (vorher > 7 h live) | CHANGELOG 21.10. Übernahme |
 | F-020 | erledigt (Code): bei `EAI_AGAIN` sofort erneut nur über IPv4 (VG250, Kachel-Builds, Overpass); auf dem Server beobachten | CHANGELOG 21.10. Übernahme |
 | F-016 | erledigt: Menü mit drei Gruppen (Entdecken ▾ · Karte · Community ▾ · Nachrichten · Wissen ▾), kein Punkt „Startseite“, Handy-Menü als Blatt, Startseite mit Kopf zuerst und Übersicht unten (D-073) | CHANGELOG 20.10. Menü |

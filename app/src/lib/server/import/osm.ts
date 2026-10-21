@@ -10,7 +10,7 @@ export const OVERPASS_DEFAULT = [
 	'https://overpass.kumi.systems/api/interpreter'
 ];
 
-export type Selector = 'spielplatz' | 'toilette' | 'wickeln' | 'indoor' | 'ausflug';
+export type Selector = 'spielplatz' | 'toilette' | 'wickeln' | 'indoor' | 'ausflug' | 'familiencafe' | 'stillen' | 'bibliothek' | 'familienzentrum';
 
 const NOT_PRIVATE = '["access"!~"^(private|no)$"]';
 
@@ -29,7 +29,16 @@ export function buildQuery(selector: Selector, iso: string): string {
 		case 'indoor':
 			return `${head}${area}nwr["leisure"="indoor_play"]${NOT_PRIVATE}(area.a);out center qt;`;
 		case 'ausflug':
-			return `${head}${area}(nwr["tourism"="zoo"](area.a);nwr["tourism"="theme_park"](area.a);nwr["leisure"="water_park"](area.a);nwr["leisure"="sports_centre"]["sport"~"swimming"](area.a);nwr["amenity"="public_bath"](area.a););out center qt;`;
+			return `${head}${area}(nwr["tourism"="zoo"](area.a);nwr["tourism"="theme_park"](area.a);nwr["leisure"="water_park"](area.a);nwr["leisure"="sports_centre"]["sport"~"swimming"](area.a);nwr["amenity"="public_bath"](area.a);nwr["leisure"="miniature_golf"]${NOT_PRIVATE}(area.a);nwr["leisure"="sports_centre"]["sport"~"climbing"]${NOT_PRIVATE}(area.a););out center qt;`;
+		// F-018: Merkmale laut OSM-Wiki (kids_area, baby_feeding, community_centre=family_centre)
+		case 'familiencafe':
+			return `${head}${area}nwr["amenity"~"^(cafe|restaurant|ice_cream)$"]["kids_area"~"^(yes|designated|limited)$"]${NOT_PRIVATE}(area.a);out center qt;`;
+		case 'stillen':
+			return `${head}${area}nwr["baby_feeding"~"^(yes|room)$"]${NOT_PRIVATE}(area.a);out center qt;`;
+		case 'bibliothek':
+			return `${head}${area}nwr["amenity"="library"]${NOT_PRIVATE}(area.a);out center qt;`;
+		case 'familienzentrum':
+			return `${head}${area}nwr["community_centre"="family_centre"]${NOT_PRIVATE}(area.a);out center qt;`;
 	}
 }
 
@@ -85,6 +94,16 @@ function common(t: Record<string, string>): Features {
 	if (t.fee === 'no') f.kostenlos = true;
 	if (t.fee === 'yes') f.kostenlos = false;
 	if (t.charge && t.charge.length < 40) f.gebuehr = t.charge;
+	return f;
+}
+
+/** Familien-Merkmale (F-018): Spielecke, Hochstuhl, Stillraum. Dreiwertig – fehlt = unbekannt. */
+function familyExtras(t: Record<string, string>, f: Features): Features {
+	if (t.kids_area) f.spielecke = t.kids_area !== 'no';
+	const hs = yesNo(t.highchair);
+	if (hs !== undefined) f.hochstuhl = hs;
+	if (t.baby_feeding === 'room') f.stillraum = true;
+	else if (t.baby_feeding === 'no') f.stillraum = false;
 	return f;
 }
 
@@ -249,9 +268,28 @@ export function toRecords(selector: Selector, elements: OsmElement[]): ImportRec
 		} else if (selector === 'indoor') {
 			r = base(e, 'indoorspielplatz', common(t), t.name ?? null);
 		} else if (selector === 'ausflug') {
-			const bath = t.leisure === 'water_park' || t.leisure === 'sports_centre' || t.amenity === 'public_bath';
+			const climbing = t.leisure === 'sports_centre' && /climbing/.test(t.sport ?? '') && !/swimming/.test(t.sport ?? '');
+			const bath = t.leisure === 'water_park' || (t.leisure === 'sports_centre' && !climbing) || t.amenity === 'public_bath';
 			r = base(e, bath ? 'schwimmbad' : 'ausflugsort', common(t), t.name ?? null);
-			if (r && !bath) r.features.einrichtung = t.tourism === 'zoo' ? 'Zoo / Tierpark' : 'Freizeitpark';
+			if (r && !bath)
+				r.features.einrichtung = t.tourism === 'zoo' ? 'Zoo / Tierpark' : t.leisure === 'miniature_golf' ? 'Minigolf' : climbing ? 'Kletterhalle' : 'Freizeitpark';
+		} else if (selector === 'familiencafe') {
+			const f = familyExtras(t, common(t));
+			f.spielecke = true;
+			const typ = EINRICHTUNG[t.amenity];
+			if (typ) f.einrichtung = typ;
+			r = base(e, 'familiencafe', f, t.name ?? null);
+		} else if (selector === 'stillen') {
+			const f = familyExtras(t, common(t));
+			const typ = EINRICHTUNG[t.amenity] ?? EINRICHTUNG[t.shop] ?? null;
+			if (typ) f.einrichtung = typ;
+			r = base(e, 'stillraum', f, t.name ?? null);
+		} else if (selector === 'bibliothek') {
+			// Hochschul-, Instituts- und Archivbibliotheken sind für Familien selten offen – über den Namen auslassen
+			if (/universit|hochschul|institut|archiv|seminar|fakult|akademie/i.test(t.name ?? '')) continue;
+			r = base(e, 'bibliothek', familyExtras(t, common(t)), t.name ?? null);
+		} else if (selector === 'familienzentrum') {
+			r = base(e, 'familienzentrum', familyExtras(t, common(t)), t.name ?? null);
 		}
 		if (r) out.push(r);
 	}

@@ -499,6 +499,14 @@ try {
 	const X2 = client();
 	r = await X2.req('/karte');
 	check(r.status === 200 && r.body.includes('Familienkarte') && r.body.includes('/orte/'), 'Karte öffentlich, mit Liste ohne JavaScript');
+	check(['Bibliotheken', 'Familienzentren', 'Cafés &amp; Stillen'].every((x) => r.body.includes(x)), 'Karte: Filter für neue Ortsarten (F-018)');
+	{
+		const keys = (await sqlT`select key from data_sources where key in ('osm-familiencafes','osm-stillen','osm-bibliotheken','osm-familienzentren') and jsonb_array_length(config->'areas') = 16`).map((x) => x.key);
+		check(keys.length === 4, `Quellen für neue Ortsarten, ganz Deutschland (${keys.join(', ')})`);
+		const [bib] = await sqlT`insert into places (kind, name, location, status, confirmation) values ('bibliothek', 'Smoke-Stadtbibliothek', ST_SetSRID(ST_MakePoint(8.81, 53.08), 4326), 'aktiv', 'redaktion') returning id`;
+		const rb = await X2.req(`/orte/${bib.id}`);
+		check(rb.status === 200 && rb.body.includes('Smoke-Stadtbibliothek') && rb.body.includes('Bibliothek'), 'Ortsseite für neue Art „Bibliothek“');
+	}
 	const pid = fc.features.find((f) => f.properties.k === 'spielplatz').properties.id;
 	r = await X2.req(`/orte/${pid}`);
 	check(r.status === 200 && r.body.includes('OpenStreetMap') && r.body.includes('Quelle und Aktualität') && r.body.includes('Noch keine Erfahrungen'), 'Ortsseite mit Quelle, Aktualität, ehrlich ohne Bewertungen');

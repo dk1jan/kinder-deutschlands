@@ -9,7 +9,9 @@ export const KINDS = {
 	stillraum: { label: 'Stillmöglichkeit', plural: 'Stillen', color: '#a9d4ec', ink: '#0f2238', icon: 'stillen' },
 	familiencafe: { label: 'Familiencafé', plural: 'Familiencafés', color: '#d63d31', ink: '#ffffff', icon: 'cafe' },
 	ausflugsort: { label: 'Ausflugsort', plural: 'Ausflugsorte', color: '#0f2238', ink: '#ffc53d', icon: 'ausflug' },
-	schwimmbad: { label: 'Schwimmbad', plural: 'Bäder', color: '#1f7468', ink: '#ffffff', icon: 'bad' }
+	schwimmbad: { label: 'Schwimmbad', plural: 'Bäder', color: '#1f7468', ink: '#ffffff', icon: 'bad' },
+	bibliothek: { label: 'Bibliothek', plural: 'Bibliotheken', color: '#7b4fa3', ink: '#ffffff', icon: 'buch' },
+	familienzentrum: { label: 'Familienzentrum', plural: 'Familienzentren', color: '#2f7d4f', ink: '#ffffff', icon: 'haus' }
 } as const;
 export type Kind = keyof typeof KINDS;
 export const KIND_KEYS = Object.keys(KINDS) as Kind[];
@@ -22,7 +24,9 @@ export const KIND_FILTERS: { key: string; label: string; kinds: Kind[]; feature?
 	{ key: 'toilette', label: 'Toiletten', kinds: ['toilette'] },
 	{ key: 'drinnen', label: 'Drinnen spielen', kinds: ['indoorspielplatz'] },
 	{ key: 'ausflug', label: 'Ausflüge & Bäder', kinds: ['ausflugsort', 'schwimmbad'] },
-	{ key: 'cafe', label: 'Familiencafés', kinds: ['familiencafe', 'stillraum'] }
+	{ key: 'cafe', label: 'Cafés & Stillen', kinds: ['familiencafe', 'stillraum'] },
+	{ key: 'bibliothek', label: 'Bibliotheken', kinds: ['bibliothek'] },
+	{ key: 'familienzentrum', label: 'Familienzentren', kinds: ['familienzentrum'] }
 ];
 
 export type FeatureGroup = 'ausstattung' | 'spielgeraete' | 'zugang' | 'service';
@@ -51,8 +55,11 @@ export const FEATURES: Record<string, FeatureDef> = {
 	kinderwagen: { label: 'Kinderwagengerecht', group: 'zugang', kinds: 'alle', filter: true },
 	rollstuhl: { label: 'Rollstuhlgerecht', group: 'zugang', kinds: 'alle' },
 	inklusiv: { label: 'Inklusive Spielgeräte', group: 'zugang', kinds: ['spielplatz'] },
-	wickeltisch: { label: 'Wickeltisch', group: 'service', kinds: ['toilette', 'wickelraum', 'familiencafe', 'indoorspielplatz', 'schwimmbad', 'ausflugsort'] },
-	toilette: { label: 'Toilette vor Ort', group: 'service', kinds: ['spielplatz', 'ausflugsort', 'familiencafe'] },
+	wickeltisch: { label: 'Wickeltisch', group: 'service', kinds: ['toilette', 'wickelraum', 'familiencafe', 'indoorspielplatz', 'schwimmbad', 'ausflugsort', 'stillraum', 'bibliothek', 'familienzentrum'] },
+	toilette: { label: 'Toilette vor Ort', group: 'service', kinds: ['spielplatz', 'ausflugsort', 'familiencafe', 'bibliothek', 'familienzentrum'] },
+	spielecke: { label: 'Spielecke', group: 'service', kinds: ['familiencafe', 'bibliothek', 'familienzentrum'] },
+	hochstuhl: { label: 'Hochstuhl', group: 'service', kinds: ['familiencafe'] },
+	stillraum: { label: 'Eigener Stillraum', group: 'service', kinds: ['stillraum', 'familiencafe', 'bibliothek', 'familienzentrum'] },
 	kostenlos: { label: 'Kostenlos', group: 'service', kinds: ['toilette', 'wickelraum', 'ausflugsort', 'schwimmbad'] }
 };
 export const FEATURE_GROUPS: Record<FeatureGroup, string> = {

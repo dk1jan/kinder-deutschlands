@@ -80,6 +80,60 @@ describe('OSM → Ortsmodell', () => {
 		]);
 		expect(r.map((x) => x.kind)).toEqual(['ausflugsort', 'schwimmbad']);
 	});
+	it('Ausflug (F-018): Minigolf und Kletterhalle sind Ausflugsorte, Schwimmhalle bleibt Bad', () => {
+		const r = toRecords('ausflug', [
+			{ type: 'node', id: 11, lat: 53, lon: 8.8, tags: { leisure: 'miniature_golf', name: 'Minigolf am See' } },
+			{ type: 'way', id: 12, center: { lat: 53, lon: 8.8 }, tags: { leisure: 'sports_centre', sport: 'climbing', name: 'Kletterhalle Nord' } },
+			{ type: 'way', id: 13, center: { lat: 53, lon: 8.8 }, tags: { leisure: 'sports_centre', sport: 'swimming', name: 'Hallenbad' } }
+		]);
+		expect(r.map((x) => [x.kind, x.features.einrichtung])).toEqual([
+			['ausflugsort', 'Minigolf'],
+			['ausflugsort', 'Kletterhalle'],
+			['schwimmbad', undefined]
+		]);
+		const q = buildQuery('ausflug', 'DE-HB');
+		expect(q).toContain('"leisure"="miniature_golf"');
+		expect(q).toContain('"sport"~"climbing"');
+	});
+	it('Familiencafé (F-018): Spielecke, Hochstuhl, Stillraum; Abfrage ohne Schnellrestaurants', () => {
+		const q = buildQuery('familiencafe', 'DE-NI');
+		expect(q).toContain('"amenity"~"^(cafe|restaurant|ice_cream)$"');
+		expect(q).toContain('"kids_area"~"^(yes|designated|limited)$"');
+		expect(q).not.toContain('fast_food');
+		const [c] = toRecords('familiencafe', [
+			{ type: 'node', id: 20, lat: 53, lon: 8.8, tags: { amenity: 'cafe', name: 'Café Kinderzimmer', kids_area: 'yes', highchair: 'yes', baby_feeding: 'room', changing_table: 'yes' } }
+		]);
+		expect(c.kind).toBe('familiencafe');
+		expect(c.features).toMatchObject({ spielecke: true, hochstuhl: true, stillraum: true, wickeltisch: true, einrichtung: 'Café' });
+	});
+	it('Stillen (F-018): yes und room, eigener Stillraum nur bei room, Einrichtung aus amenity/shop', () => {
+		expect(buildQuery('stillen', 'DE-HB')).toContain('"baby_feeding"~"^(yes|room)$"');
+		const r = toRecords('stillen', [
+			{ type: 'node', id: 30, lat: 53, lon: 8.8, tags: { shop: 'department_store', name: 'Kaufhaus', baby_feeding: 'room' } },
+			{ type: 'node', id: 31, lat: 53, lon: 8.8, tags: { amenity: 'pharmacy', baby_feeding: 'yes' } }
+		]);
+		expect(r.map((x) => [x.kind, x.features.stillraum, x.features.einrichtung])).toEqual([
+			['stillraum', true, 'Kaufhaus'],
+			['stillraum', undefined, 'Apotheke']
+		]);
+	});
+	it('Bibliothek (F-018): öffentliche ja, Hochschul-/Institutsbibliotheken nein', () => {
+		expect(buildQuery('bibliothek', 'DE-HB')).toContain('"amenity"="library"');
+		const r = toRecords('bibliothek', [
+			{ type: 'node', id: 40, lat: 53, lon: 8.8, tags: { amenity: 'library', name: 'Stadtbibliothek Testdorf', kids_area: 'yes' } },
+			{ type: 'node', id: 41, lat: 53, lon: 8.8, tags: { amenity: 'library', name: 'Universitätsbibliothek Test' } },
+			{ type: 'node', id: 42, lat: 53, lon: 8.8, tags: { amenity: 'library', name: 'Bibliothek des Instituts für Test' } },
+			{ type: 'node', id: 43, lat: 53, lon: 8.8, tags: { amenity: 'library' } }
+		]);
+		expect(r.map((x) => x.externalId)).toEqual(['node/40', 'node/43']);
+		expect(r[0].kind).toBe('bibliothek');
+		expect(r[0].features.spielecke).toBe(true);
+	});
+	it('Familienzentrum (F-018)', () => {
+		expect(buildQuery('familienzentrum', 'DE-HB')).toContain('"community_centre"="family_centre"');
+		const [f] = toRecords('familienzentrum', [{ type: 'way', id: 50, center: { lat: 53, lon: 8.8 }, tags: { amenity: 'community_centre', community_centre: 'family_centre', name: 'Familienzentrum Test' } }]);
+		expect([f.kind, f.name, f.url]).toEqual(['familienzentrum', 'Familienzentrum Test', 'https://www.openstreetmap.org/way/50']);
+	});
 	it('Webseiten nur http(s)', () => {
 		const r = toRecords('indoor', [
 			{ type: 'node', id: 9, lat: 53, lon: 8.8, tags: { leisure: 'indoor_play', website: 'javascript:alert(1)' } },
