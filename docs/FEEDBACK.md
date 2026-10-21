@@ -61,9 +61,9 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
-| F-022 | erledigt (Code): Deutschland-Auszug von Geofabrik + osmium statt Overpass, Overpass als Rückfall (D-075); echter Lauf auf dem Server beobachten | CHANGELOG 21.10. Auszug |
+| F-022 | erledigt, live geprüft 21.10.: Auszug 4,87 GB, Web-Container 6 GB, Spielplätze 112.264 neu in 15 s, Familiencafés 203, Familienzentren 210 (D-075) | CHANGELOG 21.10. Auszug |
 | F-018 | erledigt (Code): Familiencafés (kids_area), Stillmöglichkeiten (baby_feeding), Bibliotheken, Familienzentren (community_centre=family_centre), Minigolf + Kletterhallen bei Ausflügen – ganz Deutschland; Google verworfen. Anzahl zeigt der erste Lauf auf dem Server | CHANGELOG 21.10. Ortsarten |
-| F-019 | erledigt: Dublettenprüfung über den Kartenindex, neue Orte paketweise, Statistik vor der Prüfung; 110.000 Orte ca. 15 s im Test (vorher > 7 h live) | CHANGELOG 21.10. Übernahme |
+| F-019 | erledigt, live geprüft 21.10.: 112.264 neue Spielplätze in 15 s übernommen (vorher > 7 h), 4.601 Dubletten-Prüffälle | CHANGELOG 21.10. Übernahme |
 | F-020 | erledigt (Code): bei `EAI_AGAIN` sofort erneut nur über IPv4 (VG250, Kachel-Builds, Overpass); auf dem Server beobachten | CHANGELOG 21.10. Übernahme |
 | F-016 | erledigt: Menü mit drei Gruppen (Entdecken ▾ · Karte · Community ▾ · Nachrichten · Wissen ▾), kein Punkt „Startseite“, Handy-Menü als Blatt, Startseite mit Kopf zuerst und Übersicht unten (D-073) | CHANGELOG 20.10. Menü |
 | F-001 | erledigt: Leiste mit „Mehr“ + große Kacheln auf Entdecken (Variante von Jan gewählt, D-069) | CHANGELOG 20.10. Sammel-Update |
