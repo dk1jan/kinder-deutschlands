@@ -166,3 +166,37 @@ describe('Auswahlregeln (Overpass und Datei gleich)', () => {
 		expect(hits).toBe(3);
 	});
 });
+
+describe('Geofabrik: Datei mit Prüfsumme finden (F-022)', () => {
+	let srv: http.Server;
+	const seen: string[] = [];
+	const before = process.env.OSM_EXTRACT_URL;
+	beforeAll(async () => {
+		srv = http.createServer((req, res) => {
+			seen.push(req.url ?? '');
+			// wie bei Geofabrik: „latest“ ohne .md5, datierte Stände mit .md5 (hier nur der von vor 2 Tagen)
+			if (req.url === '/europe/germany-261019.osm.pbf.md5') return res.end('0123456789abcdef0123456789abcdef  germany-261019.osm.pbf\n');
+			res.statusCode = 404;
+			res.end('not found');
+		});
+		await new Promise<void>((r) => srv.listen(0, '127.0.0.1', () => r()));
+		process.env.OSM_EXTRACT_URL = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/europe/germany-latest.osm.pbf`;
+	});
+	afterAll(() => {
+		srv.close();
+		process.env.OSM_EXTRACT_URL = before;
+	});
+
+	it('ohne latest.md5 → neuester datierter Stand der letzten Tage', async () => {
+		const { resolveExtract } = await import('../src/lib/server/import/osmfile');
+		const r = await resolveExtract('test', new Date('2026-10-21T10:00:00Z'));
+		expect(r.url).toMatch(/\/europe\/germany-261019\.osm\.pbf$/);
+		expect(r.want).toBe('0123456789abcdef0123456789abcdef');
+		expect(seen.slice(0, 4)).toEqual(['/europe/germany-latest.osm.pbf.md5', '/europe/germany-261021.osm.pbf.md5', '/europe/germany-261020.osm.pbf.md5', '/europe/germany-261019.osm.pbf.md5']);
+	});
+
+	it('nichts gefunden → verständlicher Fehler', async () => {
+		const { resolveExtract } = await import('../src/lib/server/import/osmfile');
+		await expect(resolveExtract('test', new Date('2027-06-01T10:00:00Z'))).rejects.toThrow(/letzten 14 Tage/);
+	});
+});

@@ -73,9 +73,7 @@ export async function ensureExtract(userAgent: string, signal?: AbortSignal): Pr
 	if (Date.now() - (await mtime(file)) < MAX_AGE_MS) return file;
 	const fs = await statfs(dir);
 	if (fs.bavail * fs.bsize < MIN_FREE_BYTES) throw new Error(`Zu wenig Speicherplatz für den OSM-Auszug (frei ${Math.round((fs.bavail * fs.bsize) / 1024 ** 3)} GB, nötig 12 GB).`);
-	const url = extractUrl();
-	const md5res = await fetchRetry(url + '.md5', { headers: { 'user-agent': userAgent }, timeoutMs: 60_000 });
-	const want = (await md5res.text()).trim().split(/\s+/)[0]?.toLowerCase();
+	const { url, want } = await resolveExtract(userAgent);
 	if (!/^[0-9a-f]{32}$/.test(want ?? '')) throw new Error('Prüfsumme des OSM-Auszugs nicht lesbar.');
 	const res = await fetchRetry(url, { headers: { 'user-agent': userAgent }, timeoutMs: 90 * 60_000 });
 	if (!res.body) throw new Error('OSM-Auszug: leere Antwort.');
@@ -97,6 +95,34 @@ export async function ensureExtract(userAgent: string, signal?: AbortSignal): Pr
 		throw e;
 	}
 	return file;
+}
+
+const yymmdd = (d: Date) => `${String(d.getUTCFullYear()).slice(2)}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+
+/**
+ * Welche Datei mit welcher Prüfsumme? Geofabrik bietet für „…-latest.osm.pbf“ keine .md5 an (geprüft 21.10.2026),
+ * nur für die datierten Stände („germany-261019.osm.pbf.md5“). Daher: erst „latest.md5“ versuchen, sonst den
+ * neuesten datierten Stand der letzten 14 Tage nehmen.
+ */
+export async function resolveExtract(userAgent: string, now = new Date()): Promise<{ url: string; want: string }> {
+	const base = extractUrl();
+	const md5 = async (u: string) => {
+		const r = await fetchRetry(u + '.md5', { headers: { 'user-agent': userAgent }, timeoutMs: 60_000 }, 2, 5000).catch((e: Error) => {
+			if (/HTTP 404/.test(e.message)) return null;
+			throw e;
+		});
+		const h = r ? (await r.text()).trim().split(/\s+/)[0]?.toLowerCase() : '';
+		return /^[0-9a-f]{32}$/.test(h ?? '') ? h! : null;
+	};
+	const latest = await md5(base);
+	if (latest) return { url: base, want: latest };
+	if (!/-latest\.osm\.pbf$/.test(base)) throw new Error('Prüfsumme des OSM-Auszugs nicht gefunden.');
+	for (let i = 0; i < 14; i++) {
+		const u = base.replace(/-latest\.osm\.pbf$/, `-${yymmdd(new Date(now.getTime() - i * 864e5))}.osm.pbf`);
+		const h = await md5(u);
+		if (h) return { url: u, want: h };
+	}
+	throw new Error('Kein OSM-Auszug mit Prüfsumme der letzten 14 Tage gefunden.');
 }
 
 let preparing: Promise<string> | null = null;

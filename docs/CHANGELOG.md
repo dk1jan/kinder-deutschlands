@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-21 · Korrektur: OSM-Auszug mit Prüfsumme des datierten Stands (F-022)
+
+**Was** Erster Lauf auf dem Server scheiterte mit „download.geofabrik.de: HTTP 404“: Geofabrik bietet für `germany-latest.osm.pbf` keine `.md5` an, nur für datierte Stände (`germany-261019.osm.pbf.md5`). Jetzt: erst `latest.md5` versuchen, sonst den neuesten datierten Stand der letzten 14 Tage samt Prüfsumme laden.
+**Warum** Live-Fehler in Verwaltung → Daten (Screenshot Jan).
+**Module** M23 · **DB-Migration** nein
+**Tests** 2 neue Tests (Geofabrik-Verhalten nachgestellt: latest ohne .md5 → datierter Stand von vor 2 Tagen; nichts gefunden → Fehlermeldung), alle 231 Tests, Build. **Nicht getestet:** echte Geofabrik-Datei (aus der Arbeitsumgebung gesperrt).
+
 ## 2026-10-21 · Orte aus dem Deutschland-Auszug statt Overpass (F-022, D-075) + Indoorspielplätze breiter (F-021)
 
 **Was**
