@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-22 · Kinderwagenroute per GPS aufzeichnen (F-027, D-077)
+
+**Was**
+- „Route einreichen“ hat zwei Wege: **Einzeichnen** (wie bisher) oder **Per GPS aufzeichnen**. Aufzeichnung mit Start, Pause/Weiter, Beenden, Verwerfen; Anzeige von Zeit, Kilometern, GPS-Genauigkeit und der Linie auf der Karte; Bildschirm bleibt an (Wake Lock). War die Seite im Hintergrund, wird die Lücke angezeigt.
+- **Prüfschritt:** Karte mit „Start“ und „Ziel“, Regler „Anfang kürzen“ / „Ende kürzen“ (Standard **50 m**, 0–200 m), Länge aktualisiert sich sofort; „Im Einzeichnen weiter bearbeiten“ übernimmt die Linie zum Ergänzen.
+- **Schutz:** Aufzeichnung nur auf dem Gerät bis zum Absenden; ungenaue Punkte (> 35 m) und Zittern (< 5 m) verworfen; erst glätten, dann entlang des Wegs kürzen (sonst wären 50 m wegen GPS-Zickzack in Wahrheit weniger); gespeichert nur die vereinfachte Linie (≤ 480 Punkte), keine Uhrzeiten, kein Tempo. Bestätigung „öffentliche Orte“ und Redaktionsprüfung bleiben. Datenschutz-Entwurf ergänzt.
+- **Fehler unterwegs gefunden und behoben:** Die neue Seite stürzte beim Laden auf dem Server ab (Aufräumfunktion griff auf `document` zu) – deshalb prüft der Rauchtest die Seite jetzt; Mini-Karten mit Linie und Punkten zeigen jetzt beides (vorher konnte das Ziel aus dem Bild rutschen); kurze GPS-Aussetzer melden keinen Fehler mehr.
+**Warum** Jan: „kann man das nicht auch über GPS aufzeichnen“; Enden kürzen: „150 m schon sehr viel … 10 m?“ → 50 m Standard, einstellbar.
+**Module** M14 Kinderwagenrouten, M10 Karte (Mini-Karte), Querschnitt (Datenschutz-Entwurf) · **DB-Migration** nein
+**Tests** svelte-check; 244 Unit/DB-Tests (neu `record.unit.test.ts`: Länge/Abstand, Kürzen 50/0/200 m, zu kurz, Vereinfachen mit Ecken, 8-km-Schlangenlinie mit GPS-Zittern ≤ 480 Punkte bei < 5 % Längenfehler, neuer Start nicht näher an der Haustür, GPS-Filter); Rauchtest 332 Prüfungen (neu: Seite lädt mit beiden Wegen); **neuer Browsertest `scripts/route-gps-check.py`** (simulierter 600-m-Spaziergang: Hinweis, Pause mit Abstecher, laufende Anzeige, Regler 50/0 m, Einreichen, in der Datenbank Start/Ende exakt 50 m vom echten Anfang/Ende, 500 m Länge, Abstecher nicht drin, keine Zeitspalten, Verwerfen, ungenaues GPS verworfen – 12 Prüfungen); Barrierefreiheit ohne schwere Verstöße; Bildschirmfotos angesehen. **Nicht getestet:** echtes Handy draußen (GPS-Qualität, Wake Lock je Browser).
+
 ## 2026-10-22 · Live-Standort im Chat überarbeitet (F-025)
 
 **Was**

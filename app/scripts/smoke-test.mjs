@@ -811,6 +811,8 @@ try {
 	// ---------- Abschnitt 7: Kinderwagenrouten, Statistik, zweite Freigabe, Partnerlinks ----------
 	const coords = JSON.stringify([[8.7905, 53.0935], [8.7930, 53.0950], [8.7960, 53.0965], [8.7985, 53.0975]]);
 	const routeForm = { title: 'Smoke-Runde Torfkanal', description: 'Breite Wege', coords, surface: 'asphalt', incline: 'eben', stairs: 'nein', duration: '20' };
+	r = await D.req('/routen/neu');
+	check(r.status === 200 && r.body.includes('Per GPS aufzeichnen') && r.body.includes('Einzeichnen'), 'Route einreichen: Seite lädt, Einzeichnen und GPS-Aufzeichnung (F-027)');
 	r = await D.req('/routen/neu', { form: routeForm });
 	check(r.status === 400 && r.body.includes('öffentlich'), 'Route ohne Bestätigung „öffentliche Orte“ abgelehnt');
 	r = await D.req('/routen/neu', { form: { ...routeForm, public_ends: 'on' } });

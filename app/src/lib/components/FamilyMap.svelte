@@ -325,7 +325,8 @@
 		const refit = points.length !== lastCount || token !== lastFit;
 		lastCount = points.length;
 		lastFit = token;
-		if (!refit || !points.length) return;
+		// Mit Linien (z. B. Route prüfen) passt der Linien-Ausschnitt; der schließt die Punkte mit ein
+		if (!refit || !points.length || (fitLines && lines.some((l) => l.coords.length > 1))) return;
 		if (points.length > 1) {
 			const lons = points.map((p) => p.lon), lats = points.map((p) => p.lat);
 			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 70, maxZoom: 17, duration: 300 });
@@ -337,9 +338,9 @@
 		if (!ready || !map) return;
 		(map.getSource('linien') as GeoJSONSource | undefined)?.setData(d);
 		if (fitLines && mode !== 'draw' && lines.length && lines.some((l) => l.coords.length > 1)) {
-			const all = lines.flatMap((l) => l.coords);
+			const all = [...lines.flatMap((l) => l.coords), ...points.map((p) => [p.lon, p.lat] as [number, number])];
 			const lons = all.map((c) => c[0]), lats = all.map((c) => c[1]);
-			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 40, maxZoom: 16, duration: 0 });
+			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 56, bottom: 30, left: 40, right: 40 }, maxZoom: 16, duration: 0 });
 		}
 	});
 	$effect(() => {
