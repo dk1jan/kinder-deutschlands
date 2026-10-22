@@ -2,6 +2,16 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-22 · Live-Standort im Chat überarbeitet (F-025)
+
+**Was**
+- Keine Karte mehr über dem Chatverlauf. „N live“ in der Kopfzeile öffnet eine **Vollbild-Karte**: Namen direkt an den Punkten („Du“, „Dora“), Personen als Knöpfe unten mit Restzeit (antippen → hinfahren), „Alle zeigen“, Plus/Minus-Knöpfe auch am Handy, Verschieben mit einem Finger, Zoomen mit zwei Fingern; Esc/✕ schließt.
+- **Fehler behoben:** Die Karte sprang bei jeder Aktualisierung (sekündlich) zurück auf die Live-Positionen – Verschieben und Zoomen war dadurch unmöglich (vermutlich auch Ursache der grauen, nicht geladenen Fläche). Der Ausschnitt wird jetzt nur angepasst, wenn Personen dazukommen/gehen oder auf „Alle zeigen“.
+- Hinweis beim eigenen Teilen einzeilig: „● Du teilst live · noch 30 Min. [Stoppen]“ (Erklärung „nur solange die Seite offen ist“ im Titel/für Screenreader). Eigene Restzeit überall gleich (aus dem laufenden Teilen), Restzeit gerundet statt aufgerundet („31 Min.“ direkt nach dem Start behoben).
+**Warum** Jan (Handy-Screenshot): Seite überladen, Karte nicht bedienbar, bei mehreren Personen sieht man nichts.
+**Module** M06 Chat/Treffen, M03 Karte (Mini-Karte) · **DB-Migration** nein
+**Tests** svelte-check; Unit-Tests Restzeit; Rauchtest; **neuer Browsertest `scripts/live-check.py`** (2 Chromium-Handys, echter Chat-Server, künstliche Standorte: 15 Prüfungen – Hinweis einzeilig mit 30 Min., „2 live“, Verlauf bleibt groß, Vollbild, Namen, Plus-Knopf zoomt, Verschieben, kein Zurückspringen nach 4 s Live-Aktualisierung, Name antippen fährt hin, Esc/Schließen, Stoppen → „1 live“); Bildschirmfotos angesehen. **Nicht getestet:** Zwei-Finger-Zoom auf echtem Handy (im Test nicht nachstellbar).
+
 ## 2026-10-22 · Wimpel zum Ausdrucken neu gestaltet (F-024)
 
 **Was** Der gedruckte Wimpel ist neu aufgebaut: längeres Dreieck (600 × 900), alles im breiten oberen Teil (vorher ragten Familien-ID und Text über die Schrägen), dunkles Kopfband mit Marke und zwei Lochpunkten für die Schnur, „Hallo!“ groß, Familien-ID als dunkles Feld über dem QR-Code, QR ca. 6 cm breit in weißem Feld, Schnittlinie mit Abstand außen. Genau eine A4-Seite (172 mm breit, Hinweis nur am Bildschirm), Farben werden mitgedruckt. QR jetzt als eingebettetes SVG statt `foreignObject` (druckt in allen Browsern).

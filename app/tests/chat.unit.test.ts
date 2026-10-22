@@ -27,6 +27,8 @@ describe('Chat-Darstellung', () => {
 	it('Restzeit, Dauer, Dateigröße', () => {
 		const now = Date.UTC(2026, 9, 19, 12);
 		expect(remaining(now + 30 * 60_000, now)).toBe('noch 30 Min.');
+		expect(remaining(now + 30 * 60_000 + 20_000, now)).toBe('noch 30 Min.'); // Uhr der Seite leicht veraltet
+		expect(remaining(now + 20_000, now)).toBe('noch 1 Min.');
 		expect(remaining(now + 5 * 3600_000, now)).toBe('noch 5 Std.');
 		expect(remaining(now + 3 * 86_400_000, now)).toBe('noch 3 Tage');
 		expect(remaining(now - 1, now)).toBe('abgelaufen');

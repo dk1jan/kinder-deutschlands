@@ -26,7 +26,8 @@ export function dayLabel(ts: number, now = Date.now()): string {
 export function remaining(until: string | number | Date, now = Date.now()): string {
 	const ms = new Date(until).getTime() - now;
 	if (ms <= 0) return 'abgelaufen';
-	const min = Math.ceil(ms / 60_000);
+	// gerundet (nicht aufgerundet): sonst zeigt ein gerade gestarteter 30-Min.-Zeitraum mit leicht veralteter Uhr „31 Min.“ (F-025)
+	const min = Math.max(1, Math.round(ms / 60_000));
 	if (min < 60) return `noch ${min} Min.`;
 	const h = Math.floor(min / 60);
 	if (h < 48) return `noch ${h} Std.`;

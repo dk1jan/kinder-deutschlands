@@ -160,8 +160,9 @@
 	{#if sharing}
 		<div class="live" role="status">
 			<span class="dot" aria-hidden="true"></span>
-			<span>Du teilst deinen Live-Standort · {remaining(sharing.until, now)}{sharing.error ? ` · ${sharing.error}` : ''}. Nur solange diese Seite geöffnet ist.</span>
-			<button class="btn small danger" type="button" onclick={() => stopLive(roomId)}>Stoppen</button>
+			<!-- kompakt in einer Zeile (F-025); Hinweis „nur solange die Seite offen ist“ im Titel und für Screenreader -->
+			<span class="ltext" title="Nur solange diese Seite geöffnet ist."><b>Du teilst live</b> · {remaining(sharing.until, now)}{sharing.error ? ` · ${sharing.error}` : ''}<span class="sr">. Nur solange diese Seite geöffnet ist.</span></span>
+			<button class="btn small danger lstop" type="button" onclick={() => stopLive(roomId)}>Stoppen</button>
 		</div>
 	{/if}
 	{#if error}<p class="err" role="alert">{error}</p>{/if}
@@ -327,8 +328,28 @@
 		flex-wrap: wrap;
 		font-size: var(--fs-s);
 	}
+	.live .ltext {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.live .lstop {
+		min-height: 36px;
+		padding: 0 var(--sp-3);
+	}
+	.live .sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
 	.live {
-		padding: var(--sp-2) var(--sp-3);
+		flex-wrap: nowrap !important;
+		padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
 		border-radius: var(--radius-s);
 		background: #fff3d1;
 		color: var(--navy);

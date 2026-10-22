@@ -51,7 +51,13 @@
 		filters?: string[];
 		features?: string[];
 		selected?: string | null;
-		points?: { lon: number; lat: number; kind: string }[];
+		points?: { lon: number; lat: number; kind: string; label?: string }[];
+		/** Zwei-Finger-Bedienung (Seite scrollt mit einem Finger weiter). Standard: nur bei Mini-Karten */
+		cooperative?: boolean;
+		/** Plus/Minus-Knöpfe. Standard: nicht bei Mini-Karten */
+		controls?: boolean;
+		/** Ausschnitt auf alle Punkte setzen, wenn sich dieser Wert ändert (z. B. Knopf „Alle zeigen“) */
+		fitToken?: number;
 		label?: string;
 		basemap?: Basemap;
 		aerialAttribution?: string;
@@ -79,6 +85,9 @@
 		onView,
 		onPick,
 		onPoint,
+		cooperative = undefined,
+		controls = undefined,
+		fitToken = 0,
 		lines = [],
 		draft = [],
 		onDrawClick,
@@ -125,7 +134,7 @@
 			type: 'geojson',
 			data: mode === 'browse' ? data : {
 				type: 'FeatureCollection',
-				features: points.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: String(i), k: p.kind } }))
+				features: points.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: String(i), k: p.kind, n: p.label ?? '' } }))
 			},
 			cluster: mode === 'browse',
 			clusterRadius: 46,
@@ -164,8 +173,13 @@
 				'icon-image': ['case', ['==', ['get', 'id'], selected ?? ''], ['concat', 'm-', ['get', 'k'], '-sel'], ['concat', 'm-', ['get', 'k']]],
 				'icon-anchor': 'bottom',
 				'icon-allow-overlap': true,
-				'symbol-sort-key': ['case', ['==', ['get', 'id'], selected ?? ''], 1, 0]
-			}
+				'symbol-sort-key': ['case', ['==', ['get', 'id'], selected ?? ''], 1, 0],
+				// Mini-Karten: Name unter dem Punkt (z. B. Live-Standorte im Chat)
+				...(mode === 'mini'
+					? { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Medium'], 'text-size': 13, 'text-anchor': 'top', 'text-offset': [0, 0.3], 'text-optional': true }
+					: {})
+			},
+			...(mode === 'mini' ? { paint: { 'text-color': dark ? '#ffffff' : '#0f2238', 'text-halo-color': dark ? '#0a1626' : '#ffffff', 'text-halo-width': 2 } } : {})
 		});
 		map.addSource('extra', { type: 'geojson', data: extraData(extra) });
 		map.addLayer(
@@ -291,20 +305,31 @@
 		void features.join(',');
 		if (ready) schedule(true);
 	});
-	// Mini-Karte: Punkte geändert (z. B. Live-Standorte im Chat) → Daten tauschen, Ausschnitt anpassen
+	// Mini-Karte: Punkte geändert (z. B. Live-Standorte im Chat) → Daten tauschen.
+	// Den Ausschnitt nur anpassen, wenn Punkte dazukommen/wegfallen oder ausdrücklich gewünscht (fitToken) –
+	// sonst springt die Karte bei jeder Aktualisierung zurück und lässt sich nicht verschieben/zoomen (F-025).
+	let lastPts = '';
+	let lastCount = -1;
+	let lastFit = 0;
 	$effect(() => {
-		const pts = points.map((p) => `${p.kind}:${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join('|');
+		const pts = points.map((p) => `${p.kind}:${p.lon.toFixed(6)},${p.lat.toFixed(6)}:${p.label ?? ''}`).join('|');
+		const token = fitToken;
 		if (!ready || mode !== 'mini' || !map) return;
-		const src = map.getSource('orte') as GeoJSONSource | undefined;
-		src?.setData({
-			type: 'FeatureCollection',
-			features: points.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: String(i), k: p.kind } }))
-		});
+		if (pts !== lastPts) {
+			lastPts = pts;
+			(map.getSource('orte') as GeoJSONSource | undefined)?.setData({
+				type: 'FeatureCollection',
+				features: points.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: String(i), k: p.kind, n: p.label ?? '' } }))
+			});
+		}
+		const refit = points.length !== lastCount || token !== lastFit;
+		lastCount = points.length;
+		lastFit = token;
+		if (!refit || !points.length) return;
 		if (points.length > 1) {
 			const lons = points.map((p) => p.lon), lats = points.map((p) => p.lat);
-			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 60, maxZoom: 17, duration: 300 });
-		} else if (points.length === 1) map.easeTo({ center: [points[0].lon, points[0].lat], duration: 300 });
-		void pts;
+			map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 70, maxZoom: 17, duration: 300 });
+		} else map.easeTo({ center: [points[0].lon, points[0].lat], zoom: Math.max(map.getZoom(), 15), duration: 300 });
 	});
 	// Linien und Zeichen-Entwurf aktualisieren
 	$effect(() => {
@@ -362,7 +387,7 @@
 					minZoom: 5,
 					maxZoom: 19,
 					attributionControl: { compact: true },
-					cooperativeGestures: mode === 'mini',
+					cooperativeGestures: cooperative ?? mode === 'mini',
 					interactive: true,
 					dragRotate: false,
 					pitchWithRotate: false,
@@ -377,7 +402,7 @@
 					}
 				});
 				m.touchZoomRotate.disableRotation();
-				if (mode !== 'mini') m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+				if (controls ?? mode !== 'mini') m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 				// Quellenangabe zugeklappt starten (ein Tipp auf „i“ zeigt sie) – sonst verdeckt sie auf dem Handy die Karte
 				m.once('load', () => {
 					const a = el.querySelector('.maplibregl-ctrl-attrib');
@@ -479,7 +504,7 @@
 	});
 </script>
 
-<div class="wrap" class:pick={mode === 'pick'}>
+<div class="wrap" class:pick={mode === 'pick'} class:ctrls={controls === true}>
 	<div class="map" bind:this={el} role="region" aria-label={label}></div>
 	{#if mode === 'pick'}
 		<div class="cross" aria-hidden="true">
@@ -536,6 +561,14 @@
 	@media (max-width: 959px) {
 		.wrap :global(.maplibregl-ctrl-top-right) {
 			display: none;
+		}
+		/* Vollbild-Karten (z. B. Live-Standorte): Knöpfe auch am Handy, groß genug für den Daumen */
+		.wrap.ctrls :global(.maplibregl-ctrl-top-right) {
+			display: block;
+		}
+		.wrap.ctrls :global(.maplibregl-ctrl-group button) {
+			width: 48px;
+			height: 48px;
 		}
 	}
 	.wrap :global(.maplibregl-ctrl-group) {

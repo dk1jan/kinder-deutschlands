@@ -10,7 +10,7 @@
 	import { call, callsSupported, startCall } from '$lib/chat/calls.svelte';
 	import { CALL_EVENT, group, groupCallStatus, groupCallsSupported, joinGroupCall } from '$lib/chat/groupcall.svelte';
 	import { invite, isMuted, leaveRoom, reportMessage, setMuted } from '$lib/chat/actions';
-	import { livePoints, LIVE_TYPE } from '$lib/chat/live.svelte';
+	import { live, livePoints, LIVE_TYPE } from '$lib/chat/live.svelte';
 	import { dayLabel, remaining } from '$lib/chat/format';
 	import { matches, searchableText, snippet } from '$lib/chat/search';
 
@@ -24,6 +24,10 @@
 	let menu = $state(false);
 	let showMembers = $state(false);
 	let showLive = $state(false);
+	// Vollbild-Karte der Live-Standorte (F-025)
+	let liveMap: { flyTo: (lon: number, lat: number, z?: number) => void } | undefined = $state();
+	let fitToken = $state(0);
+	let liveDialog: HTMLDivElement | undefined = $state();
 	let qr = $state<{ url: string } | null>(null);
 	let notice = $state('');
 	let report = $state<MatrixEvent | null>(null);
@@ -151,7 +155,19 @@
 	});
 	const lives = $derived.by(() => {
 		void chat.version;
-		return room ? livePoints(room, now) : [];
+		const pts = room ? livePoints(room, now) : [];
+		// Eigene Restzeit aus dem laufenden Teilen auf diesem Gerät (die letzte Meldung kann älter sein)
+		const mine = live.rooms[roomId];
+		return pts.map((p) => (p.mine && mine ? { ...p, until: mine.until } : p));
+	});
+	const livePins = $derived(lives.map((l) => ({ lon: l.lon, lat: l.lat, kind: 'person', label: l.mine ? 'Du' : l.name })));
+	function openLive() {
+		showLive = true;
+		fitToken++;
+		void tick().then(() => liveDialog?.focus());
+	}
+	$effect(() => {
+		if (showLive && !lives.length) showLive = false;
 	});
 	const lastMine = $derived(items.findLast((i) => i.ev.getSender() === me)?.ev ?? null);
 	const readByOther = $derived.by(() => {
@@ -306,7 +322,7 @@
 			</p>
 		</div>
 		{#if lives.length}
-			<button class="btn small secondary livebtn" type="button" onclick={() => (showLive = !showLive)} aria-expanded={showLive}><span class="ldot" aria-hidden="true"></span> {lives.length} live</button>
+			<button class="btn small secondary livebtn" type="button" onclick={openLive} aria-haspopup="dialog" aria-label="{lives.length} Live-Standort{lives.length === 1 ? '' : 'e'} auf der Karte zeigen"><span class="ldot" aria-hidden="true"></span> {lives.length} live</button>
 		{/if}
 		{#if canCall && kind !== 'direkt' && gc.enabled && membership === 'join' && !ended && !gc.active}
 			<button class="iconbtn" type="button" aria-label="Gruppenanruf starten (Ton)" title="Gruppenanruf (Ton)" disabled={group.view !== 'aus' && group.view !== 'beendet'} onclick={() => dialGroup(false)}><Icon name="telefon" /></button>
@@ -394,14 +410,25 @@
 	{/if}
 
 	{#if showLive && lives.length}
-		<section class="livemap">
-			<div class="map">
-				<FamilyMap mode="mini" tiles={data.tiles} center={[lives[0].lon, lives[0].lat]} zoom={15} points={lives.map((l) => ({ lon: l.lon, lat: l.lat, kind: 'person' }))} label="Live-Standorte" />
+		<!-- Vollbild-Karte der Live-Standorte (F-025): frei verschieben/zoomen, Namen an den Punkten, Liste als Knöpfe unten -->
+		<div class="livefull" role="dialog" aria-modal="true" aria-labelledby="live-t" tabindex="-1" bind:this={liveDialog}
+			onkeydown={(e) => { if (e.key === 'Escape') showLive = false; }}>
+			<header class="lhead">
+				<h2 id="live-t"><span class="ldot" aria-hidden="true"></span> Live · {lives.length} {lives.length === 1 ? 'Person' : 'Personen'}</h2>
+				<button class="iconbtn" type="button" onclick={() => (showLive = false)} aria-label="Karte schließen"><Icon name="schliessen" /></button>
+			</header>
+			<div class="lmap">
+				<FamilyMap bind:this={liveMap} mode="mini" cooperative={false} controls tiles={data.tiles} center={[lives[0].lon, lives[0].lat]} zoom={15} points={livePins} {fitToken} label="Live-Standorte" />
 			</div>
-			<ul class="livelist">
-				{#each lives as l}<li><strong>{l.mine ? 'Du' : l.name}</strong> · {remaining(l.until, now)}</li>{/each}
-			</ul>
-		</section>
+			<div class="lfoot">
+				<ul class="lchips" role="list">
+					{#each lives as l (l.userId)}
+						<li><button type="button" class="lchip" class:me={l.mine} onclick={() => liveMap?.flyTo(l.lon, l.lat, 17)}><strong>{l.mine ? 'Du' : l.name}</strong> <span>{remaining(l.until, now)}</span></button></li>
+					{/each}
+				</ul>
+				{#if lives.length > 1}<button class="btn small secondary" type="button" onclick={() => fitToken++}>Alle zeigen</button>{/if}
+			</div>
+		</div>
 	{/if}
 
 	<div class="scroller" bind:this={scroller} onscroll={onScroll}>
@@ -598,8 +625,7 @@
 		height: 36px;
 	}
 	.qrbox,
-	.panel,
-	.livemap {
+	.panel {
 		padding: var(--sp-3) var(--sp-4);
 		background: var(--surface);
 		border-bottom: 1px solid var(--line);
@@ -624,16 +650,78 @@
 	.panel li {
 		min-height: 36px;
 	}
-	.livemap .map {
-		width: 100%;
-		height: 14rem;
-		border-radius: var(--radius-s);
-		overflow: hidden;
+	.livefull {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		background: var(--surface);
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr) auto;
+		outline: none;
 	}
-	.livelist {
+	.lhead {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--sp-2);
+		padding: calc(var(--sp-2) + env(safe-area-inset-top)) var(--sp-3) var(--sp-2) var(--sp-4);
+		border-bottom: 1px solid var(--line);
+	}
+	.lhead h2 {
 		margin: 0;
-		padding-left: var(--sp-4);
+		font-size: var(--fs-l);
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
+	}
+	.lmap {
+		min-height: 0;
+		position: relative;
+	}
+	.lmap :global(.wrap) {
+		height: 100%;
+	}
+	.lmap :global(.maplibregl-ctrl-top-right) {
+		top: var(--sp-2);
+		right: var(--sp-2);
+	}
+	.lfoot {
+		display: flex;
+		gap: var(--sp-2);
+		align-items: center;
+		padding: var(--sp-2) var(--sp-3) calc(var(--sp-2) + env(safe-area-inset-bottom));
+		border-top: 1px solid var(--line);
+	}
+	.lchips {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		gap: var(--sp-2);
+		overflow-x: auto;
+		flex: 1;
+		min-width: 0;
+	}
+	.lchip {
+		display: inline-flex;
+		gap: 6px;
+		align-items: center;
+		white-space: nowrap;
+		min-height: 44px;
+		padding: 0 var(--sp-3);
+		border-radius: 999px;
+		border: 1px solid var(--line);
+		background: var(--surface-2);
+		color: var(--ink);
+		font: inherit;
 		font-size: var(--fs-s);
+		cursor: pointer;
+	}
+	.lchip span {
+		color: var(--ink-2);
+	}
+	.lchip.me {
+		border-color: var(--yellow);
 	}
 	.search {
 		padding: var(--sp-2) var(--sp-3);
