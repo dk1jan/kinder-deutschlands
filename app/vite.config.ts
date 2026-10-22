@@ -9,6 +9,8 @@ export default defineConfig({
 		include: ['tests/**/*.test.ts'],
 		// DB-Tests teilen sich eine Datenbank: nacheinander ausführen
 		fileParallelism: false,
-		testTimeout: 30000
+		testTimeout: 30000,
+		// Vorbereitung der DB-Tests (Schema leeren + alle Migrationen) kann auf kaltem Rechner > 10 s dauern
+		hookTimeout: 60000
 	}
 });
