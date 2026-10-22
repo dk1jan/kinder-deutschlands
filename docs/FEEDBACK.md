@@ -61,6 +61,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-024 | erledigt: Wimpel zum Drucken neu gestaltet – längeres Dreieck, alles im breiten Teil, Familien-ID über dem QR, Kopfband mit Marke und Lochpunkten, Schnittlinie außen, eine A4-Seite, QR ca. 6 cm (Jan: „Code und Schrift passen nicht in den Wimpel“) | CHANGELOG 22.10. Wimpel |
 | F-023 | erledigt: Bereiche Bremen/Ganz Deutschland, „Nur [Land]“ nur für gleiches Land + Eingeladene, Einladung per Familien-ID, Landwechsel 1×/Monat (D-076) | CHANGELOG 21.10. Community |
 | F-022 | erledigt, live geprüft 21.10.: Auszug 4,87 GB, Web-Container 6 GB, Spielplätze 112.264 neu in 15 s, Familiencafés 203, Familienzentren 210 (D-075) | CHANGELOG 21.10. Auszug |
 | F-018 | erledigt (Code): Familiencafés (kids_area), Stillmöglichkeiten (baby_feeding), Bibliotheken, Familienzentren (community_centre=family_centre), Minigolf + Kletterhallen bei Ausflügen – ganz Deutschland; Google verworfen. Anzahl zeigt der erste Lauf auf dem Server | CHANGELOG 21.10. Ortsarten |

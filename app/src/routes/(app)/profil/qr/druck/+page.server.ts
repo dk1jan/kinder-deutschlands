@@ -12,5 +12,9 @@ export const load: PageServerLoad = async (event) => {
 	const [q] = await sql`select q.token, p.contact_id from qr_tokens q join user_profiles p on p.user_id = q.user_id
 		where q.id = ${id}::uuid and q.user_id = ${user.id} and q.revoked_at is null and (q.expires_at is null or q.expires_at > now())`.catch(() => []);
 	if (!q) error(404, 'Diesen Code gibt es nicht oder er ist nicht mehr gültig.');
-	return { svg: await qrSvg(q.token as string, '#0f2238'), contactId: formatContactId(q.contact_id as string) };
+	// QR als eingebettetes SVG (kein foreignObject – druckt in allen Browsern scharf)
+	const svg = await qrSvg(q.token as string, '#0f2238');
+	const viewBox = /viewBox="([^"]+)"/.exec(svg)?.[1] ?? '0 0 33 33';
+	const body = svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+	return { qr: { viewBox, body }, contactId: formatContactId(q.contact_id as string) };
 };

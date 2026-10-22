@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-22 · Wimpel zum Ausdrucken neu gestaltet (F-024)
+
+**Was** Der gedruckte Wimpel ist neu aufgebaut: längeres Dreieck (600 × 900), alles im breiten oberen Teil (vorher ragten Familien-ID und Text über die Schrägen), dunkles Kopfband mit Marke und zwei Lochpunkten für die Schnur, „Hallo!“ groß, Familien-ID als dunkles Feld über dem QR-Code, QR ca. 6 cm breit in weißem Feld, Schnittlinie mit Abstand außen. Genau eine A4-Seite (172 mm breit, Hinweis nur am Bildschirm), Farben werden mitgedruckt. QR jetzt als eingebettetes SVG statt `foreignObject` (druckt in allen Browsern).
+**Warum** Jan: „Wimpel drucken ist Mist … Code und Schrift passen nicht in den Wimpel … das muss schick werden.“
+**Module** M01 Familien-ID/QR · **DB-Migration** nein
+**Tests** svelte-check; Rauchtest 331 Prüfungen (neu: Druckseite mit QR, Familien-ID, ohne foreignObject); Bildschirmfoto und PDF (Druckansicht, 1 Seite A4) angesehen; QR mit OpenCV aus Bildschirmbild, Druck-PDF (150 dpi) und verkleinerter Fassung erfolgreich gelesen. **Nicht getestet:** echter Drucker/Laminiergerät.
+
 ## 2026-10-21 · Community nach „Ganz Deutschland“ und Bundesland, Einladung je Beitrag (F-023, D-076)
 
 **Was**

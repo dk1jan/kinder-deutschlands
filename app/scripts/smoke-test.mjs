@@ -364,6 +364,12 @@ try {
 	r = await A.req('/profil/qr');
 	const qrToken = /\/k\/([A-Za-z0-9_-]{10,40})/.exec(r.body)?.[1];
 	check(r.status === 200 && !!qrToken, 'QR-Seite mit aktivem Code');
+	{
+		// Wimpel zum Ausdrucken: QR als eingebettetes SVG, Familien-ID, eine Seite A4
+		const druck = /href="(\/profil\/qr\/druck\?id=[0-9a-f-]{36})"/.exec(r.body)?.[1];
+		const w = druck ? await A.req(druck) : { status: 0, body: '' };
+		check(w.status === 200 && w.body.includes('class="pennant') && w.body.includes('FAMILIEN-ID') && /[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}/.test(w.body) && !w.body.includes('foreignObject'), 'Wimpel-Druckseite mit QR und Familien-ID');
+	}
 
 	// Externe Person scannt den QR-Code
 	const X = client();
