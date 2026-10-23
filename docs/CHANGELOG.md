@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Domainwechsel auf kinder-deutschlands.de (D-083)
+
+**Was** Der Betrieb läuft jetzt unter `https://kinder-deutschlands.de` (eigene Plesk-Domain, gleicher Server, gleicher Stack, `www` → 301 auf die Hauptdomain). Auf dem Server von Jan umgesetzt: Sicherung der Datenbanken vorab, Let's-Encrypt-Zertifikat für beide Namen, nginx-Block, `APP_URL` in Portainer (erst mit Schrägstrich am Ende, dann korrigiert, `ORIGIN` stimmt), Stack neu ausgerollt. Die alte Testdomain `kinder.jan-krueger.org` wurde gelöscht (keine aktiven Nutzer außer Jan und Testzugang, Umleitung nicht nötig). Doku angepasst: `DEPLOYMENT.md` (Server, Einrichtung, Zertifikat/`www`, Domainwechsel-Ablauf mit Prüfbefehlen), `STATUS.md`, `ARCHITECTURE.md`, `deploy/plesk-nginx.conf` (neue Domain, `www`-Umleitung).
+**Warum** Jan: eigene Domain statt Testdomain. Gelernt: Bei Git-Stacks heißt der Knopf in Portainer „Pull and redeploy“; ein Schrägstrich am Ende von `APP_URL` gehört nicht hinein.
+**Module** Betrieb/Querschnitt · **DB-Migration** nein · kein Code geändert (nur Doku und nginx-Vorlage)
+**Tests** Auf dem Server geprüft: `readyz` 200, Zertifikat `CN = kinder-deutschlands.de` mit `www` im SAN, `www` → 301, `APP_URL`/`ORIGIN` im Web-Container, Container frisch gestartet und gesund, TURN-Zeile im Log nennt die neue Domain. **Nicht geprüft:** Anmeldung/Beitrag/Chat/Anruf im Browser nach dem Umzug (Jan); E-Mail-Absender noch auf der alten Adresse bzw. nicht eingerichtet (kommt später). Passkeys sind an den Hostnamen gebunden und müssen neu angelegt werden.
+
 ## 2026-10-23 · Rückmeldung an Melder/Einsender, Chat-Schlüssel „frühere Version“ (F-036, F-017, D-082)
 
 **Was**

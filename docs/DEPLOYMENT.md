@@ -1,8 +1,8 @@
 # DEPLOYMENT
 
-## Server (Stand 18.10.2026)
+## Server (Stand 23.10.2026)
 
-Ubuntu 24.04, 8 Kerne, 31 GB RAM, ~318 GB frei · Plesk Obsidian 18.0.80 · Docker 29.8, Compose v5 · Portainer CE (lts) auf :9000 · IP 87.106.12.248 · Testdomain: `kinder.jan-krueger.org` (Plesk-Subdomain, Docker-Proxyregel → `kinder-deutschlands-web-1:3000`). `APP_URL` muss exakt `https://kinder.jan-krueger.org` sein – ohne Schrägstrich am Ende.
+Ubuntu 24.04, 8 Kerne, 31 GB RAM, ~318 GB frei · Plesk Obsidian 18.0.80 · Docker 29.8, Compose v5 · Portainer CE (lts) auf :9000 · IP 87.106.12.248 · Domain: `kinder-deutschlands.de` (eigene Plesk-Domain auf demselben Server, nginx-Block `deploy/plesk-nginx.conf` → `127.0.0.1:3120`; `www` leitet per 301 auf die Hauptdomain). `APP_URL` muss exakt `https://kinder-deutschlands.de` sein – ohne Schrägstrich am Ende (sonst stimmt `ORIGIN` nicht). Bis 23.10.2026 lief die Testdomain `kinder.jan-krueger.org`; sie wurde gelöscht (keine aktiven Nutzer, D-083).
 Belegt und tabu: UDP 10000 (Jitsi), TCP/UDP 40000–40100 (MiroTalk), viele TCP-Ports 3001–9080. Kinder Deutschlands nutzt nur `127.0.0.1:3120`.
 
 ## So kommt ein Update auf den Server (automatisch)
@@ -21,9 +21,9 @@ Rückrollen: in GitHub den vorherigen Lauf von „build-deploy“ erneut starten
 GitHub → Profil → Packages → `kinder-deutschlands-web` → Package settings → Change visibility → **Public**.
 
 ### 2. Plesk
-1. Websites & Domains → Subdomain hinzufügen: `kinder` unter `jan-krueger.org`.
-2. SSL/TLS-Zertifikate → Let's Encrypt → ausstellen (inkl. „Redirect HTTP → HTTPS“).
-3. Docker → **Proxyregeln** → Regel hinzufügen: Container `kinder-deutschlands-web-1`, Port 3000. (Alternativ `deploy/plesk-nginx.conf` als zusätzliche nginx-Anweisung – nie beides gleichzeitig.)
+1. Websites & Domains → Domain `kinder-deutschlands.de` hinzufügen; DNS: A-Eintrag auf die Server-IP (kein AAAA), `www` als CNAME auf die Hauptdomain.
+2. SSL/TLS-Zertifikate → Let's Encrypt für `kinder-deutschlands.de` **und** `www.kinder-deutschlands.de` (Haken „Domainname mit www-Präfix sichern“), inkl. „Redirect HTTP → HTTPS“. Per SSH: `plesk bin extension --exec letsencrypt cli.php -d kinder-deutschlands.de -d www.kinder-deutschlands.de -m <E-Mail>`.
+3. nginx-Block: Inhalt von `deploy/plesk-nginx.conf` nach `/var/www/vhosts/system/kinder-deutschlands.de/conf/vhost_nginx.conf` schreiben, dann `/usr/local/psa/admin/bin/httpdmng --reconfigure-domain kinder-deutschlands.de && nginx -t`. Keine Docker-Proxyregel zusätzlich anlegen – nie beides gleichzeitig.
 
 ### 3. Geheimnisse erzeugen (per SSH)
 ```bash
@@ -37,11 +37,11 @@ Stacks → Add stack → Name `kinder-deutschlands` → **Repository**:
 - Repository reference: `refs/heads/deploy`
 - Compose path: `docker-compose.yml`
 - GitOps updates: **an**, Mechanism **Polling**, Interval **5m**, „Re-pull image“ an
-- Environment variables (je genau ein `=`): `APP_URL=https://kinder.jan-krueger.org`, `APP_SECRET=…`, `POSTGRES_PASSWORD=…`
+- Environment variables (je genau ein `=`): `APP_URL=https://kinder-deutschlands.de`, `APP_SECRET=…`, `POSTGRES_PASSWORD=…`
 - Deploy the stack
 
 ### 5. Ersten Admin anlegen
-Portainer → Containers → `kinder-deutschlands-web-1` → Logs → Einmal-Token kopieren → `https://kinder.jan-krueger.org/setup` öffnen. Token ändert sich bei jedem Neustart, bis die Einrichtung abgeschlossen ist.
+Portainer → Containers → `kinder-deutschlands-web-1` → Logs → Einmal-Token kopieren → `https://kinder-deutschlands.de/setup` öffnen. Token ändert sich bei jedem Neustart, bis die Einrichtung abgeschlossen ist.
 
 ### 6. Optional: Notfall-Update-Befehl
 Siehe Kopf von `deploy/update.sh` (Portainer-Access-Token nötig). Aufruf: `bash /opt/kinder-deutschlands/update.sh`.
@@ -159,7 +159,7 @@ Neuer Server (Docker + Portainer laufen; am besten vorher den Portainer-Token wi
 curl -fsSL https://raw.githubusercontent.com/dk1jan/kinder-deutschlands/main/deploy/umzug.sh -o /root/umzug.sh
 bash /root/umzug.sh import /root/kd-umzug-<Datum>.tar
 ```
-Danach: DNS der Domain auf die neue IP, Plesk-Subdomain + nginx-Block (`deploy/plesk-nginx.conf`) + TLS, TURN-Ports 3479 UDP/TCP und 49160–49200 UDP, Gruppenanrufe 49210 UDP/TCP, Verwaltung → Daten → Kartenhintergrund „Jetzt abrufen“. Alten Stack erst stoppen, wenn der neue läuft. Die Umzugsdatei enthält `APP_SECRET` und Passwörter: nur per scp, danach auf beiden Servern `rm -f /root/kd-umzug-*.tar`.
+Danach: DNS der Domain auf die neue IP, Plesk-Domain + nginx-Block (`deploy/plesk-nginx.conf`) + TLS (inkl. `www`), TURN-Ports 3479 UDP/TCP und 49160–49200 UDP, Gruppenanrufe 49210 UDP/TCP, Verwaltung → Daten → Kartenhintergrund „Jetzt abrufen“. Alten Stack erst stoppen, wenn der neue läuft. Die Umzugsdatei enthält `APP_SECRET` und Passwörter: nur per scp, danach auf beiden Servern `rm -f /root/kd-umzug-*.tar`.
 
 ## Datenabruf: „DNS vorübergehend nicht erreichbar“ (F-013)
 Die Abrufe wiederholen sich bei DNS-Aussetzern automatisch (bis zu 5 Versuche, danach nächster Lauf mit wachsender Pause). Hält der Fehler an, prüfen:
@@ -170,12 +170,8 @@ cat /etc/resolv.conf
 Kommt dort ein Fehler, liegt es am DNS des Servers (nicht an der App). Sonderfall `EAI_AGAIN`, obwohl `nslookup` auf dem Server eine IPv4-Adresse zeigt (SERVFAIL nur für IPv6): Die App versucht es seit 21.10. automatisch nur über IPv4 (F-020).
 
 ## Falsches Zertifikat / „Nicht sicher“
-Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder.jan-krueger.org 2>/dev/null | grep subject=` muss `CN = kinder.jan-krueger.org` zeigen. Kommt `public-power.de`, fehlt der nginx-Block der Subdomain: `ls /var/www/vhosts/system/kinder.jan-krueger.org/conf/` ist dann leer/fehlt. Lösung (18.10.2026 so behoben):
-```bash
-plesk bin site --remove kinder.jan-krueger.org
-plesk bin subdomain --create kinder -domain jan-krueger.org -www-root /httpdocs/kinder
-```
-Danach Let's Encrypt ausstellen, 301 auf HTTPS, Docker-Proxyregel `kinder-deutschlands-web-1:3000`.
+Prüfen: `echo | openssl s_client -connect 87.106.12.248:443 -servername kinder-deutschlands.de 2>/dev/null | grep subject=` muss `CN = kinder-deutschlands.de` zeigen. Kommt ein anderes Zertifikat (z. B. `public-power.de`), fehlt der nginx-Block der Domain: `ls /var/www/vhosts/system/kinder-deutschlands.de/conf/` ist dann leer/fehlt. Lösung: Domain in Plesk neu anlegen (`plesk bin site --remove kinder-deutschlands.de`, dann in Websites & Domains neu hinzufügen), Let's Encrypt für Hauptdomain und `www` ausstellen, 301 auf HTTPS, nginx-Block aus `deploy/plesk-nginx.conf` einspielen.
+Fehlt `www` im Zertifikat (`openssl s_client … -servername www.kinder-deutschlands.de | openssl x509 -noout -ext subjectAltName`), Zertifikat mit beiden Namen neu ausstellen (Befehl oben).
 
 ## Datenbank lehnt Passwort ab
 Log zeigt `Anmeldung an der Datenbank abgelehnt (28P01)`: Das DB-Volume wurde mit einem anderen `POSTGRES_PASSWORD` angelegt. Solange noch keine Daten existieren:
@@ -207,7 +203,7 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 | `OSM_SOURCE` | nein | `auto` (Standard: Deutschland-Auszug, Overpass als Rückfall), `overpass`, `datei` (F-022) |
 
 ## Domainwechsel später
-Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung. Chats bleiben erhalten (feste Chat-Serverkennung, D-035); Push-Abos melden sich auf der neuen Adresse neu an.
+Neue Domain in Plesk wie oben (Zertifikat inkl. `www`, nginx-Block), dann in Portainer `APP_URL` ändern (ohne `/` am Ende) und **Pull and redeploy** (bei Git-Stacks gibt es kein reines „Update“). Keine Codeänderung. Prüfen: `docker exec kinder-deutschlands-web-1 printenv APP_URL ORIGIN`, `curl -fsS https://<domain>/readyz`, Container-Laufzeit (`docker ps`) muss neu sein; TURN-Zeile im Web-Log nennt die neue Domain. Chats bleiben erhalten (feste Chat-Serverkennung, D-035). Sitzungen, **Passkeys** (an den Hostnamen gebunden) und Push-Abos müssen auf der neuen Adresse neu eingerichtet werden. Vorher Sicherung ziehen: `docker exec kinder-deutschlands-db-1 pg_dump -U kd -d kd -Fc > /root/kd-vor-domainwechsel.dump` (ebenso `-d synapse`). Alte Domain: bei Nutzern in Gebrauch → in Plesk behalten und per `vhost_nginx.conf` 301 auf die neue Domain (`if ($request_uri !~ ^/\.well-known/) { return 301 https://<neu>$request_uri; }`, `.well-known` bleibt frei für die Zertifikatserneuerung); ohne Nutzer darf sie gelöscht werden.
 
 ## Fehlersuche 502 (nginx/Plesk)
-- Ursache steht in `/var/www/vhosts/system/kinder.jan-krueger.org/logs/proxy_error_log`. „connect() failed (111)“ = App startet gerade neu (Ausrollen). „upstream sent too big header“ = Antwortköpfe > 4 KB (F-032: Link-Kopfzeile entfernt; der Rauchtest prüft die Größe). Alternativ in Plesk unter Apache & nginx → zusätzliche nginx-Anweisungen `proxy_buffer_size 16k;` – derzeit nicht nötig.
+- Ursache steht in `/var/www/vhosts/system/kinder-deutschlands.de/logs/proxy_error_log`. „connect() failed (111)“ = App startet gerade neu (Ausrollen). „upstream sent too big header“ = Antwortköpfe > 4 KB (F-032: Link-Kopfzeile entfernt; der Rauchtest prüft die Größe). Alternativ in Plesk unter Apache & nginx → zusätzliche nginx-Anweisungen `proxy_buffer_size 16k;` – derzeit nicht nötig.

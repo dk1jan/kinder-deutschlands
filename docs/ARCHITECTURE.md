@@ -3,7 +3,7 @@
 ## Überblick
 
 ```
-Internet ── Plesk nginx (TLS, kinder.jan-krueger.org) ── 127.0.0.1:3120 ── web (SvelteKit/Node)
+Internet ── Plesk nginx (TLS, kinder-deutschlands.de) ── 127.0.0.1:3120 ── web (SvelteKit/Node)
                                                                               │  /_matrix/client, /_matrix/media → synapse
                                                                               │  Netz „backend“ (intern, ohne Internet)
                                                        ┌──────────────────────┼───────────────────────┐

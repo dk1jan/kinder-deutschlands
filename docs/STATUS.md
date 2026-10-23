@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 23.10.2026 · Rückmeldung an Melder/Einsender, Chat-Schlüssel „frühere Version“ (F-036, F-017)
+Stand: 23.10.2026 · Domainwechsel auf kinder-deutschlands.de (D-083); davor Rückmeldung an Melder/Einsender, Chat-Schlüssel „frühere Version“ (F-036, F-017)
 
 Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig geprüft) · **getestet** (automatische Tests bestanden) · **extern blockiert**
 
@@ -12,7 +12,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 | GitHub Actions (Tests → Build → Branch `deploy` → Aufräumen) | getestet | Lauf vom 18.10. grün; Branch `deploy` zeigt auf `sha-9bd23eda4fce` |
 | Portainer-Stack aus Branch `deploy`, Polling 5 Min | umgesetzt | Stack läuft; DB-Volume muss nach Passwortwechsel neu angelegt werden |
 | GHCR-Paket öffentlich | getestet | Server zieht das Image ohne Anmeldung |
-| Plesk-Subdomain `kinder.jan-krueger.org`, TLS, Docker-Proxyregel | getestet | Zertifikat korrekt, HTTPS 200 (18.10.) |
+| Plesk-Domain `kinder-deutschlands.de` (+ `www` → 301), TLS, nginx-Block | getestet | Zertifikat mit beiden Namen, `readyz` 200, `www` → 301 (23.10., auf dem Server geprüft); `APP_URL`/`ORIGIN` im Container ohne Schrägstrich. Browsertest nach dem Umzug (Anmeldung, Beitrag, Chat, Anruf): Jan, offen. Alte Testdomain gelöscht |
 | Tägliche Sicherung (Container `backup`, 14 Tage; Bilder als Archiv, letzte 3; Chat-DB 14 Tage, Chat-Medien letzte 3) | umgesetzt | erst auf dem Server prüfbar |
 | Medienserver LiveKit (Container `livekit`, Port 49210 UDP/TCP) und Dienst `init` (Volumes beschreibbar) | getestet | Stack-Test in CI: Container gesund, Token nur über die App, Verwaltung nicht erreichbar, Volumes beschreibbar |
 | Chat-Server Synapse (Container `synapse`, Volumes `synapse-config`, `synapse-data`) | getestet | Stack-Test in CI mit echten Images vor jedem Ausrollen; Neustart bei Konfigurationsänderung automatisch |
