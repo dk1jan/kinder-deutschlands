@@ -82,6 +82,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 			html.replace('%kd.theme%', theme === 'system' ? '' : `data-theme="${theme}"`)
 	});
 
+	// F-032: SvelteKit schickt alle vorzuladenden Skripte zusätzlich als „Link“-Kopfzeile (bis ~3 KB). Mit Sitzungs-Cookie
+	// und CSP sprengt das den Kopf-Puffer von nginx (4 KB) → „upstream sent too big header“ → 502. Die gleichen Angaben
+	// stehen als <link rel="modulepreload"> im HTML-Kopf, die Kopfzeile ist also verzichtbar.
+	response.headers.delete('link');
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	if (!response.headers.has('Referrer-Policy')) response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	// Kamera (QR), Mikrofon (Sprachnachricht) und Standort (Karte, Treffpunkt) nur für die eigene Seite – der Browser fragt jeweils nach

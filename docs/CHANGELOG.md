@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · 502-Fehler behoben: zu große Antwortköpfe (F-032)
+
+**Was** Die App schickt keine „Link“-Kopfzeile mehr (Liste aller vorzuladenden Skripte, bis ~3 KB). Dieselben Angaben stehen weiterhin als `<link rel="modulepreload">` im HTML-Kopf – Ladezeit unverändert. Antwortköpfe jetzt ~0,9 KB statt ~3,8 KB.
+**Warum** Jan: 502 beim Einrichtungs-Antrag und beim Öffnen eines neuen Beitrags. nginx-Log (Plesk `proxy_error_log`): beide Male „upstream sent too big header“ – Link-Kopfzeile + CSP + Sitzungs-Cookie über dem 4-KB-Kopfpuffer von nginx. Kein Absturz der App (Logs, Neustarts 0). Die Vermutung „Ausrollen/Overture-Lauf“ aus F-030 war falsch.
+**Module** Querschnitt (Server-Hook) · **DB-Migration** nein
+**Tests** svelte-check, Build; Nachstellung mit langem Beitrag (Kopf 3.817 → 871 Bytes); Rauchtest bestanden (neu: Antwortköpfe einer Beitragsseite mit Anmeldung < 2 KB, keine Link-Kopfzeile).
+
 ## 2026-10-23 · Startseite: Datenübersicht statt Karte (F-031)
 
 **Was** Der Block „N Familienorte in ganz Deutschland“ steht nicht mehr oben unter dem Kopf. Der ganze Abschnitt „Zuerst der Norden“ (schematische Norddeutschland-Karte und Text) ist entfernt; an seiner Stelle steht jetzt die Datenübersicht in voller Breite.

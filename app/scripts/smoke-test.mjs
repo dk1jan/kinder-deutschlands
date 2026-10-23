@@ -593,6 +593,12 @@ try {
 		const pinPath = r.location;
 		r = await req(pinPath);
 		check(r.body.includes('Oben anheften'), 'Moderation sieht „Oben anheften“');
+		{
+			// F-032: nginx-Kopfpuffer 4 KB – Antwortköpfe müssen klar darunter bleiben (vorher ~3,8 KB + Cookie → 502)
+			let hb = 0;
+			r.headers.forEach((v, k) => (hb += k.length + v.length + 4));
+			check(hb < 2000 && !r.headers.has('link'), `Antwortköpfe klein genug für nginx (${hb} Bytes, keine Link-Kopfzeile)`);
+		}
 		r = await A.req(`${pinPath}?/anheften`, { method: 'POST', form: {} });
 		check(r.status >= 400 || !r.body.includes('"pinned":true'), 'Mitglied ohne Moderationsrecht kann nicht anheften');
 		r = await req(`${pinPath}?/anheften`, { method: 'POST', form: {} });

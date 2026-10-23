@@ -208,3 +208,6 @@ Niemals in Chats, Tickets oder Screenshots. Gelangen sie doch hinaus: neu erzeug
 
 ## Domainwechsel später
 Neue Subdomain/Domain in Plesk wie oben, in Portainer `APP_URL` ändern, Stack „Update“. Keine Codeänderung. Chats bleiben erhalten (feste Chat-Serverkennung, D-035); Push-Abos melden sich auf der neuen Adresse neu an.
+
+## Fehlersuche 502 (nginx/Plesk)
+- Ursache steht in `/var/www/vhosts/system/kinder.jan-krueger.org/logs/proxy_error_log`. „connect() failed (111)“ = App startet gerade neu (Ausrollen). „upstream sent too big header“ = Antwortköpfe > 4 KB (F-032: Link-Kopfzeile entfernt; der Rauchtest prüft die Größe). Alternativ in Plesk unter Apache & nginx → zusätzliche nginx-Anweisungen `proxy_buffer_size 16k;` – derzeit nicht nötig.
