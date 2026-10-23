@@ -1,4 +1,4 @@
-// Partnerschaft/Familie verbinden (F-008, D-070): beidseitig bestätigt, jederzeit lösbar.
+// Familie verbinden (F-008, D-070; seit F-029 nur noch „Familie“, alte Einträge „partnerschaft“ heißen ebenfalls Familie): beidseitig bestätigt, jederzeit lösbar.
 // Sichtbarkeit: jede Person entscheidet im Profil (Feld „Familie“), wer die Verbindung sieht; gezeigt wird sie nur,
 // wenn beide Seiten es für die betrachtende Person zulassen.
 import type { Sql } from './db';
@@ -9,11 +9,11 @@ import { areContacts, isBlockedEither, relationOf } from './profiles';
 import { canSee, type Visibility } from '$lib/visibility';
 
 export class FamilyError extends Error {}
-export const FAMILY_KINDS = { partnerschaft: 'Partnerschaft', familie: 'Familie' } as const;
+export const FAMILY_KINDS = { partnerschaft: 'Familie', familie: 'Familie' } as const;
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
-export async function requestLink(sql: Sql, userId: string, cidRaw: string, kind: string) {
-	if (!(kind in FAMILY_KINDS)) throw new FamilyError('Bitte Partnerschaft oder Familie wählen.');
+export async function requestLink(sql: Sql, userId: string, cidRaw: string, _kind?: string) {
+	const kind = 'familie'; // F-029: nur noch „Familie“ – Angabe aus alten Formularen wird ignoriert
 	const cid = normalizeContactId(cidRaw);
 	const [p] = cid ? await sql`select p.user_id from user_profiles p join users u on u.id = p.user_id and u.status = 'active' where p.contact_id = ${cid}` : [];
 	if (!p) throw new FamilyError('Keine Familie mit dieser ID gefunden.');

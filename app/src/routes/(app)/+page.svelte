@@ -8,6 +8,20 @@
 	import { GROUPS } from '$lib/areas';
 	let { data } = $props();
 
+	// Datenübersicht (F-029): was schon drin ist – echte Zählung, Gruppen wie auf der Karte
+	const c = (k: string) => (data.counts as Record<string, number | undefined>)[k] ?? 0;
+	const facts = $derived(
+		[
+			{ n: c('spielplatz'), l: 'Spielplätze' },
+			{ n: c('toilette') + c('wickelraum') + c('stillraum'), l: 'Toiletten, Wickel- und Stillorte' },
+			{ n: c('indoorspielplatz'), l: 'Indoorspielplätze' },
+			{ n: c('ausflugsort') + c('schwimmbad'), l: 'Ausflugsorte und Bäder' },
+			{ n: c('bibliothek') + c('familienzentrum') + c('familiencafe'), l: 'Bibliotheken, Familienzentren, Familiencafés' }
+		].filter((f) => f.n > 0)
+	);
+	const total = $derived(Object.values(data.counts as Record<string, number>).reduce((a, b) => a + (b ?? 0), 0));
+	const fmtN = (n: number) => n.toLocaleString('de-DE');
+
 	type Theme = 'sea' | 'yellow' | 'sky' | 'red' | 'navy' | 'paper';
 	const modules: { art: 'karte' | 'treffen' | 'community' | 'radar' | 'markt' | 'nachrichten'; title: string; text: string; stage: string; theme: Theme; href?: string }[] = $derived([
 		{
@@ -105,6 +119,19 @@
 		<path d="M0 60 C120 30 240 30 360 52 S600 84 720 58 S960 18 1080 44 S1320 80 1440 50 V90 H0 Z" fill="var(--band)" />
 	</svg>
 </section>
+
+{#if total > 0}
+	<section class="container facts" aria-labelledby="daten-titel">
+		<h2 id="daten-titel"><span class="big">{fmtN(total)}</span> Familienorte in ganz Deutschland.</h2>
+		<ul>
+			{#each facts as f}<li><strong>{fmtN(f.n)}</strong><span>{f.l}</span></li>{/each}
+		</ul>
+		<p class="muted">
+			Aus offenen Daten (OpenStreetMap, Overture Maps, Bundesamt für Kartographie), jeder Ort mit Quelle{#if data.stand}, zuletzt abgeglichen am {new Date(data.stand).toLocaleDateString('de-DE')}{/if}.
+			<a href="/karte">Zur Karte</a> · <a href="/karte/quellen">Datenquellen</a>
+		</p>
+	</section>
+{/if}
 
 <section class="band" id="familien-id" aria-labelledby="id-titel">
 	<div class="container id-grid">
@@ -222,6 +249,39 @@
 
 <style>
 	/* ---------- Hero ---------- */
+	.facts {
+		padding-block: var(--sp-6) var(--sp-5);
+	}
+	.facts h2 {
+		margin: 0 0 var(--sp-4);
+	}
+	.facts .big {
+		color: var(--sea-ink);
+	}
+	.facts ul {
+		list-style: none;
+		padding: 0;
+		margin: 0 0 var(--sp-3);
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+		gap: var(--sp-3);
+	}
+	.facts li {
+		background: var(--surface);
+		border-radius: var(--radius-m);
+		padding: var(--sp-3) var(--sp-4);
+		display: grid;
+		gap: 2px;
+	}
+	.facts li strong {
+		font-family: var(--font-display);
+		font-size: var(--fs-xl);
+		line-height: 1.1;
+	}
+	.facts li span {
+		color: var(--ink-2);
+		font-size: var(--fs-s);
+	}
 	.hero {
 		position: relative;
 		overflow: hidden;

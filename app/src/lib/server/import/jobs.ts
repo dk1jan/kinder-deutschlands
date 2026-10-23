@@ -11,6 +11,7 @@ import { refreshTiles } from './tiles';
 import { dropKnown, fetchOverture, toRecord } from './overture';
 import type { ImportRecord } from './types';
 import { pruneAerialCache } from '../aerial';
+import { autoMergeDuplicates } from '../datacenter';
 import { importIcs, type IcsSourceConfig } from '../angebote/icsimport';
 
 const LOCK_ID = 7_302_011; // beliebige feste Zahl für pg_advisory_lock
@@ -89,6 +90,16 @@ async function runSimple(sql: Sql, src: SourceRow, trigger: 'zeitplan' | 'manuel
 	return Number(run.id);
 }
 
+/** Eindeutige Dubletten gleich nach jedem Abruf zusammenführen (F-029). Schlägt das fehl, bleiben sie zur Prüfung. */
+async function mergeNow(sql: Sql) {
+	try {
+		const r = await autoMergeDuplicates(sql);
+		if (r.zusammengefuehrt) console.log(`[import] Dubletten: ${r.zusammengefuehrt} automatisch zusammengeführt, ${r.offen} offen zur Prüfung`);
+	} catch (e) {
+		console.error('Dubletten zusammenführen:', (e as Error).message);
+	}
+}
+
 export class BusyError extends Error {}
 
 /** Führt eine Quelle sofort aus. Wirft BusyError, wenn gerade ein anderer Abruf läuft. */
@@ -101,11 +112,14 @@ export async function runSource(sql: Sql, key: string, trigger: 'zeitplan' | 'ma
 			const [src] = (await sql`select * from data_sources where key = ${key}`) as unknown as SourceRow[];
 			if (!src) throw new Error('Quelle nicht gefunden.');
 			const type = src.config.type as string;
-			if (src.kind === 'orte' && type === 'osm') {
-				return await runPlaceSource(sql, src, { trigger, actorId, fetchRecords: fetchOsm });
-			}
-			if (src.kind === 'orte' && type === 'overture') {
-				return await runPlaceSource(sql, src, { trigger, actorId, fetchRecords: (s, signal) => fetchOvertureRecords(sql, s, signal) });
+			if (src.kind === 'orte' && (type === 'osm' || type === 'overture')) {
+				const runId = await runPlaceSource(sql, src, {
+					trigger,
+					actorId,
+					fetchRecords: type === 'osm' ? fetchOsm : (s, signal) => fetchOvertureRecords(sql, s, signal)
+				});
+				await mergeNow(sql);
+				return runId;
 			}
 			if (type === 'vg250') {
 				return await runSimple(sql, src, trigger, actorId, async () => {
@@ -153,6 +167,7 @@ export async function isRunning(sql: Sql): Promise<boolean> {
 }
 
 let lastPrune = 0;
+let lastMerge = 0;
 
 async function tick() {
 	if (busy) return;
@@ -164,8 +179,25 @@ async function tick() {
 			if (n) console.log(`Luftbild-Zwischenspeicher: ${n} alte Kacheln entfernt.`);
 		}
 		const sql = db();
-			// Noch nie gelaufene Quellen zuerst – neue Quellen füllen sich nach einem Update von selbst, ohne Knopfdruck
-			const due = await sql`select key from data_sources where not paused and next_run_at <= now() order by (last_success_at is null) desc, next_run_at limit 1`;
+		// Einmal täglich (und kurz nach dem Start) den Dubletten-Bestand abarbeiten – unter derselben Sperre wie Abrufe
+		if (Date.now() - lastMerge > 24 * 3600 * 1000) {
+			lastMerge = Date.now();
+			const reserved = await sql.reserve();
+			try {
+				const [{ ok }] = await reserved`select pg_try_advisory_lock(${LOCK_ID}) as ok`;
+				if (ok) {
+					try {
+						await mergeNow(sql);
+					} finally {
+						await reserved`select pg_advisory_unlock(${LOCK_ID})`;
+					}
+				} else lastMerge = 0;
+			} finally {
+				reserved.release();
+			}
+		}
+		// Noch nie gelaufene Quellen zuerst – neue Quellen füllen sich nach einem Update von selbst, ohne Knopfdruck
+		const due = await sql`select key from data_sources where not paused and next_run_at <= now() order by (last_success_at is null) desc, next_run_at limit 1`;
 		if (due.length) await runSource(sql, due[0].key, 'zeitplan');
 	} catch (e) {
 		if (!(e instanceof BusyError)) console.error('Zeitplan:', (e as Error).message);

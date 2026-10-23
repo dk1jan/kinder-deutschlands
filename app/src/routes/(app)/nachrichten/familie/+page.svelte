@@ -25,7 +25,7 @@
 				action="?/anfragen" loginHref="/anmelden" hidden={{ cid: data.found.cid }} />
 		</ContactCard>
 		{#if data.found.writeTogether}<p class="together"><a class="btn small secondary" href="/nachrichten/gruppe/neu?mit={data.found.writeTogether.join(',')}">Gemeinsam schreiben</a></p>{/if}
-		{#if data.found.relation !== 'extern' && data.found.relation !== 'selbst'}<p class="muted small"><a href="/profil/familie?id={data.found.card.contactIdFormatted}">Als Partnerschaft/Familie verbinden …</a></p>{/if}
+		{#if data.found.relation !== 'extern' && data.found.relation !== 'selbst'}<p class="muted small"><a href="/profil/familie?id={data.found.card.contactIdFormatted}">Als Familie verbinden …</a></p>{/if}
 		<details class="report">
 			<summary>Diese Familie blockieren</summary>
 			<p>Blockierte Familien können dich nicht mehr finden, scannen oder anfragen. Bestehende Verbindungen werden beendet.</p>

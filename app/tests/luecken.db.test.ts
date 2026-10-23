@@ -292,7 +292,6 @@ d('Lücken schließen (Datenbank)', async () => {
 		const { cardForViewer } = await import('../src/lib/server/cards');
 		const [pa] = await sql`select contact_id from user_profiles where user_id = ${u.anna}`;
 		await expect(Fm.requestLink(sql, u.ben, 'ZZZ-ZZZ-ZZZ', 'partnerschaft')).rejects.toBeInstanceOf(Fm.FamilyError);
-		await expect(Fm.requestLink(sql, u.ben, pa.contact_id, 'freunde')).rejects.toBeInstanceOf(Fm.FamilyError);
 		await Fm.requestLink(sql, u.ben, pa.contact_id, 'partnerschaft');
 		await expect(Fm.requestLink(sql, u.ben, pa.contact_id, 'familie')).rejects.toBeInstanceOf(Fm.FamilyError); // doppelt
 		const inc = (await Fm.myLinks(sql, u.anna)).find((l) => l.incoming)!;
@@ -304,7 +303,7 @@ d('Lücken schließen (Datenbank)', async () => {
 		expect((await cardForViewer(sql, u.anna, u.red))?.card.family).toEqual([]);
 		await Fm.respondLink(sql, u.anna, inc.id, true);
 		let c = await cardForViewer(sql, u.anna, u.red);
-		expect(c?.card.family?.map((f) => [f.name, f.kind])).toEqual([['Ben', 'Partnerschaft']]);
+		expect(c?.card.family?.map((f) => [f.name, f.kind])).toEqual([['Ben', 'Familie']]); // F-029: alte „Partnerschaft“ heißt jetzt auch Familie
 		expect(c?.writeTogether).toBeNull(); // red ist kein Kontakt
 		// Ben schränkt ein → auf Annas Karte nicht mehr sichtbar
 		await sql`update user_profiles set visibility = ${sql.json({ ...vis, family: 'kontakte' })} where user_id = ${u.ben}`;

@@ -14,7 +14,7 @@ export const FIELDS: { key: Field; label: string }[] = [
 	{ key: 'interests', label: 'Interessen' },
 	{ key: 'child_ages', label: 'Altersgruppen der Kinder' },
 	{ key: 'region', label: 'Region' },
-	{ key: 'family', label: 'Verbindung Partnerschaft/Familie' }
+	{ key: 'family', label: 'Verbindung Familie' }
 ];
 
 export const LEVELS: { key: Level; label: string }[] = [

@@ -5,6 +5,7 @@ import { displayName, featuresFor, isKind, type Kind } from '$lib/places';
 import { tileState, validBbox } from './import/tiles';
 import { assignRegions } from './import/engine';
 import { notifyPlaceFollowers } from './follows';
+import { sameName } from './import/overture';
 
 export class DataError extends Error {}
 
@@ -123,7 +124,7 @@ export async function decideSuggestion(sql: Sql, id: string, approve: boolean, a
 }
 
 /** Zusammenführen: „keep“ bleibt, „drop“ wird verwiesen. Quellen, Merkliste, Meldungen und Hinweise ziehen mit um. */
-export async function mergePlaces(sql: Sql, keep: string, drop: string, actorId: string) {
+export async function mergePlaces(sql: Sql, keep: string, drop: string, actorId: string | null, auto = false) {
 	if (keep === drop) throw new DataError('Ein Ort kann nicht mit sich selbst zusammengeführt werden.');
 	await sql.begin(async (tx) => {
 		const rows = await tx`select id, kind, status from places where id in (${keep}, ${drop}) for update`;
@@ -134,14 +135,62 @@ export async function mergePlaces(sql: Sql, keep: string, drop: string, actorId:
 		await tx`delete from place_favorites where place_id = ${drop}`;
 		await tx`update place_reports set place_id = ${keep} where place_id = ${drop}`;
 		await tx`update place_notices set place_id = ${keep} where place_id = ${drop}`;
+		// Inhalte von Mitgliedern und Anbietern ziehen ebenfalls um (F-029); je Mitglied bleibt eine Bewertung (die am Ziel)
+		await tx`update place_reviews r set place_id = ${keep} where r.place_id = ${drop}
+			and not exists (select 1 from place_reviews k where k.place_id = ${keep} and k.user_id = r.user_id)`;
+		for (const t of ['media', 'posts', 'organizations', 'events', 'offers', 'notices', 'invitations'])
+			await tx`update ${tx(t)} set place_id = ${keep} where place_id = ${drop}`;
 		await tx`update places set status = 'zusammengefuehrt', merged_into = ${keep}, updated_at = now() where id = ${drop}`;
 		await tx`update places set status = case when status in ('pruefung', 'archiviert') then 'aktiv' else status end, updated_at = now() where id = ${keep}`;
 		await tx`update place_duplicates set status = 'zusammengefuehrt', decided_by = ${actorId}, decided_at = now()
 			where (place_a = ${keep} and place_b = ${drop}) or (place_a = ${drop} and place_b = ${keep})`;
 		// Weitere offene Paare des verwiesenen Ortes auf den bleibenden umlenken
 		await tx`delete from place_duplicates where status = 'offen' and (place_a = ${drop} or place_b = ${drop})`;
-		await audit(tx as unknown as Sql, { actorId, action: 'place.merged', targetType: 'place', targetId: keep, meta: { merged: drop } });
+		await audit(tx as unknown as Sql, { actorId, action: 'place.merged', targetType: 'place', targetId: keep, meta: { merged: drop, ...(auto ? { automatisch: true } : {}) } });
 	});
+}
+
+/** Gleich benannt oder beide ohne Namen; ein Name fehlt → nur bei ≤ 15 m (z. B. Punkt und Fläche desselben Spielplatzes). */
+export function namesCompatible(a: string | null, b: string | null, m: number): boolean {
+	const x = a?.trim() || null, y = b?.trim() || null;
+	if (!x && !y) return true;
+	if (!x || !y) return m <= 15;
+	return x.toLowerCase() === y.toLowerCase() || sameName(x, y);
+}
+
+/**
+ * Eindeutige Dubletten selbst zusammenführen (F-029, Jan: „sind immer die selben“). Nur Paare aus Importen (keine von
+ * Mitgliedern/Redaktion bestätigten Orte), beide sichtbar, gleiche Art ≤ 30 m (Erkennung) und passende Namen.
+ * Behalten wird der Ort mit mehr Angaben (Name, Fläche, Merkmale), bei Gleichstand der ältere. Rest bleibt zur Prüfung.
+ */
+export async function autoMergeDuplicates(sql: Sql, limit = 50000): Promise<{ zusammengefuehrt: number; offen: number }> {
+	const pairs = await sql`
+		select d.place_a, d.place_b, d.distance_m, a.name as a_name, b.name as b_name,
+			(a.name is not null)::int * 10 + (a.area is not null)::int * 5 + (select count(*) from jsonb_object_keys(a.features))::int as a_score,
+			(b.name is not null)::int * 10 + (b.area is not null)::int * 5 + (select count(*) from jsonb_object_keys(b.features))::int as b_score,
+			a.created_at <= b.created_at as a_older
+		from place_duplicates d join places a on a.id = d.place_a join places b on b.id = d.place_b
+		where d.status = 'offen' and a.status = 'aktiv' and b.status = 'aktiv'
+			and a.confirmation = 'importiert' and b.confirmation = 'importiert' and a.kind = b.kind
+		order by d.distance_m limit ${limit}`;
+	const gone = new Set<string>();
+	let n = 0;
+	for (const p of pairs) {
+		const a = p.place_a as string, b = p.place_b as string;
+		if (gone.has(a) || gone.has(b)) continue;
+		if (!namesCompatible(p.a_name, p.b_name, Number(p.distance_m))) continue;
+		const keepA = p.a_score > p.b_score || (p.a_score === p.b_score && p.a_older);
+		const [keep, drop] = keepA ? [a, b] : [b, a];
+		try {
+			await mergePlaces(sql, keep, drop, null, true);
+			gone.add(drop);
+			n++;
+		} catch (e) {
+			if (!(e instanceof DataError)) throw e;
+		}
+	}
+	const [{ offen }] = await sql`select count(*)::int as offen from place_duplicates where status = 'offen'`;
+	return { zusammengefuehrt: n, offen };
 }
 
 export async function markDistinct(sql: Sql, a: string, b: string, actorId: string) {

@@ -62,6 +62,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-029 | erledigt: eindeutige Dubletten automatisch zusammengeführt (nach jedem Abruf + täglich), Datenübersicht auf der Startseite, GPS-Aufzeichnung bei Routen wieder entfernt (F-027 zurückgenommen), nur noch „Familie“ statt „Partnerschaft & Familie“ (D-079) | CHANGELOG 23.10. Dubletten automatisch |
 | F-028 | erledigt: Overture als zweite Ortsquelle (Indoorspielplätze, Kindermuseen, Kinderbauernhöfe, strenge Regeln, nichts doppelt), „gibt es nicht mehr“ blendet reine Overture-Orte aus, Datenzentrale „Alles läuft automatisch“, Knöpfe eingeklappt (D-078). spielplatztreff.de/mamilade.de nicht nutzbar (Crawler verboten / keine Lizenz) | CHANGELOG 23.10. Overture |
 | F-027 | erledigt: Route per GPS aufzeichnen, Enden 50 m gekürzt (Regler 0–200 m), nur Linie, Prüfschritt mit Start/Ziel (D-077) | CHANGELOG 22.10. GPS-Routen |
 | F-025 | erledigt: Live-Standort im Chat – Vollbild-Karte über „N live“, frei verschieben/zoomen (sprang vorher jede Sekunde zurück), Namen an den Punkten, Personen als Knöpfe unten, „Alle zeigen“, Hinweis „Du teilst live“ einzeilig, keine Karte mehr über dem Verlauf | CHANGELOG 22.10. Live-Standort |

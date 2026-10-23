@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Dubletten automatisch, Datenübersicht auf der Startseite, GPS-Routen raus, nur „Familie“ (F-029, D-079)
+
+**Was**
+- **Dubletten selbst zusammenführen:** Eindeutige Fälle erledigt die App jetzt ohne Klick – direkt nach jedem Abruf und einmal täglich (also auch die 12.722 vorhandenen, kurz nach dem Ausrollen). Eindeutig = beide aus Importen (nichts von Mitgliedern/Redaktion Bestätigtes), gleiche Art, ≤ 30 m, und Namen passen: beide ohne Namen, gleich/ähnlich benannt, oder einer ohne Namen bei ≤ 15 m. Behalten wird der Ort mit mehr Angaben (Name, Fläche, Merkmale), sonst der ältere. Verschieden benannte Orte und bereits als „verschieden“ entschiedene Paare bleiben zur Prüfung. Nichts wird gelöscht (Status „zusammengeführt“, Verweis), Protokolleintrag „automatisch“.
+- Beim Zusammenführen (auch von Hand) ziehen jetzt auch Bewertungen, Bilder, Beiträge, Einrichtungen, Termine, Angebote, Hinweise und Einladungen mit um (vorher nur Quellen, Merkliste, Meldungen, Hinweise).
+- **Startseite:** neue Übersicht „N Familienorte in ganz Deutschland.“ mit Spielplätzen, Toiletten/Wickel-/Stillorten, Indoorspielplätzen, Ausflugsorten/Bädern, Bibliotheken/Familienzentren/-cafés – echte Zählung (10 Min. zwischengespeichert), Quellen und Stand des letzten Abgleichs, Links zu Karte und Datenquellen.
+- **Kinderwagenrouten:** GPS-Aufzeichnung wieder entfernt (F-027 zurückgenommen), nur noch Einzeichnen wie vorher. Satz im Datenschutz-Entwurf entfernt. Die Kartenkorrektur aus F-027 (Mini-Karte zeigt Linie und Punkte) bleibt.
+- **Familie statt „Partnerschaft & Familie“:** Seite, Kachel, QR-/Kontaktkarten-Link und Sichtbarkeitsfeld heißen nur noch „Familie“, keine Auswahl mehr. Bestehende Verbindungen „Partnerschaft“ werden als „Familie“ angezeigt (keine DB-Änderung).
+**Warum** Jan: 5–10 Dubletten nachgesehen, „sind immer die selben … kannst du die nicht selber prüfen?“; „GPS wieder raus, das ist Müll“; „auf der Startseite eine kleine Übersicht, wie viele Daten wir aktuell haben“; „Partnerschaft & Familie – Familie reicht, sonst fragt man sich, was ist was“.
+**Module** M23/M24 Daten (Dubletten), Startseite, M14 Kinderwagenrouten, M01 Profil/Familie · **DB-Migration** nein
+**Tests** svelte-check; 251 Unit/DB-Tests (neu `dubletten.db.test.ts`: drei Toiletten am selben Punkt → eine bleibt, die mit Wickeltisch; verschieden benannte Spielplätze bleiben; ohne Namen 5 m zusammen, 25 m nicht; von Mitgliedern bestätigt nie automatisch; „verschieden“ bleibt; Bewertung und Merkliste ziehen um; Protokoll; zweiter Lauf ändert nichts; GPS-Tests entfernt); Lastprobe 12.000 Zusammenführungen in 76 s; Rauchtest bestanden (neu: Startseiten-Übersicht, Route ohne GPS, Familie ohne Partnerschaft); Barrierefreiheit ohne schwere Verstöße; Bildschirmfotos angesehen.
+
 ## 2026-10-23 · Overture als zweite Ortsquelle, Datenzentrale ohne Knopfdruck (F-028, D-078)
 
 **Was**

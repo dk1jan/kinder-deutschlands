@@ -73,7 +73,7 @@
 				<span>Für Familienzentren, Vereine, Kursanbieter</span>
 			</a>
 			<a href="/profil/familie" class="tile">
-				<strong>Partnerschaft & Familie</strong>
+				<strong>Familie</strong>
 				<span>Konten verbinden, gemeinsam erreichbar</span>
 			</a>
 			<a href="/profil/qr" class="tile">

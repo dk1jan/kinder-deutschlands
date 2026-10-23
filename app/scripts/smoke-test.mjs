@@ -469,6 +469,11 @@ try {
 	res = await runAndWait('osm-spielplaetze');
 	const nPlay = res.run?.counts?.neu ?? 0;
 	check(res.run?.status === 'uebernommen' && nPlay >= 10, `Spielplätze importiert (${nPlay} neu)`);
+	{
+		const h = await fetch(BASE + '/');
+		const body = await h.text();
+		check(/Familienorte in ganz Deutschland/.test(body) && body.includes('Spielplätze'), 'Startseite: Datenübersicht mit echter Zählung (F-029)');
+	}
 	res = await runAndWait('osm-toiletten');
 	check(res.run?.status === 'uebernommen' && (res.run.counts.neu ?? 0) >= 3, `Toiletten importiert (${res.run?.counts?.neu ?? 0})`);
 	const [findorff] = await sqlT`select count(*)::int as n from places p join regions r on r.code = p.region_code where r.name = 'Findorff' and r.level = 'stadtteil'`;
@@ -814,7 +819,7 @@ try {
 	const coords = JSON.stringify([[8.7905, 53.0935], [8.7930, 53.0950], [8.7960, 53.0965], [8.7985, 53.0975]]);
 	const routeForm = { title: 'Smoke-Runde Torfkanal', description: 'Breite Wege', coords, surface: 'asphalt', incline: 'eben', stairs: 'nein', duration: '20' };
 	r = await D.req('/routen/neu');
-	check(r.status === 200 && r.body.includes('Per GPS aufzeichnen') && r.body.includes('Einzeichnen'), 'Route einreichen: Seite lädt, Einzeichnen und GPS-Aufzeichnung (F-027)');
+	check(r.status === 200 && !r.body.includes('Per GPS aufzeichnen'), 'Route einreichen: Seite lädt, ohne GPS-Aufzeichnung (F-029)');
 	r = await D.req('/routen/neu', { form: routeForm });
 	check(r.status === 400 && r.body.includes('öffentlich'), 'Route ohne Bestätigung „öffentliche Orte“ abgelehnt');
 	r = await D.req('/routen/neu', { form: { ...routeForm, public_ends: 'on' } });
@@ -951,6 +956,7 @@ try {
 	r = await A.req('/profil/familie?/antworten', { form: { id: linkId ?? '', accept: '1' } });
 	r = await A.req('/profil/familie');
 	check(r.body.includes('verbunden'), 'Familie: verbunden');
+	check(!r.body.includes('Partnerschaft') && !r.body.includes('name="kind" value="partnerschaft"'), 'Familie: nur noch „Familie“, keine Auswahl Partnerschaft (F-029)');
 	// D-066: Chat-Salz nur mit Sitzung (Rest im Browsertest chatkey-check.py)
 
 	// Geräteliste: zweites und drittes Gerät abmelden
