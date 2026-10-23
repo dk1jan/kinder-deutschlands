@@ -173,33 +173,18 @@
 	</ul>
 </section>
 
-<section class="region" aria-labelledby="reg-titel">
-	<div class="container reg-grid">
-		{#if total > 0}
-			<div class="facts">
-				<h2 id="daten-titel"><span class="big">{fmtN(total)}</span> Familienorte in ganz Deutschland.</h2>
-				<ul>
-					{#each facts as f}<li><strong>{fmtN(f.n)}</strong><span>{f.l}</span></li>{/each}
-				</ul>
-				<p class="muted">
-					Aus offenen Daten (OpenStreetMap, Overture Maps, Bundesamt für Kartographie), jeder Ort mit Quelle{#if data.stand}, zuletzt abgeglichen am {new Date(data.stand).toLocaleDateString('de-DE')}{/if}.
-					<a href="/karte">Zur Karte</a> · <a href="/karte/quellen">Datenquellen</a>
-				</p>
-			</div>
-		{/if}
-		<div>
-			<h2 id="reg-titel">Zuerst der Norden.</h2>
-			<p class="lead">
-				Bremen, Bremerhaven und Niedersachsen machen den Anfang. Lieber wenige lebendige Gruppen als hunderte leere Foren. Gebaut
-				ist alles trotzdem für ganz Deutschland.
-			</p>
-			<p>
-				Land Bremen, Stadt Bremen und Bremerhaven sind von Anfang an sauber getrennt, damit Nachrichten und Angebote dort
-				ankommen, wo sie gelten. Orte kommen aus offenen Daten wie OpenStreetMap, immer mit Quelle und Stand.
-			</p>
-		</div>
-	</div>
-</section>
+{#if total > 0}
+	<section class="container facts" aria-labelledby="daten-titel">
+		<h2 id="daten-titel"><span class="big">{fmtN(total)}</span> Familienorte in ganz Deutschland.</h2>
+		<ul>
+			{#each facts as f}<li><strong>{fmtN(f.n)}</strong><span>{f.l}</span></li>{/each}
+		</ul>
+		<p class="muted">
+			Aus offenen Daten (OpenStreetMap, Overture Maps, Bundesamt für Kartographie), jeder Ort mit Quelle{#if data.stand}, zuletzt abgeglichen am {new Date(data.stand).toLocaleDateString('de-DE')}{/if}.
+			<a href="/karte">Zur Karte</a> · <a href="/karte/quellen">Datenquellen</a>
+		</p>
+	</section>
+{/if}
 
 <section class="promises" aria-labelledby="ver-titel">
 	<div class="container">
@@ -243,6 +228,9 @@
 
 <style>
 	/* ---------- Hero ---------- */
+	.facts {
+		padding-block: var(--sp-7) var(--sp-8);
+	}
 	.facts h2 {
 		margin: 0 0 var(--sp-4);
 		font-size: var(--fs-2xl);
@@ -599,22 +587,6 @@
 			grid-row: 1 / 3;
 			margin: 0;
 			padding: 0;
-		}
-	}
-
-	/* ---------- Region ---------- */
-	.region {
-		padding: var(--sp-7) 0 var(--sp-8);
-	}
-	.reg-grid {
-		display: grid;
-		gap: var(--sp-6);
-		align-items: center;
-	}
-	@media (min-width: 900px) {
-		.reg-grid {
-			grid-template-columns: 1fr 1fr;
-			gap: var(--sp-8);
 		}
 	}
 
