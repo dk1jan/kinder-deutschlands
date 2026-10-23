@@ -657,7 +657,7 @@ try {
 	r = await X2.req('/veranstaltungen');
 	check(r.status === 200 && r.body.includes('Keine Termine gefunden') && r.body.includes('nichts Erfundenes'), 'Veranstaltungen öffentlich, ehrlich leer');
 	// F-033: Verwaltung legt eine Einrichtung direkt an (ohne Prüfangaben), sofort sichtbar
-	r = await req('/einrichtungen/antrag', { form: { name: 'Smoke-Jugendfarm', kind: 'verein', description: 'Tiere und Natur', region_code: fdf.code } });
+	r = await req('/einrichtungen/antrag', { form: { name: 'Smoke-Jugendfarm', kind: 'verein', description: 'Tiere und Natur', region_code: fdf.code, lat: '53.07', lon: '8.80' } });
 	check(r.status === 200 && r.body.includes('Einrichtung angelegt'), 'Verwaltung legt Einrichtung direkt an');
 	{
 		const [jf] = await sqlT`select status from organizations where name = 'Smoke-Jugendfarm'`;
@@ -886,6 +886,10 @@ try {
 	r = await X2.req(`/api/karte/ebenen?bbox=${bb}&e=routen,marktplatz,hilfe`);
 	let lj = JSON.parse(r.body);
 	check(r.status === 200 && lj.lines.some((l) => l.title === 'Smoke-Runde Torfkanal') && lj.points.length === 0 && lj.hidden.includes('marktplatz'), 'Kartenebenen ohne Anmeldung: Routen ja, Marktplatz/Hilfe nein');
+	r = await X2.req(`/api/karte/ebenen?bbox=${bb}&e=einrichtungen`);
+	lj = JSON.parse(r.body);
+	check(r.status === 200 && lj.points.some((p) => p.layer === 'einrichtungen' && p.title === 'Smoke-Jugendfarm' && p.href.startsWith('/einrichtungen/'))
+		&& !lj.points.some((p) => p.title === 'Smoke-Kurz'), 'Kartenebene Einrichtungen: geprüfte mit Standort sichtbar, Anträge nicht (F-034)');
 	r = await D.req(`/api/karte/ebenen?bbox=${bb}&e=marktplatz,hilfe`);
 	lj = JSON.parse(r.body);
 	check(r.status === 200 && lj.points.some((p) => p.layer === 'marktplatz' && p.href.startsWith('/marktplatz?region=')) && lj.points.some((p) => p.layer === 'hilfe'), 'Kartenebenen für Mitglieder: Marktplatz und Hilfe je Gegend');

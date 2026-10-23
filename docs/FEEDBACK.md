@@ -62,6 +62,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-034 | erledigt: Kartenebene „Einrichtungen“ (geprüfte mit Standort, standardmäßig an) | CHANGELOG 23.10. Einrichtungen auf der Karte |
 | F-033 | erledigt: Einrichtung anlegen – Verwaltung legt direkt an (ohne Prüfung), Antrag erklärt Mindestlänge, Häkchen bleibt, Telefonfeld gestaltet | CHANGELOG 23.10. Einrichtung anlegen |
 | F-032 | erledigt: 502 bei Einrichtungs-Antrag und neuem Beitrag – Ursache „upstream sent too big header“ (nginx 4 KB), Link-Kopfzeile entfernt | CHANGELOG 23.10. 502-Fehler |
 | F-031 | erledigt: Datenübersicht von oben an die Stelle des Abschnitts „Zuerst der Norden“ (Karte und Text entfernt) | CHANGELOG 23.10. Startseite |

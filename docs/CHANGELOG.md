@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Einrichtungen auf der Familienkarte (F-034)
+
+**Was** Neue Kartenebene **Einrichtungen**: alle geprüften Einrichtungen mit Standort (Familienzentren, Vereine, Kitas, Beratungsstellen …) als eigenes Symbol (Haus, rotbraun), Antippen zeigt Name, Art, Adresse und führt zur Einrichtungsseite; auch in der Liste „im Ausschnitt“. Die Ebene ist für alle sichtbar und standardmäßig eingeschaltet (wer seine Ebenen schon selbst gewählt hat, behält seine Auswahl – dann unter „Ebenen“ zuschalten). Anträge (noch nicht geprüft) erscheinen nicht.
+**Warum** Jan: Kinder- und Jugendfarm Bremen angelegt, auf der Karte aber nur der OSM-Spielplatz auf dem Gelände sichtbar – Einrichtungen hatten bisher keine Kartenebene.
+**Module** M10 Familienkarte, M12 Einrichtungen · **DB-Migration** nein
+**Tests** svelte-check, Build; Rauchtest bestanden (neu: Ebene liefert die geprüfte Einrichtung mit Link, Anträge nicht); Bildschirmfoto der Karte angesehen.
+
 ## 2026-10-23 · Einrichtung anlegen: Verwaltung direkt, verständlicher Fehler (F-033)
 
 **Was**

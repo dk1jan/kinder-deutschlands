@@ -6,9 +6,10 @@ import type { Sql } from './db';
 import type { Bbox } from './places';
 import { listOccurrences } from './angebote/events';
 import { berlinDateKey } from './angebote/recurrence';
-import { EVENT_KINDS } from '$lib/angebote';
+import { EVENT_KINDS, ORG_KINDS } from '$lib/angebote';
 
 export const LAYERS = {
+	einrichtungen: { label: 'Einrichtungen', members: false },
 	termine: { label: 'Termine', members: false },
 	routen: { label: 'Kinderwagenrouten', members: false },
 	marktplatz: { label: 'Marktplatz', members: true },
@@ -71,6 +72,22 @@ export async function layerData(sql: Sql, viewerId: string | null, b: Bbox, laye
 			});
 			if (seen.size >= LIMIT) break;
 		}
+	}
+
+	// F-034: geprüfte Einrichtungen mit Standort (Familienzentren, Vereine, Kitas …) – öffentlich wie ihre Seite
+	if (want.includes('einrichtungen')) {
+		const rows = await sql`select id, slug, name, kind, address, ST_X(location) as lon, ST_Y(location) as lat from organizations
+			where status = 'verifiziert' and location is not null and location && ${env(sql, b)} order by name limit ${LIMIT}`;
+		for (const r of rows)
+			points.push({
+				id: `e:${r.id}`,
+				layer: 'einrichtungen',
+				title: r.name,
+				sub: [(ORG_KINDS as Record<string, string>)[r.kind] ?? 'Einrichtung', r.address].filter(Boolean).join(' · '),
+				href: `/einrichtungen/${r.slug}`,
+				lon: r.lon,
+				lat: r.lat
+			});
 	}
 
 	if (want.includes('routen')) {

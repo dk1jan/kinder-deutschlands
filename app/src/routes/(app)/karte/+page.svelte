@@ -48,9 +48,10 @@
 	);
 	let urlTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// Zusatzebenen: Termine (7 Tage), Kinderwagenrouten, Marktplatz und Hilfe (nur Mitglieder, je Gegend)
-	type LayerKey = 'termine' | 'routen' | 'marktplatz' | 'hilfe';
+	// Zusatzebenen: Einrichtungen, Termine (7 Tage), Kinderwagenrouten, Marktplatz und Hilfe (nur Mitglieder, je Gegend)
+	type LayerKey = 'einrichtungen' | 'termine' | 'routen' | 'marktplatz' | 'hilfe';
 	const LAYER_CHIPS: { key: LayerKey; label: string; members: boolean }[] = [
+		{ key: 'einrichtungen', label: 'Einrichtungen', members: false },
 		{ key: 'termine', label: 'Termine (7 Tage)', members: false },
 		{ key: 'routen', label: 'Kinderwagenrouten', members: false },
 		{ key: 'marktplatz', label: 'Marktplatz', members: true },
@@ -76,7 +77,8 @@
 				v = null;
 			}
 		}
-		const ok = (v ?? '').split(',').filter((k): k is LayerKey => LAYER_CHIPS.some((c) => c.key === k && (!c.members || data.loggedIn)));
+		// Ohne eigene Auswahl: Einrichtungen sind an (F-034) – wer alle Ebenen ausschaltet, behält das
+		const ok = (v ?? 'einrichtungen').split(',').filter((k): k is LayerKey => LAYER_CHIPS.some((c) => c.key === k && (!c.members || data.loggedIn)));
 		if (ok.length) layers = ok;
 	});
 	function toggleLayer(k: LayerKey) {

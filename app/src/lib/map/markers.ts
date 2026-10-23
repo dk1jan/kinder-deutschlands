@@ -105,6 +105,7 @@ export function addMarkerImages(map: MlMap, theme: 'light' | 'dark') {
 
 /** Zusatzebenen der Familienkarte: runde Marken mit Symbol (Termine, Marktplatz, Hilfe). */
 export const LAYER_STYLE = {
+	einrichtungen: { color: '#b0451f', ink: '#ffffff', icon: 'haus' },
 	termine: { color: '#7b4fa3', ink: '#ffffff', icon: 'uhr' },
 	marktplatz: { color: '#2f7d4f', ink: '#ffffff', icon: 'flagge' },
 	hilfe: { color: '#1a5c9a', ink: '#ffffff', icon: 'gruppe' },
