@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Beitrag „Ganz Deutschland“, Oben anheften, „Nachricht schreiben“, Overture im eigenen Prozess (F-030, D-080)
+
+**Was**
+- **Community:** Beiträge brauchen kein Thema und keine Region mehr – „Ganz Deutschland“ bzw. das Bundesland reicht (vorher Fehler „Bitte ein Thema, eine Region oder eine Gruppe wählen“).
+- **Oben anheften:** Moderation/Verwaltung hat am Beitrag einen eigenen Knopf „Oben anheften“ / „Nicht mehr oben anheften“ (vorher versteckt im Moderations-Menü mit Pflicht-Begründung an die Verfasserin). Keine Mitteilung, nur Protokoll. Angeheftete Beiträge stehen jetzt in jedem Feed ganz oben (vorher nur in Themen/Regionen/Gruppen); angeheftete Beiträge für ganz Deutschland erscheinen auch im Landes-Feed oben. Beim Weiterblättern kommen sie nicht doppelt.
+- **Kontaktkarte/QR/ID-Suche:** „Ihr seid verbunden. Nachrichten schreiben könnt ihr ab Bauabschnitt 4.“ ersetzt durch „Ihr seid verbunden.“ + Knopf **Nachricht schreiben** (Chats und Anrufe gibt es längst). Weitere veraltete Bauabschnitt-Hinweise unter Nachrichten entfernt.
+- **Overture-Abruf in eigenem Prozess** (`scripts/overture-read.mjs`): Entpacken/Zerlegen der Parquet-Daten lief bisher im Web-Prozess und konnte die App während des Abrufs (erster Lauf 23.10., 10:02–10:07 Uhr, 406 neue Orte) ausbremsen. Jetzt liefert ein Kindprozess nur Kandidaten, die Regeln laufen wie bisher in der App.
+**Warum** Jan: Beitrag für Deutschland ließ sich nicht absenden; kein Anheften-Knopf; „Bauabschnitt 4“ beim Schreiben; 502 beim Anlegen einer Einrichtung. Logs: kein Absturz, kein Speicherproblem, Container um 10:21 Uhr durch das Update neu gestartet – 502 vermutlich während des Ausrollens oder während des Overture-Laufs; Einrichtungs-Antrag selbst im Rauchtest fehlerfrei. Server-Log außerdem: 6.891 Dubletten automatisch zusammengeführt, 808 offen.
+**Module** M07 Community, M24 Moderation, M01/M02 Kontakte, M23 Datenversorgung · **DB-Migration** nein
+**Tests** svelte-check; 251 Unit/DB-Tests (Community-Test angepasst: Beitrag ohne Thema erlaubt; Overture-DB-Test läuft jetzt über den Kindprozess gegen den nachgebauten AWS-Speicher); Rauchtest bestanden (neu: Beitrag „Ganz Deutschland“ ohne Thema, Moderation sieht „Oben anheften“, Mitglied darf nicht anheften, Angehefteter Beitrag ganz oben im Landes-Feed).
+
 ## 2026-10-23 · Dubletten automatisch, Datenübersicht auf der Startseite, GPS-Routen raus, nur „Familie“ (F-029, D-079)
 
 **Was**

@@ -251,3 +251,6 @@ Entscheidungen Jan (F-029):
 - **Familie verbinden** kennt keine Unterscheidung mehr: neue Verbindungen sind „Familie“, alte „Partnerschaft“ wird als „Familie“ angezeigt (ändert D-070 nur in der Bezeichnung).
 - **Startseite** zeigt eine Datenübersicht mit echten Zahlen (keine geschätzten oder erfundenen Werte), Quelle und Stand.
 
+## D-080 · Thema freiwillig, Anheften ohne Begründung, Angeheftetes überall oben (23.10.2026)
+Anlass Jan (F-030). Seit D-076 ist jeder Beitrag über „Ganz Deutschland“ oder das Bundesland auffindbar – Thema und Region sind daher freiwillig. Anheften ist keine Sanktion: eigener Knopf für alle, die den Beitrag moderieren dürfen, ohne Begründung und ohne Mitteilung an die Verfasserin, mit Protokolleintrag. Angeheftete Beiträge stehen in jedem Feed oben; angeheftete Beiträge für ganz Deutschland (ohne Land/Region) auch im Landes-Feed. Overture-Daten werden in einem eigenen Prozess gelesen, damit die Web-App nicht ausgebremst wird.
+

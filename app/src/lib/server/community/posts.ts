@@ -6,6 +6,7 @@ import { checkText, holdMessage, type Flag } from './automod';
 import { buildCard, LinkError, safeGet, type LinkCard } from './linkcard';
 import { storeImage } from './media';
 import { excerpt, firstUrl } from '$lib/markup';
+import { audit } from '../audit';
 
 export const POST_KINDS = {
 	frage: 'Frage',
@@ -200,7 +201,7 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 		const g = await groupAccess(sql, authorId, p.groupId);
 		if (!g || (!g.member && !g.moderator)) throw new PostError('Du bist nicht Mitglied dieser Gruppe.');
 	}
-	if (!p.topicKey && !p.regionCode && !p.groupId) throw new PostError('Bitte ein Thema, eine Region oder eine Gruppe wählen, damit der Beitrag gefunden wird.');
+	// Seit D-076 ist jeder Beitrag über „Ganz Deutschland“ bzw. das Bundesland auffindbar – Thema/Region sind freiwillig (F-030)
 	let landCode: string | null = null;
 	if (p.landOnly && !p.groupId) {
 		const land = await userLand(sql, authorId);
@@ -285,7 +286,9 @@ export async function feed(sql: Sql, viewerId: string, f: FeedQuery) {
 			${f.scope === 'de' && !f.groupId && !f.region ? sql`and (p.land_code is null or exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}))` : sql``}
 			${f.scope === 'land' && !f.groupId && !f.region
 				? sql`and p.group_id is null and (p.land_code = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))
-					or (p.land_code is null and p.region_code is not null and kd_land_of(p.region_code) = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))))`
+					or (p.land_code is null and p.region_code is not null and kd_land_of(p.region_code) = kd_land_of((select region_code from user_profiles where user_id = ${viewerId})))
+					-- Angeheftete Beiträge für ganz Deutschland (z. B. Aufrufe der Redaktion) stehen auch im Landes-Feed oben (F-030)
+					or (p.pinned and p.land_code is null and p.region_code is null))`
 				: sql``}
 			${f.mode !== 'lesezeichen' && !f.groupId ? sql`and not p.archived` : sql``}
 			${f.topic ? sql`and p.topic_key = ${f.topic}` : sql``}
@@ -301,8 +304,8 @@ export async function feed(sql: Sql, viewerId: string, f: FeedQuery) {
 						union all select r2.code from regions r2 join sub on r2.parent_code = sub.code) select code from sub)
 					or p.group_id is not null)`
 				: sql``}
-			${before ? sql`and p.activity_at < ${before}` : sql``}
-		order by ${f.groupId || f.topic || f.region ? sql`p.pinned desc,` : sql``} ${q ? sql`ts_rank(p.search, websearch_to_tsquery('german', ${q})) desc,` : sql``} p.activity_at desc
+			${before ? sql`and p.activity_at < ${before} and not p.pinned` : sql``}
+		order by ${!q ? sql`p.pinned desc,` : sql``} ${q ? sql`ts_rank(p.search, websearch_to_tsquery('german', ${q})) desc,` : sql``} p.activity_at desc
 		limit ${limit + 1}`;
 	const more = rows.length > limit;
 	const list = rows.slice(0, limit);
@@ -643,4 +646,13 @@ export async function revokeInvite(sql: Sql, authorId: string, postId: string, u
 	const [p] = await sql`select author_id from posts where id = ${postId}`;
 	if (!p || p.author_id !== authorId) throw new PostError('Nur die Verfasserin oder der Verfasser kann Einladungen zurücknehmen.');
 	await sql`delete from post_invites where post_id = ${postId} and user_id = ${userId}`;
+}
+
+/** Oben anheften / lösen (F-030) – nur wer den Beitrag moderieren darf. Keine Mitteilung an die Verfasserin, nur Protokoll. */
+export async function togglePin(sql: Sql, userId: string, postId: string): Promise<boolean> {
+	const p = await getPost(sql, userId, postId);
+	if (!p?.moderator) throw new PostError('Keine Berechtigung.');
+	const [r] = await sql`update posts set pinned = not pinned where id = ${postId} returning pinned`;
+	await audit(sql, { actorId: userId, action: r.pinned ? 'post.pinned' : 'post.unpinned', targetType: 'post', targetId: postId });
+	return r.pinned as boolean;
 }

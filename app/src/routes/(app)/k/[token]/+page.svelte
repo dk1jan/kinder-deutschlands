@@ -14,7 +14,7 @@
 	<p class="intro">Diese Familie nutzt <strong>Kinder Deutschlands</strong>: Kontakt über eine Familien-ID statt Telefonnummer.</p>
 	<ContactCard card={data.card}>
 		<RequestBox relation={data.relation} pending={data.pending} done={form?.done} error={form?.error}
-			action="?/anfragen" loginHref={`/anmelden?weiter=${encodeURIComponent(page.url.pathname)}`} />
+			action="?/anfragen" loginHref={`/anmelden?weiter=${encodeURIComponent(page.url.pathname)}`} chatWith={data.card.contactIdFormatted} />
 	</ContactCard>
 	{#if data.writeTogether}<p class="together"><a class="btn small secondary" href="/nachrichten/gruppe/neu?mit={data.writeTogether.join(',')}">Gemeinsam schreiben</a></p>{/if}
 	{#if data.relation !== 'extern' && data.relation !== 'selbst'}<p class="muted small"><a href="/profil/familie?id={data.card.contactIdFormatted}">Als Familie verbinden …</a></p>{/if}

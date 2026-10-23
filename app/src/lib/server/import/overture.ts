@@ -7,6 +7,9 @@
 // Zeilengruppen, deren Ausdehnung (bbox-Statistik) Deutschland berührt, und nur die nötigen Spalten.
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
 import { parquetMetadataAsync, parquetReadObjects, type AsyncBuffer, type FileMetaData } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
 import type { Features, Kind } from '$lib/places';
@@ -259,12 +262,48 @@ export async function fetchOverture(o: OvertureOptions = {}): Promise<{ places: 
 	} catch {
 		/* noch nicht da */
 	}
-	const places: OvPlace[] = [];
-	for (const f of files) places.push(...(await readParquet(rangeBuffer(f.url, f.size, o.fetchImpl), minConf, stats, o.signal)));
+	let places: OvPlace[] = [];
+	if (o.fetchImpl) {
+		// nur Tests mit nachgebautem Abruf: im selben Prozess
+		for (const f of files) places.push(...(await readParquet(rangeBuffer(f.url, f.size, o.fetchImpl), minConf, stats, o.signal)));
+	} else {
+		const r = await readInChild(files, dir, o.signal);
+		Object.assign(stats, r.stats);
+		places = r.places.filter((p) => classify(p, minConf));
+	}
 	await writeFile(cache + '.tmp', JSON.stringify({ places, stats }, (_, v) => (typeof v === 'bigint' ? Number(v) : v)));
 	await rename(cache + '.tmp', cache);
 	for (const old of await readdir(dir)) if (old.startsWith('places-') && join(dir, old) !== cache) await rm(join(dir, old), { force: true });
 	return { places, release, stats, cached: false };
+}
+
+/**
+ * Grobfilter im eigenen Prozess (F-030): Entpacken/Zerlegen ist reine Rechenarbeit und hat die Web-App beim ersten
+ * Lauf minutenlang ausgebremst. Der Kindprozess liefert nur Kandidaten; die genauen Regeln laufen hier (classify).
+ */
+async function readInChild(files: { url: string; size: number }[], dir: string, signal?: AbortSignal): Promise<{ places: OvPlace[]; stats: ReadStats }> {
+	const job = join(dir, 'auftrag.json');
+	const out = join(dir, 'kandidaten.jsonl');
+	const cats = [...INDOOR_TRUSTED, ...INDOOR_FUZZY, ...Object.keys(AUSFLUG)];
+	await writeFile(job, JSON.stringify({ files, out, bbox: DE_BBOX, pre: KID.source, cats }));
+	const script = process.env.OVERTURE_READER || join(process.cwd(), 'scripts', 'overture-read.mjs');
+	const stdout = await new Promise<string>((resolve, reject) => {
+		const p = spawn(process.execPath, [script, job], { stdio: ['ignore', 'pipe', 'pipe'], signal });
+		let so = '', se = '';
+		p.stdout.on('data', (d) => (so += d));
+		p.stderr.on('data', (d) => (se = (se + d).slice(-2000)));
+		p.on('error', (e) => reject(new Error(`Overture-Leser: ${e.message}`)));
+		p.on('close', (code, sig) =>
+			code === 0 ? resolve(so) : reject(new Error(`Overture-Leser: ${sig ? `abgebrochen (${sig})` : se.trim().split('\n').pop() || `Fehlercode ${code}`}`.slice(0, 400)))
+		);
+	});
+	const stats = JSON.parse(stdout.trim().split('\n').pop() || '{}') as ReadStats;
+	const places: OvPlace[] = [];
+	const rl = createInterface({ input: createReadStream(out), crlfDelay: Infinity });
+	for await (const line of rl) if (line.trim()) places.push(JSON.parse(line) as OvPlace);
+	await rm(out, { force: true });
+	await rm(job, { force: true });
+	return { places, stats };
 }
 
 // ---------- Doppelte mit dem Bestand vermeiden ----------

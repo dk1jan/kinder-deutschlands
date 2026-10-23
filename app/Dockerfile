@@ -47,7 +47,7 @@ WORKDIR /app
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/scripts/migrate.mjs /app/scripts/synapse-prepare.mjs /app/scripts/server.mjs /app/scripts/kd_rules.py ./scripts/
+COPY --from=build /app/scripts/migrate.mjs /app/scripts/synapse-prepare.mjs /app/scripts/server.mjs /app/scripts/overture-read.mjs /app/scripts/kd_rules.py ./scripts/
 COPY --from=build /app/migrations ./migrations
 ARG GIT_SHA=unbekannt
 ENV GIT_SHA=$GIT_SHA

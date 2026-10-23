@@ -34,7 +34,7 @@
 					<ContactCard card={it.card}>
 						<RequestBox relation={it.relation} pending={it.pending}
 							done={form?.cid === it.cid ? form?.done : null} error={form?.cid === it.cid ? form?.error : null}
-							action="?/anfragen" loginHref="/anmelden" hidden={{ cid: it.cid }} />
+							action="?/anfragen" loginHref="/anmelden" hidden={{ cid: it.cid }} chatWith={it.cid} />
 					</ContactCard>
 				</li>
 			{/each}

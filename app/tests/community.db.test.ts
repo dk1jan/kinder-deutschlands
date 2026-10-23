@@ -48,8 +48,10 @@ d('Community (Datenbank)', async () => {
 		expect(t.map((x) => x.key)).toEqual(expect.arrayContaining(['erziehung', 'kinderarzt', 'betreuung', 'alleinerziehende', 'produkte', 'lokale-hilfe']));
 	});
 
-	it('Beitrag braucht Thema, Region oder Gruppe; Titel geprüft', async () => {
-		await expect(post(u.anna, { topicKey: null })).rejects.toBeInstanceOf(P.PostError);
+	it('Beitrag ohne Thema/Region geht (F-030: „Ganz Deutschland“ reicht); Titel geprüft', async () => {
+		const free = await post(u.anna, { topicKey: null, title: 'Aufruf für ganz Deutschland' });
+		expect(free.id).toBeTruthy();
+		await sql`delete from posts where id = ${free.id}`; // nicht in den folgenden Feed-Zählungen
 		await expect(post(u.anna, { title: 'x' })).rejects.toBeInstanceOf(P.PostError);
 	});
 

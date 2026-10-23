@@ -62,6 +62,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-030 | erledigt: Beitrag „Ganz Deutschland“ ohne Thema, Knopf „Oben anheften“ (überall oben), „Nachricht schreiben“ statt „ab Bauabschnitt 4“, Overture-Abruf im eigenen Prozess. 502 beim Einrichtungs-Antrag: kein Fehler im Code gefunden (Rauchtest grün), vermutlich Ausrollen/Overture-Lauf – Jan testet erneut (D-080) | CHANGELOG 23.10. Ganz Deutschland/Anheften |
 | F-029 | erledigt: eindeutige Dubletten automatisch zusammengeführt (nach jedem Abruf + täglich), Datenübersicht auf der Startseite, GPS-Aufzeichnung bei Routen wieder entfernt (F-027 zurückgenommen), nur noch „Familie“ statt „Partnerschaft & Familie“ (D-079) | CHANGELOG 23.10. Dubletten automatisch |
 | F-028 | erledigt: Overture als zweite Ortsquelle (Indoorspielplätze, Kindermuseen, Kinderbauernhöfe, strenge Regeln, nichts doppelt), „gibt es nicht mehr“ blendet reine Overture-Orte aus, Datenzentrale „Alles läuft automatisch“, Knöpfe eingeklappt (D-078). spielplatztreff.de/mamilade.de nicht nutzbar (Crawler verboten / keine Lizenz) | CHANGELOG 23.10. Overture |
 | F-027 | erledigt: Route per GPS aufzeichnen, Enden 50 m gekürzt (Regler 0–200 m), nur Linie, Prüfschritt mit Start/Ziel (D-077) | CHANGELOG 22.10. GPS-Routen |

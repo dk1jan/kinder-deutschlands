@@ -157,12 +157,15 @@
 			</details>
 		{/if}
 		{#if p.moderator}
+			<form method="POST" action="?/anheften" class="pinform">
+				<button class="btn small secondary">{p.pinned ? 'Nicht mehr oben anheften' : 'Oben anheften'}</button>
+				<small class="muted">{p.pinned ? 'Steht gerade ganz oben im Feed.' : 'Erscheint dann ganz oben im Feed – nur für die Moderation sichtbar.'}</small>
+			</form>
 			<details class="mod">
 				<summary>Moderation</summary>
 				<form method="POST" action="?/moderieren" class="mini">
 					<input type="hidden" name="type" value="post" /><input type="hidden" name="id" value={p.id} />
 					<select name="action" aria-label="Aktion">
-						<option value="anheften">{p.pinned ? 'Lösen' : 'Anheften'}</option>
 						<option value="schliessen">{p.closed ? 'Wieder öffnen' : 'Schließen'}</option>
 						<option value="archivieren">{p.archived ? 'Aus dem Archiv holen' : 'Archivieren'}</option>
 						<option value="kennzeichnen">Mit Hinweis kennzeichnen</option>
@@ -250,6 +253,13 @@
 </article>
 
 <style>
+	.pinform {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sp-2);
+		margin: var(--sp-3) 0;
+	}
 	.page {
 		max-width: 48rem;
 		margin: 0 auto;

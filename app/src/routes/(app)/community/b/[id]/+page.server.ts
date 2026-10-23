@@ -5,7 +5,7 @@ import { requireMember } from '$lib/server/guard';
 import { isUuid } from '$lib/server/contacts';
 import { rateLimit } from '$lib/server/ratelimit';
 import { userCan } from '$lib/server/roles';
-import { addComment, deleteOwnComment, deleteOwnPost, editComment, editPost, getPost, inviteToPost, markSolved, PostError, revokeInvite, toggleBookmark, toggleHelpful, vote } from '$lib/server/community/posts';
+import { addComment, deleteOwnComment, deleteOwnPost, editComment, editPost, getPost, inviteToPost, markSolved, PostError, revokeInvite, toggleBookmark, toggleHelpful, togglePin, vote } from '$lib/server/community/posts';
 import { appeal, decide, report, ACTIONS, type ModAction } from '$lib/server/community/moderation';
 import { draftFromPost } from '$lib/server/community/knowledge';
 import { tagFor } from '$lib/server/affiliate';
@@ -94,6 +94,8 @@ export const actions: Actions = {
 			await decide(sql, uid, c.id, action, String(f.get('reason') ?? ''));
 			return { moderated: true };
 		}),
+	anheften: (e) =>
+		run(e, async (uid) => ({ pinned: await togglePin(db(), uid, e.params.id) })),
 	wissen: async (e) => {
 		const r = await run(e, async (uid) => ({ slug: await draftFromPost(db(), uid, e.params.id) }));
 		if (r && typeof r === 'object' && 'slug' in r) redirect(303, `/admin/wissen/${(r as { slug: string }).slug}`);

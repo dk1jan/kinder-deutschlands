@@ -8,7 +8,8 @@
 		error,
 		action,
 		loginHref,
-		hidden = {}
+		hidden = {},
+		chatWith = null
 	}: {
 		relation: string;
 		pending: boolean;
@@ -17,12 +18,15 @@
 		action: string;
 		loginHref: string;
 		hidden?: Record<string, string>;
+		/** Familien-ID für „Nachricht schreiben“ (F-030) */
+		chatWith?: string | null;
 	} = $props();
 </script>
 
 {#if error}<Notice kind="error">{error}</Notice>{/if}
 {#if done === 'verbunden' || relation === 'kontakt'}
-	<p class="state ok">Ihr seid verbunden. Nachrichten schreiben könnt ihr ab Bauabschnitt 4.</p>
+	<p class="state ok">Ihr seid verbunden.</p>
+	{#if chatWith}<a class="btn signal" href={`/nachrichten/chat/neu?mit=${encodeURIComponent(chatWith)}`}>Nachricht schreiben</a>{/if}
 {:else if done === 'angefragt' || pending}
 	<p class="state">Anfrage gesendet. Du bekommst Bescheid, sobald sie angenommen wird.</p>
 {:else if relation === 'selbst'}

@@ -22,7 +22,7 @@
 	{#if data.found}
 		<ContactCard card={data.found.card}>
 			<RequestBox relation={data.found.relation} pending={data.found.pending} done={form?.done} error={form?.error}
-				action="?/anfragen" loginHref="/anmelden" hidden={{ cid: data.found.cid }} />
+				action="?/anfragen" loginHref="/anmelden" hidden={{ cid: data.found.cid }} chatWith={data.found.cid} />
 		</ContactCard>
 		{#if data.found.writeTogether}<p class="together"><a class="btn small secondary" href="/nachrichten/gruppe/neu?mit={data.found.writeTogether.join(',')}">Gemeinsam schreiben</a></p>{/if}
 		{#if data.found.relation !== 'extern' && data.found.relation !== 'selbst'}<p class="muted small"><a href="/profil/familie?id={data.found.card.contactIdFormatted}">Als Familie verbinden …</a></p>{/if}

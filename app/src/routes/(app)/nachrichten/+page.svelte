@@ -13,13 +13,13 @@
 	<Planned
 		title="Kontakte und Nachrichten"
 		module="M01, M02, M06"
-		stage="Kontakte jetzt, Chats in Bauabschnitt 4"
+		stage="Kontakte, Chats, Anrufe"
 		theme="sea"
-		text="Familien über die Familien-ID finden und Kontaktanfragen annehmen. Nachrichten und Anrufe folgen, ohne Telefonnummer oder E-Mail weiterzugeben."
+		text="Familien über die Familien-ID finden, Kontaktanfragen annehmen, schreiben und anrufen – ohne Telefonnummer oder E-Mail weiterzugeben."
 		points={[
 			'Kontakt über die Familien-ID oder den QR-Code, angefragt und bestätigt',
 			'Blockieren jederzeit: blockierte Familien finden dich nicht mehr',
-			'Ende-zu-Ende-verschlüsselte Chats und Anrufe (Bauabschnitte 4 und 7)'
+			'Ende-zu-Ende-verschlüsselte Chats, Anrufe und Gruppenanrufe'
 		]}
 	>
 		{#snippet art()}<ModuleArt name="nachrichten" />{/snippet}
@@ -102,7 +102,7 @@
 					{/each}
 				</ul>
 			{/if}
-			<p class="muted chatnote">Schreiben könnt ihr Ende-zu-Ende-verschlüsselt über „Nachricht“. Anrufe folgen in Bauabschnitt 7.</p>
+			<p class="muted chatnote">Schreiben und anrufen könnt ihr Ende-zu-Ende-verschlüsselt über „Nachricht“.</p>
 		</section>
 
 		{#if data.outgoing.length}

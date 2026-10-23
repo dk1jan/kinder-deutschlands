@@ -586,6 +586,21 @@ try {
 	check(r.status === 200 && r.body.includes('<strong>Einjährige</strong>'), 'Beitrag mit Formatierung sichtbar');
 	r = await A.req('/community/neu', { method: 'POST', form: { kind: 'beitrag', title: 'Ruft mich gerne an', body: 'Meine Nummer: 0151 23456789', topic: 'lokale-hilfe' } });
 	check(r.status === 303 && r.location.includes('pruefung=1'), 'Telefonnummer im Beitrag → zurückgehalten zur Prüfung');
+	// F-030: „Ganz Deutschland“ ohne Thema/Region geht; Moderation heftet oben an
+	r = await req('/community/neu', { method: 'POST', form: { kind: 'beitrag', title: 'Wir suchen Verstärkung für die Moderation', body: 'Meldet euch gern.', sichtbar: 'de' } });
+	check(r.status === 303 && /^\/community\/b\/[0-9a-f-]{36}$/.test(r.location), `Beitrag „Ganz Deutschland“ ohne Thema/Region (${r.status} ${r.location})`);
+	{
+		const pinPath = r.location;
+		r = await req(pinPath);
+		check(r.body.includes('Oben anheften'), 'Moderation sieht „Oben anheften“');
+		r = await A.req(`${pinPath}?/anheften`, { method: 'POST', form: {} });
+		check(r.status >= 400 || !r.body.includes('"pinned":true'), 'Mitglied ohne Moderationsrecht kann nicht anheften');
+		r = await req(`${pinPath}?/anheften`, { method: 'POST', form: {} });
+		r = await A.req('/community?ansicht=neu'); // Anna hat Bremen als Land → Landes-Feed; Angeheftetes für ganz Deutschland steht trotzdem oben
+		const first = r.body.indexOf('class="pc');
+		check(first > 0 && r.body.slice(first, first + 1500).includes('angeheftet') && r.body.slice(first, first + 3000).includes('Wir suchen Verstärkung'), 'Angehefteter Beitrag steht ganz oben im Feed');
+		await req(`${pinPath}?/anheften`, { method: 'POST', form: {} }); // wieder lösen für die weiteren Prüfungen
+	}
 
 	const C = client();
 	const pwC = 'Cem fragt viel nach Kitas 3';
