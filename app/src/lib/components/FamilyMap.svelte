@@ -449,7 +449,12 @@
 						const hits = m.queryRenderedFeatures(e.point, { layers: ['orte', 'cluster', 'extra', 'linien'] });
 						if (!hits.length) onSelect?.(null);
 					});
-					for (const l of ['orte', 'cluster']) {
+					// F-035: Zusatzpunkte (Einrichtungen, Termine, Marktplatz, Hilfe) antippbar – war nie angeschlossen
+					m.on('click', 'extra', (e) => {
+						const f = e.features?.[0] as MapGeoJSONFeature | undefined;
+						if (f) onExtra?.(String((f.properties as Record<string, string>).id));
+					});
+					for (const l of ['orte', 'cluster', 'extra']) {
 						m.on('mouseenter', l, () => (m.getCanvas().style.cursor = 'pointer'));
 						m.on('mouseleave', l, () => (m.getCanvas().style.cursor = ''));
 					}

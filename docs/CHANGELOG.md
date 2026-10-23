@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Kartenpunkte der Ebenen antippbar (F-035)
+
+**Was** Punkte der Zusatzebenen (Einrichtungen, Termine, Marktplatz, Hilfe) lassen sich auf der Karte antippen – es öffnet sich die Karte mit Name, Art und „Ansehen“; Mauszeiger wird zur Hand. Der Klick war nie angeschlossen (nur über die Liste erreichbar); Kinderwagenrouten waren nicht betroffen.
+**Warum** Jan: Symbol der Jugendfarm sichtbar, aber nicht anklickbar.
+**Module** M10 Familienkarte · **DB-Migration** nein
+**Tests** svelte-check, Build; neuer Browsertest `scripts/karte-klick-check.py` (Computer + Handy, Antippen zeigt „Smoke-Jugendfarm“); Bildschirmfoto angesehen.
+
 ## 2026-10-23 · Einrichtungen auf der Familienkarte (F-034)
 
 **Was** Neue Kartenebene **Einrichtungen**: alle geprüften Einrichtungen mit Standort (Familienzentren, Vereine, Kitas, Beratungsstellen …) als eigenes Symbol (Haus, rotbraun), Antippen zeigt Name, Art, Adresse und führt zur Einrichtungsseite; auch in der Liste „im Ausschnitt“. Die Ebene ist für alle sichtbar und standardmäßig eingeschaltet (wer seine Ebenen schon selbst gewählt hat, behält seine Auswahl – dann unter „Ebenen“ zuschalten). Anträge (noch nicht geprüft) erscheinen nicht.
