@@ -169,6 +169,9 @@ export async function reportPlace(sql: Sql, userId: string, placeId: string, kin
 	const [r] = await sql`insert into place_reports (place_id, user_id, kind, message)
 		select id, ${userId}, ${kind}, ${message} from places where id = ${placeId} returning id`;
 	if (!r) return null;
+	// F-028: Orte, die nur aus Overture stammen (Firmenverzeichnisse, teils veraltet), bei „gibt es nicht mehr“ sofort
+	// ausblenden, bis die Redaktion entscheidet. OSM-Orte und bestätigte Orte bleiben sichtbar.
+	if (kind === 'existiert_nicht') await hideIfOnlyOverture(sql, placeId);
 	// Defekt/Sperrung sofort als unbestätigter Nutzerhinweis sichtbar – ohne Freitext (der geht nur an die Redaktion)
 	if (kind === 'defekt' || kind === 'gesperrt') {
 		const [open] = await sql`select 1 from place_notices where place_id = ${placeId} and kind = ${kind} and ended_at is null`;
@@ -179,6 +182,15 @@ export async function reportPlace(sql: Sql, userId: string, placeId: string, kin
 		}
 	}
 	return r.id as string;
+}
+
+/** Nur aus Overture, unbestätigt, sichtbar → in Prüfung (unsichtbar). Gibt zurück, ob ausgeblendet wurde. */
+export async function hideIfOnlyOverture(sql: Sql, placeId: string): Promise<boolean> {
+	const r = await sql`update places p set status = 'pruefung', updated_at = now()
+		where p.id = ${placeId} and p.status = 'aktiv' and p.confirmation = 'importiert'
+		and exists (select 1 from place_sources s where s.place_id = p.id and s.gone_at is null and s.source_key in (select key from data_sources where config->>'type' = 'overture'))
+		and not exists (select 1 from place_sources s where s.place_id = p.id and s.gone_at is null and s.source_key not in (select key from data_sources where config->>'type' = 'overture'))`;
+	return r.count > 0;
 }
 
 export async function nearbySameKind(sql: Sql, kind: Kind, lon: number, lat: number, meters = 80) {

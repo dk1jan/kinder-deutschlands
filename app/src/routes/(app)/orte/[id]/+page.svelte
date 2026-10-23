@@ -233,7 +233,7 @@
 	<section class="card report" id="melden" aria-labelledby="melden-h">
 		<h2 id="melden-h">Infos ergänzen oder korrigieren</h2>
 		{#if form && 'reported' in form && form.reported}
-			<Notice kind="ok" title="Danke!">Deine Meldung ist bei der Redaktion. Defekte und Sperrungen zeigen wir sofort als unbestätigten Hinweis an.</Notice>
+			<Notice kind="ok" title="Danke!">Deine Meldung ist bei der Redaktion. Defekte und Sperrungen zeigen wir sofort als unbestätigten Hinweis an.{#if data.place.status === 'pruefung'} Dieser Ort ist ab sofort ausgeblendet, bis die Redaktion ihn geprüft hat.{/if}</Notice>
 		{:else if data.member}
 			{#if form && 'reportError' in form && form.reportError}<Notice kind="error">{form.reportError}</Notice>{/if}
 			<form method="POST" action="?/melden" use:enhance>

@@ -458,6 +458,8 @@ try {
 	}
 	r = await req('/admin/daten');
 	check(r.status === 200 && r.body.includes('Verwaltungsgebiete (VG250)') && r.body.includes('Spielplätze'), 'Datenzentrale zeigt Quellenkatalog');
+	check(/Alles läuft automatisch|hakt es/.test(r.body) && r.body.includes('Noch nicht abgerufen, startet von selbst') && r.body.includes('Overture'),
+		'Datenzentrale: Zustand auf einen Blick, neue Quellen starten von selbst (F-028)');
 	// Testausschnitt enthält nur das Land Bremen
 	await sqlT`update data_sources set config = jsonb_set(config, '{laender}', '["04"]') where key = 'bkg-vg250'`;
 	let res = await runAndWait('bkg-vg250');

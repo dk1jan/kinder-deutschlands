@@ -53,7 +53,7 @@ d('Orte und Importe (Datenbank)', () => {
 
 	it('Quellenkatalog ist befüllt: Lizenz, Namensnennung, Rhythmus', async () => {
 		const rows = await sql`select key, license, attribution, interval_hours from data_sources order by key`;
-		expect(rows.length).toBe(13); // + Stadt-/Ortsteile Niedersachsen (Sammel-Update), + 4 Ortsarten (F-018)
+		expect(rows.length).toBe(14); // + Stadt-/Ortsteile Niedersachsen (Sammel-Update), + 4 Ortsarten (F-018), + Overture (F-028)
 		for (const r of rows) {
 			expect(r.license).toBeTruthy();
 			expect(r.attribution).toBeTruthy();

@@ -27,7 +27,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (m?.merged_into) redirect(301, `/orte/${m.merged_into}`);
 	}
 	const editor = viewer ? await userCan(sql, viewer, 'data.edit') : false;
-	if (p.status !== 'aktiv' && !editor && !(p.status === 'pruefung' && p.createdBy === viewer)) error(404, 'Diesen Ort gibt es nicht (mehr).');
+	// Wer den Ort als „gibt es nicht mehr“ gemeldet hat (F-028: dadurch ausgeblendet), sieht ihn weiter – samt Dank
+	const reporter = p.status === 'pruefung' && !!viewer
+		&& (await sql`select 1 from place_reports where place_id = ${p.id} and user_id = ${viewer} and status = 'offen'`).length > 0;
+	if (p.status !== 'aktiv' && !editor && !reporter && !(p.status === 'pruefung' && p.createdBy === viewer)) error(404, 'Diesen Ort gibt es nicht (mehr).');
 	const [tiles, exp] = await Promise.all([tileState(sql), placeExperiences(sql, p.id, viewer)]);
 	return { place: { ...p, createdBy: undefined }, editor, member: !!viewer, mine: !!viewer && p.createdBy === viewer, tiles: !!tiles?.present, exp };
 };

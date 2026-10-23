@@ -15,7 +15,7 @@ export async function overview(sql: Sql) {
 			(select count(*)::int from place_sources ps where ps.source_key = s.key and ps.gone_at is null) as live
 			from data_sources s order by case s.kind when 'regionen' then 1 when 'karte' then 2 else 3 end, s.name`,
 		sql`select
-			(select count(*)::int from places where status = 'pruefung') as vorschlaege,
+			(select count(*)::int from places where status = 'pruefung' and created_by is not null) as vorschlaege,
 			(select count(*)::int from place_duplicates where status = 'offen') as dubletten,
 			(select count(*)::int from place_reports where status = 'offen') as meldungen,
 			(select count(*)::int from import_runs where status = 'vorschau') as vorschau`,
@@ -94,7 +94,7 @@ export async function reviewQueue(sql: Sql) {
 		sql`select p.id, p.kind, p.name, p.description, p.features, p.created_at, r.name as region_name, ST_X(p.location) as lon, ST_Y(p.location) as lat,
 				(select count(*)::int from places o where o.kind = p.kind and o.status = 'aktiv' and o.id <> p.id
 					and ST_DWithin(o.location::geography, p.location::geography, 80)) as nearby
-			from places p left join regions r on r.code = p.region_code where p.status = 'pruefung' order by p.created_at limit 100`,
+			from places p left join regions r on r.code = p.region_code where p.status = 'pruefung' and p.created_by is not null order by p.created_at limit 100`,
 		sql`select d.place_a, d.place_b, d.distance_m, d.detected_at,
 				a.name as a_name, a.kind as a_kind, ra.name as a_region, (select string_agg(s.source_key || ':' || s.external_id, ', ') from place_sources s where s.place_id = a.id) as a_src,
 				b.name as b_name, b.kind as b_kind, rb.name as b_region, (select string_agg(s.source_key || ':' || s.external_id, ', ') from place_sources s where s.place_id = b.id) as b_src
@@ -117,7 +117,7 @@ export async function reviewQueue(sql: Sql) {
 
 export async function decideSuggestion(sql: Sql, id: string, approve: boolean, actorId: string, note: string | null) {
 	const r = await sql`update places set status = ${approve ? 'aktiv' : 'abgelehnt'}, confirmation = 'community', checked_at = now(), updated_at = now()
-		where id = ${id} and status = 'pruefung'`;
+		where id = ${id} and status = 'pruefung' and created_by is not null`;
 	if (!r.count) throw new DataError('Vorschlag nicht (mehr) offen.');
 	await audit(sql, { actorId, action: approve ? 'place.approved' : 'place.rejected', targetType: 'place', targetId: id, reason: note ?? undefined });
 }
@@ -165,6 +165,15 @@ export async function handleReport(sql: Sql, id: string, decision: 'erledigt' | 
 			await tx`update place_notices set ended_at = now() where report_id = ${id} and ended_at is null`;
 			await tx`insert into place_notices (place_id, kind, origin, text, source_url, report_id, created_by)
 				values (${rp.place_id}, ${rp.kind}, ${notice === 'amtlich' ? 'amtlich' : 'redaktion'}, ${text}, ${sourceUrl}, ${id}, ${actorId})`;
+		}
+		// F-028: wegen „gibt es nicht mehr“ ausgeblendeter Import-Ort – abgelehnt: wieder sichtbar; erledigt: archivieren und
+		// den Status sperren, damit der nächste Abruf ihn nicht wiederbelebt
+		if (rp.kind === 'existiert_nicht') {
+			if (decision === 'abgelehnt')
+				await tx`update places set status = 'aktiv', updated_at = now() where id = ${rp.place_id} and status = 'pruefung' and confirmation = 'importiert'`;
+			else
+				await tx`update places set status = 'archiviert', updated_at = now(), locked_fields = array_append(array_remove(locked_fields, 'status'), 'status')
+					where id = ${rp.place_id} and status = 'pruefung' and confirmation = 'importiert'`;
 		}
 		await audit(tx as unknown as Sql, { actorId, action: 'place.report.handled', targetType: 'place', targetId: rp.place_id, meta: { decision, notice } });
 		done = { placeId: rp.place_id, kind: rp.kind };

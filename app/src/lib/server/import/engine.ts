@@ -127,7 +127,8 @@ export async function applyRun(sql: Sql, runId: number, actorId: string | null):
 				features = ${tx.json(features as never)},
 				opening_hours = ${has('opening_hours') ? tx`${d.openingHours}` : tx`opening_hours`},
 				website = ${has('website') ? tx`${d.website}` : tx`website`},
-				status = case when status = 'archiviert' and confirmation = 'importiert' then 'aktiv' else status end,
+				-- Archiviert wegen „gibt es nicht mehr“ (F-028) bleibt archiviert, auch wenn die Quelle den Ort weiter führt
+				status = case when status = 'archiviert' and confirmation = 'importiert' and not ('status' = any(locked_fields)) then 'aktiv' else status end,
 				updated_at = now(), checked_at = now()
 				where id = ${ps.place_id}`;
 			touched.push(ps.place_id);

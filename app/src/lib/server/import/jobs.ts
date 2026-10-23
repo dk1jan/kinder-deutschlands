@@ -8,6 +8,8 @@ import { overpass, toRecords, buildQuery, type Selector } from './osm';
 import { fetchFromExtract, osmSource, osmiumAvailable } from './osmfile';
 import { importOsmDistricts, importVg250 } from './regions';
 import { refreshTiles } from './tiles';
+import { dropKnown, fetchOverture, toRecord } from './overture';
+import type { ImportRecord } from './types';
 import { pruneAerialCache } from '../aerial';
 import { importIcs, type IcsSourceConfig } from '../angebote/icsimport';
 
@@ -57,6 +59,16 @@ async function fetchOverpass(src: SourceRow, selector: Selector, signal: AbortSi
 	return out;
 }
 
+/** Overture (F-028): passende Orte in Deutschland, ohne die, die es aus OSM oder von Mitgliedern schon gibt. */
+async function fetchOvertureRecords(sql: Sql, src: SourceRow, signal: AbortSignal) {
+	const minConfidence = Number(src.config.min_confidence ?? 0.8);
+	const r = await fetchOverture({ minConfidence, release: (src.config.release as string | undefined) || undefined, signal });
+	const recs = r.places.map((p) => toRecord(p, minConfidence)).filter((x): x is ImportRecord => !!x);
+	const fresh = await dropKnown(sql, src.key, recs);
+	console.log(`[import] ${src.key}: Ausgabe ${r.release}${r.cached ? ' (zwischengespeichert)' : ''} · ${r.stats.zeilen_gelesen} Zeilen geprüft · ${recs.length} passend · ${recs.length - fresh.length} schon vorhanden`);
+	return fresh;
+}
+
 /** Nicht-Orte-Quellen (Regionen, Karte) protokollieren ihre Läufe ebenfalls in import_runs. */
 async function runSimple(sql: Sql, src: SourceRow, trigger: 'zeitplan' | 'manuell', actorId: string | null, work: () => Promise<{ counts: Record<string, number>; message: string }>) {
 	const [run] = await sql`insert into import_runs (source_key, trigger, triggered_by, status) values (${src.key}, ${trigger}, ${actorId}, 'laeuft') returning id`;
@@ -91,6 +103,9 @@ export async function runSource(sql: Sql, key: string, trigger: 'zeitplan' | 'ma
 			const type = src.config.type as string;
 			if (src.kind === 'orte' && type === 'osm') {
 				return await runPlaceSource(sql, src, { trigger, actorId, fetchRecords: fetchOsm });
+			}
+			if (src.kind === 'orte' && type === 'overture') {
+				return await runPlaceSource(sql, src, { trigger, actorId, fetchRecords: (s, signal) => fetchOvertureRecords(sql, s, signal) });
 			}
 			if (type === 'vg250') {
 				return await runSimple(sql, src, trigger, actorId, async () => {
@@ -149,7 +164,8 @@ async function tick() {
 			if (n) console.log(`Luftbild-Zwischenspeicher: ${n} alte Kacheln entfernt.`);
 		}
 		const sql = db();
-		const due = await sql`select key from data_sources where not paused and next_run_at <= now() order by next_run_at limit 1`;
+			// Noch nie gelaufene Quellen zuerst – neue Quellen füllen sich nach einem Update von selbst, ohne Knopfdruck
+			const due = await sql`select key from data_sources where not paused and next_run_at <= now() order by (last_success_at is null) desc, next_run_at limit 1`;
 		if (due.length) await runSource(sql, due[0].key, 'zeitplan');
 	} catch (e) {
 		if (!(e instanceof BusyError)) console.error('Zeitplan:', (e as Error).message);

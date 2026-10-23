@@ -2,6 +2,20 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Overture als zweite Ortsquelle, Datenzentrale ohne Knopfdruck (F-028, D-078)
+
+**Was**
+- **Neue Quelle Overture Maps Places** (ganz Deutschland, wöchentlich geprüft, Overture erscheint etwa monatlich): Firmeneinträge u. a. von Meta und Microsoft, keine OSM-Daten – genau die kommerziellen Indoorspielplätze, die OSM fehlen (Stichprobe Bremen: Leo's Abenteuerpark, Bremer Abenteuerland, Erlebniswelt Kiddo, Spiel Coolisse, JUMP House, Indoorspielplatz Neustadt). Übernommen werden nur **Indoorspielplätze/Trampolinhallen, Kindermuseen, Kinderbauernhöfe**; Zoos, Spielplätze, Bäder nicht (OSM besser, Overture dort teils falsch verortet).
+- **Strenge Regeln**, weil die Overture-Kategorien unzuverlässig sind: Zuverlässigkeit ab 0,8 (eindeutiger Name „Indoorspielplatz“ o. ä. ab 0,7); bei „Freizeitpark“/„Kinderfreizeit“ muss der Name ein Kinderwort enthalten; Vereine, Märkte/Volksfeste, Spielhallen (Glücksspiel), Spielplätze draußen, Unterkünfte, IKEA-Småland u. a. fliegen über den Namen raus; nur geöffnete Orte in Deutschland.
+- **Nichts doppelt:** Gibt es den Ort schon (OSM, Mitglieder, Redaktion) – gleiche Art bis 60 m oder ähnlicher Name bis 200 m –, wird er nicht angelegt. Quellenangabe an jedem Ort und auf „Datenquellen“.
+- **Abruf ohne Zusatzprogramm:** Die Parquet-Dateien liegen öffentlich bei AWS; gelesen werden per HTTP-Teilabruf nur die Zeilengruppen, die Deutschland berühren, und nur die nötigen Spalten (Bibliothek `hyparquet`, reines JavaScript). Ergebnis je Overture-Ausgabe zwischengespeichert (`/data/tiles/overture/`, wenige MB) – der wöchentliche Lauf lädt nur bei neuer Ausgabe.
+- **„Gibt es nicht mehr“** bei einem Ort, der nur aus Overture stammt → sofort ausgeblendet bis zur Prüfung (wer gemeldet hat, sieht den Ort weiter mit Hinweis). Redaktion „abgelehnt“ → wieder sichtbar; „erledigt“ → archiviert und gesperrt, der nächste Abruf holt ihn nicht zurück. OSM-Orte bleiben wie bisher sichtbar. Ausgeblendete Orte zählen nicht als „Vorschläge von Mitgliedern“.
+- **Datenzentrale vereinfacht:** oben ein Satz „Alles läuft automatisch. Du musst nichts abrufen.“ (bzw. „Bei einer Quelle hakt es – wird automatisch erneut versucht“), Orte sichtbar, letzter Abgleich, was gerade läuft, was noch nie lief („startet von selbst“). Die Quellentabelle mit „Jetzt abrufen“/„Pausieren“ ist unter „Quellen und Abrufe – Technik“ eingeklappt (klappt bei Fehler/Freigabe selbst auf). Der Zeitplan nimmt noch nie gelaufene Quellen zuerst.
+- „Ort fehlt? Vorschlagen“ auf der Karte gab es schon – bleibt der Weg für Lücken.
+**Warum** Jan: Leo's Abenteuerpark fehlt; „warum muss ich das abrufen … gibt es nicht eine bessere Lösung“. spielplatztreff.de verbietet Crawler (Nutzungsbedingungen 4.3), mamilade.de hat keine Lizenz – beide nicht genutzt, Jan wollte keine Anfrage. Overture-Stichprobe von Jan auf dem Server (DuckDB) bestätigt Treffer und Grenzen.
+**Module** M23 Datenversorgung, M24 Datenzentrale, M10 Karte/Orte (Meldung) · **DB-Migration** ja (`0015_overture.sql`: neue Quelle)
+**Tests** svelte-check; 254 Unit/DB-Tests (neu `overture.unit.test.ts`: 20 Unsinn-Fälle aus Jans Stichprobe weg, alle echten Treffer drin, geschlossen/Ausland/Paris weg, Adresse/Webseite, Namensvergleich, nur Deutschland-Zeilengruppen gelesen, HTTP-Teilabruf, neueste Ausgabe; neu `overture.db.test.ts`: kompletter Lauf gegen lokalen Nachbau des AWS-Speichers – 8 Orte, „Abenteuerland“ aus OSM nicht doppelt, Meldung blendet aus, abgelehnt/erledigt, nächster Lauf aus Zwischenspeicher ohne Download und ohne Wiederbelebung, OSM-Ort bleibt sichtbar); Rauchtest bestanden (neu: Zustand auf einen Blick); Barrierefreiheit (neu mit Datenzentrale) ohne schwere Verstöße; Bildschirmfoto angesehen. Testdatei `tests/fixtures/overture-places.parquet` aus `scripts/overture-fixture.py`. **Nicht getestet:** echter Abruf bei AWS (aus der Arbeitsumgebung gesperrt) – Dauer und Anzahl für ganz Deutschland erst nach dem ersten Lauf auf dem Server bekannt.
+
 ## 2026-10-22 · Kinderwagenroute per GPS aufzeichnen (F-027, D-077)
 
 **Was**
