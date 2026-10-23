@@ -2,15 +2,17 @@
 // Ein Client je Seite (bleibt beim Navigieren innerhalb der App bestehen). Zugangsdaten nur in diesem Browser.
 import type { MatrixClient, MatrixEvent, Room } from 'matrix-js-sdk';
 import { clearSecret, deriveChatSecret, readSecret, rememberPassword, storeSecret } from './secret';
+import { lockedOutcome, passwordAccepted, storageKind } from './keystate';
 
 type Sdk = typeof import('matrix-js-sdk');
 export type Status = 'aus' | 'laedt' | 'bereit' | 'fehler' | 'nicht_eingerichtet';
 /**
  * Schlüssel aus dem Passwort (D-066): ok · arbeitet · passwort (einmal Passwort eingeben, z. B. nach Passkey-Anmeldung)
  * · abweichend (Passwort hat sich geändert und kein freigeschaltetes Gerät hat neu verpackt: altes Passwort oder neu beginnen)
+ * · frueher (Sicherung aus der Zeit vor D-066: Wiederherstellungsschlüssel einmal eingeben oder neu beginnen, F-017)
  * · neu/gesperrt nur kurz während der Prüfung.
  */
-export type KeyState = 'unbekannt' | 'neu' | 'gesperrt' | 'ok' | 'arbeitet' | 'passwort' | 'abweichend';
+export type KeyState = 'unbekannt' | 'neu' | 'gesperrt' | 'ok' | 'arbeitet' | 'passwort' | 'abweichend' | 'frueher';
 
 export interface ChatContact {
 	contactId: string;
@@ -384,11 +386,13 @@ async function doAutoKeys() {
 		await refreshKeyState();
 		return;
 	}
+	const p = await passphraseInfo();
 	const k = await keyFromSecret(secret);
-	if (k) {
+	const out = lockedOutcome(storageKind(p?.info), !!k);
+	if (out === 'entsperren' && k) {
 		await unlockWith(k);
 		await refreshKeyState();
-	} else chat.keys = 'abweichend';
+	} else chat.keys = out === 'frueher' ? 'frueher' : 'abweichend';
 }
 
 /** Passwort einmal eingeben (z. B. nach Anmeldung mit Passkey oder ohne JavaScript). */
@@ -396,11 +400,13 @@ export async function enterPassword(password: string): Promise<boolean> {
 	if (!client) return false;
 	const s = await deriveChatSecret(password, chat.userId);
 	const p = await passphraseInfo();
-	// Gibt es schon eine Sicherung, muss das Passwort dazu passen – sonst ist es vertippt oder ein früheres Passwort
-	if (p?.info.passphrase && !(await keyFromSecret(s))) return false;
+	// Gibt es schon eine Passwort-Sicherung, muss das Passwort dazu passen – sonst ist es vertippt oder ein früheres Passwort
+	const checked = storageKind(p?.info) === 'passwort';
+	if (!passwordAccepted(checked, checked ? !!(await keyFromSecret(s)) : true)) return false;
 	storeSecret(chat.userId, s);
 	await autoKeys();
-	return chat.keys === 'ok';
+	// Weiter auf einer anderen Karte (früher/abweichend) ist keine falsche Eingabe – keine rote Meldung (F-017)
+	return true;
 }
 
 /** Passwort wurde geändert/zurückgesetzt und kein Gerät hat neu verpackt: mit dem vorherigen Passwort entsperren. */

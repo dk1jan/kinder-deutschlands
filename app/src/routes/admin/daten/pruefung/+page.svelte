@@ -25,7 +25,10 @@
 			<p class="small"><a href="/karte?lon={s.lon}&lat={s.lat}&z=17" target="_blank">Auf der Karte prüfen</a></p>
 			<form method="POST" action="?/vorschlag" class="row">
 				<input type="hidden" name="id" value={s.id} />
-				<input name="note" maxlength="300" placeholder="Notiz (optional, nur intern)" aria-label="Notiz" />
+				<label class="f"><span>Nachricht an den Einsender <small class="muted">(kommt bei ihm unter Mitteilungen, bei Freigabe und Ablehnung)</small></span>
+					<input name="to_sender" maxlength="200" value="Danke für deinen Vorschlag – wir haben ihn bearbeitet." /></label>
+				<label class="f"><span>Interne Notiz <small class="muted">(nur Verwaltung)</small></span>
+					<input name="note" maxlength="300" placeholder="optional" /></label>
 				<button class="btn small" name="decision" value="ja">Freigeben</button>
 				<button class="btn small secondary" name="decision" value="nein">Ablehnen</button>
 			</form>
@@ -53,7 +56,14 @@
 					</fieldset>
 					<input name="source_url" placeholder="Link zur amtlichen Meldung (optional)" aria-label="Link zur amtlichen Meldung" />
 				{/if}
-				<input name="text" maxlength="500" placeholder="Öffentlicher Hinweistext bzw. interne Notiz" aria-label="Text" />
+				{#if r.kind === 'defekt' || r.kind === 'gesperrt'}
+					<label class="f"><span>Öffentlicher Hinweis am Ort <small class="muted">(für alle sichtbar, nur zusammen mit „bestätigen“ oder „amtlich“)</small></span>
+						<input name="text" maxlength="500" /></label>
+				{/if}
+				<label class="f"><span>Nachricht an den Melder <small class="muted">(kommt bei ihm unter Mitteilungen, bei Erledigt und Ablehnen)</small></span>
+					<input name="to_reporter" maxlength="200" value="Danke für deine Meldung – wir haben sie bearbeitet." /></label>
+				<label class="f"><span>Interne Notiz <small class="muted">(nur Verwaltung)</small></span>
+					<input name="note" maxlength="300" placeholder="optional" /></label>
 				<div class="row">
 					<button class="btn small" name="decision" value="erledigt">Erledigt</button>
 					<button class="btn small secondary" name="decision" value="abgelehnt">Ablehnen</button>
@@ -110,6 +120,18 @@
 	}
 	.row input {
 		flex: 1 1 14rem;
+	}
+	.f {
+		display: grid;
+		gap: var(--sp-1);
+		flex: 1 1 100%;
+	}
+	.f span {
+		font-weight: 700;
+		font-size: var(--fs-s, 0.9rem);
+	}
+	.f small {
+		font-weight: 400;
 	}
 	.grid {
 		display: grid;

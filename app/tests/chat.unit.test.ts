@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
 import { linkify, parseGeo, remaining, duration, fileSize } from '../src/lib/chat/format';
 import { inQuietHours, berlinMinutes, validSubscription } from '../src/lib/server/push';
+import { lockedOutcome, passwordAccepted, storageKind } from '../src/lib/chat/keystate';
 // JS-Skript (läuft vor dem Start ohne Build) – hier ohne Typprüfung laden
 const prepPath = '../scripts/synapse-prepare.mjs';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,5 +225,25 @@ describe('Suche im Chat (nur im Gerät)', async () => {
 		expect(snippet('Die Straße am Park ist gesperrt', 'strasse', 4)).toEqual(['Die ', 'Straße', ' am …']);
 		expect(snippet('kurz', 'ku')).toEqual(['', 'ku', 'rz']);
 		expect(snippet('kurz', 'zz')).toBeNull();
+	});
+});
+
+describe('Chat-Schlüssel aus dem Passwort (F-017)', () => {
+	it('Art der Sicherung: ohne Passwort-Angabe = frühere Version', () => {
+		expect(storageKind(null)).toBe('keine');
+		expect(storageKind({})).toBe('frueher');
+		expect(storageKind({ passphrase: { salt: 'x', iterations: 1 } })).toBe('passwort');
+	});
+	it('gesperrtes Gerät: früher → eigener Zustand, nie „Passwort geändert“', () => {
+		expect(lockedOutcome('frueher', false)).toBe('frueher');
+		expect(lockedOutcome('frueher', true)).toBe('frueher');
+		expect(lockedOutcome('passwort', true)).toBe('entsperren');
+		expect(lockedOutcome('passwort', false)).toBe('abweichend');
+	});
+	it('Passworteingabe: nur falsches Passwort gegen Passwort-Sicherung ist ein Fehler', () => {
+		expect(passwordAccepted(true, false)).toBe(false);
+		expect(passwordAccepted(true, true)).toBe(true);
+		// Sicherung aus früherer Version: Eingabe gilt als angenommen, weiter mit dem Wiederherstellungsschlüssel (keine rote Meldung)
+		expect(passwordAccepted(false, true)).toBe(true);
 	});
 });

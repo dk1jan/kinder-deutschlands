@@ -2,6 +2,15 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Rückmeldung an Melder/Einsender, Chat-Schlüssel „frühere Version“ (F-036, F-017, D-082)
+
+**Was**
+- F-036: Nach „Erledigt“/„Ablehnen“ einer Orts-Meldung und nach „Freigeben“/„Ablehnen“ eines Ortsvorschlags bekommt das Mitglied eine Mitteilung in der Glocke („Zu deiner Meldung „…“: Danke für deine Meldung – wir haben sie bearbeitet.“, Link zum Ort, wenn er sichtbar ist). Verwaltung → Daten → Prüffälle: drei getrennte, beschriftete Felder – öffentlicher Hinweis am Ort (nur bei Defekt/Gesperrt), interne Notiz, Nachricht an den Melder/Einsender (vorausgefüllt mit dem Dank, frei änderbar, 200 Zeichen). Zuvor ging der eine Text je nach Art intern oder öffentlich, ohne dass man es sah, und der Melder erfuhr nichts.
+- F-017: Sicherung aus der Zeit vor D-066 (Wiederherstellungsschlüssel, keine Passwort-Angabe) hat jetzt einen eigenen Zustand „Chat-Sicherung aus einer früheren Version“ (Schlüssel eingeben oder neu beginnen) statt fälschlich „Passwort geändert“. Die rote Meldung „Das Passwort passt nicht“ erscheint nicht mehr, wenn es nach der Eingabe auf einer anderen Karte weitergeht, und verschwindet beim Kartenwechsel.
+**Warum** Jan: Mitglieder aktivieren und loben; Chat-Hinweis war verwirrend.
+**Module** M24 (Datenzentrale/Prüffälle), M11/M13 (Meldungen und Vorschläge zu Orten), M02 (Chat-Schlüssel) · **DB-Migration** nein (`place_reports.user_id` gab es schon)
+**Tests** svelte-check 0 Fehler; Build; 252 Tests grün, 3 übersprungen (neu: DB-Test Melder-Mitteilung mit Standarddank, eigenem Text, Abgelehnt, interne Notiz/öffentlicher Hinweis nicht beim Melder; Vorschlag → Mitteilung; Unit-Tests der Schlüssel-Entscheidung) gegen PostgreSQL 16/PostGIS 3.4. **Nicht gelaufen:** Rauchtest mit Synapse (läuft in der CI vor dem Ausrollen), Browsertest `chatkey-check.py`; die neue Maske und die Karte „frühere Version“ wurden nicht im Browser angesehen.
+
 ## 2026-10-23 · Kartenpunkte der Ebenen antippbar (F-035)
 
 **Was** Punkte der Zusatzebenen (Einrichtungen, Termine, Marktplatz, Hilfe) lassen sich auf der Karte antippen – es öffnet sich die Karte mit Name, Art und „Ansehen“; Mauszeiger wird zur Hand. Der Klick war nie angeschlossen (nur über die Liste erreichbar); Kinderwagenrouten waren nicht betroffen.

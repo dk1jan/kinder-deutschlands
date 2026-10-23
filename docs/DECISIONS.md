@@ -257,3 +257,6 @@ Anlass Jan (F-030). Seit D-076 ist jeder Beitrag über „Ganz Deutschland“ od
 ## D-081 · Verwaltung legt Einrichtungen ohne Prüfung an (23.10.2026)
 Wer das Recht `orgs.verify` hat, prüft sonst die Anträge – ein Antrag an sich selbst ist sinnlos. Solche Personen legen Einrichtungen direkt verifiziert an und sind deren Verwalter; Mitglieder ohne dieses Recht stellen weiter einen Antrag mit Funktion und Prüfweg (Ablauf für Mitglieder unverändert). Protokolliert als `org.created_verified`.
 
+## D-082 · Rückmeldung an Melder und Einsender per Mitteilung (23.10.2026)
+Entscheidung Jan (F-036): Wer einen Ortsvorschlag oder eine Orts-Meldung einreicht, erfährt in der Glocke (Mitteilungen), dass sie bearbeitet wurde. Bei Freigabe/Erledigt **und** Ablehnung geht derselbe neutrale Dank („Danke für deine Meldung – wir haben sie bearbeitet.“ bzw. „… deinen Vorschlag …“), damit niemand durch ein „abgelehnt“ entmutigt wird. Die Redaktion kann den Text pro Fall selbst schreiben; sie hat drei getrennte Felder mit klarer Sichtbarkeit: öffentlicher Hinweis am Ort (alle, nur bei Defekt/Gesperrt mit „bestätigen“/„amtlich“), interne Notiz (nur Verwaltung), Nachricht an den Melder (nur der Melder). Der Einsender wird nur benachrichtigt, wenn sein Konto noch besteht. Moderationsfälle (Community/Chat) behalten ihren festen Dank (unverändert).
+

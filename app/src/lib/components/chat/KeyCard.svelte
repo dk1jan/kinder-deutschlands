@@ -11,7 +11,12 @@
 	let oldPw = $state('');
 	let legacy = $state('');
 	let confirmFresh = $state(false);
-	let showLegacy = $state(false);
+
+	// Wechselt die Karte, gehört eine alte Fehlermeldung nicht mehr dazu (F-017)
+	$effect(() => {
+		void chat.keys;
+		error = '';
+	});
 
 	async function run(fn: () => Promise<boolean | void>, wrong: string) {
 		busy = true;
@@ -62,14 +67,27 @@
 				</div>
 			</div>
 		{/if}
-		{#if !showLegacy}
-			<button class="link" type="button" onclick={() => (showLegacy = true)}>Ich habe noch einen Wiederherstellungsschlüssel (frühere Version)</button>
+	</section>
+{:else if chat.keys === 'frueher'}
+	<section class="keycard card" aria-labelledby="kc-t">
+		<h2 id="kc-t"><Icon name="schloss" /> Chat-Sicherung aus einer früheren Version</h2>
+		<p>Deine Chat-Sicherung stammt aus einer früheren Version von Kinder Deutschlands und ist mit einem <strong>Wiederherstellungsschlüssel</strong> geschützt. Gib ihn einmal ein, dann ist alles wieder da – ab dann schützt dich dein Passwort, und du brauchst keinen Schlüssel mehr.</p>
+		<form onsubmit={(e) => { e.preventDefault(); run(() => unlockKeys(legacy), 'Der Schlüssel passt nicht.'); }}>
+			<label for="kc-in">Wiederherstellungsschlüssel</label>
+			<input id="kc-in" class="mono" bind:value={legacy} autocomplete="off" spellcheck="false" placeholder="EsTc 1234 …" required />
+			{#if error}<p class="err" role="alert">{error}</p>{/if}
+			<button class="btn" type="submit" disabled={busy || legacy.trim().length < 20}>{busy ? 'Prüfe …' : 'Freischalten'}</button>
+		</form>
+		{#if !confirmFresh}
+			<button class="link" type="button" onclick={() => (confirmFresh = true)}>Ich habe den Schlüssel nicht mehr</button>
 		{:else}
-			<form onsubmit={(e) => { e.preventDefault(); run(() => unlockKeys(legacy), 'Der Schlüssel passt nicht.'); }}>
-				<label for="kc-in">Wiederherstellungsschlüssel</label>
-				<input id="kc-in" class="mono" bind:value={legacy} autocomplete="off" spellcheck="false" placeholder="EsTc 1234 …" required />
-				<button class="btn small secondary" type="submit" disabled={busy || legacy.trim().length < 20}>Freischalten</button>
-			</form>
+			<div class="warn">
+				<p><strong>Neu beginnen?</strong> Ältere Nachrichten bleiben auf neuen Geräten unlesbar. Neue Nachrichten funktionieren sofort. Deine Kontakte sehen, dass sich deine Sicherheitsschlüssel geändert haben.</p>
+				<div class="acts">
+					<button class="btn small danger" type="button" disabled={busy} onclick={() => run(startFresh, '')}>Neu beginnen</button>
+					<button class="btn small secondary" type="button" onclick={() => (confirmFresh = false)}>Abbrechen</button>
+				</div>
+			</div>
 		{/if}
 	</section>
 {:else if full && chat.keys === 'ok'}

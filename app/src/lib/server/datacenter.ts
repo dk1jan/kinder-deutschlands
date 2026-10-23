@@ -5,6 +5,7 @@ import { displayName, featuresFor, isKind, type Kind } from '$lib/places';
 import { tileState, validBbox } from './import/tiles';
 import { assignRegions } from './import/engine';
 import { notifyPlaceFollowers } from './follows';
+import { notify } from './community/posts';
 import { sameName } from './import/overture';
 
 export class DataError extends Error {}
@@ -116,11 +117,26 @@ export async function reviewQueue(sql: Sql) {
 	};
 }
 
-export async function decideSuggestion(sql: Sql, id: string, approve: boolean, actorId: string, note: string | null) {
+/** Standardtexte der Rückmeldung (F-036): bei Freigabe/Erledigt und bei Ablehnung derselbe neutrale Dank. */
+export const THANKS_REPORT = 'Danke für deine Meldung – wir haben sie bearbeitet.';
+export const THANKS_SUGGESTION = 'Danke für deinen Vorschlag – wir haben ihn bearbeitet.';
+
+/** Mitteilung (Glocke) an Melder/Einsender; Text von der Redaktion oder der Standarddank. Ohne Konto passiert nichts. */
+async function thankSender(sql: Sql, userId: string | null, placeId: string, what: 'Meldung' | 'Vorschlag', message: string | null) {
+	if (!userId) return;
+	const [pl] = await sql`select p.kind, p.name, p.status, r.name as region from places p left join regions r on r.code = p.region_code where p.id = ${placeId}`;
+	const display = pl ? displayName(pl.kind as Kind, pl.name as string | null, (pl.region as string | null) ?? null) : 'dem Ort';
+	const subject = what === 'Meldung' ? 'deiner Meldung' : 'deinem Vorschlag';
+	const text = `Zu ${subject} „${display}“: ${message ?? (what === 'Meldung' ? THANKS_REPORT : THANKS_SUGGESTION)}`;
+	await notify(sql, userId, 'meldung', text, pl?.status === 'aktiv' ? `/orte/${placeId}` : null);
+}
+
+export async function decideSuggestion(sql: Sql, id: string, approve: boolean, actorId: string, note: string | null, toSender: string | null = null) {
 	const r = await sql`update places set status = ${approve ? 'aktiv' : 'abgelehnt'}, confirmation = 'community', checked_at = now(), updated_at = now()
-		where id = ${id} and status = 'pruefung' and created_by is not null`;
+		where id = ${id} and status = 'pruefung' and created_by is not null returning created_by`;
 	if (!r.count) throw new DataError('Vorschlag nicht (mehr) offen.');
 	await audit(sql, { actorId, action: approve ? 'place.approved' : 'place.rejected', targetType: 'place', targetId: id, reason: note ?? undefined });
+	await thankSender(sql, r[0].created_by as string | null, id, 'Vorschlag', toSender);
 }
 
 /** Zusammenführen: „keep“ bleibt, „drop“ wird verwiesen. Quellen, Merkliste, Meldungen und Hinweise ziehen mit um. */
@@ -204,11 +220,15 @@ export async function markDistinct(sql: Sql, a: string, b: string, actorId: stri
 }
 
 /** Meldung bearbeiten. Bei Defekt/Sperrung: Hinweis bestätigen (Redaktion/amtlich) oder beenden. */
-export async function handleReport(sql: Sql, id: string, decision: 'erledigt' | 'abgelehnt', notice: 'bestaetigen' | 'amtlich' | 'beenden' | null, text: string | null, sourceUrl: string | null, actorId: string) {
-	let done: { placeId: string; kind: string } | null = null as { placeId: string; kind: string } | null;
+/**
+ * Meldung bearbeiten. `text` = öffentlicher Hinweis am Ort (nur bei defekt/gesperrt mit „bestätigen“/„amtlich“).
+ * `extra.note` = interne Notiz (nur Verwaltung), `extra.toReporter` = Nachricht an den Melder (Mitteilung; ohne Angabe der Standarddank).
+ */
+export async function handleReport(sql: Sql, id: string, decision: 'erledigt' | 'abgelehnt', notice: 'bestaetigen' | 'amtlich' | 'beenden' | null, text: string | null, sourceUrl: string | null, actorId: string, extra: { note?: string | null; toReporter?: string | null } = {}) {
+	let done: { placeId: string; kind: string; reporter: string | null } | null = null as { placeId: string; kind: string; reporter: string | null } | null;
 	await sql.begin(async (tx) => {
-		const [rp] = await tx`update place_reports set status = ${decision}, handled_by = ${actorId}, handled_at = now(), resolution = ${text}
-			where id = ${id} and status = 'offen' returning place_id, kind`;
+		const [rp] = await tx`update place_reports set status = ${decision}, handled_by = ${actorId}, handled_at = now(), resolution = ${extra.note ?? text}
+			where id = ${id} and status = 'offen' returning place_id, kind, user_id`;
 		if (!rp) throw new DataError('Meldung nicht (mehr) offen.');
 		if (notice === 'beenden' || decision === 'abgelehnt') {
 			await tx`update place_notices set ended_at = now() where report_id = ${id} and ended_at is null`;
@@ -227,13 +247,14 @@ export async function handleReport(sql: Sql, id: string, decision: 'erledigt' | 
 					where id = ${rp.place_id} and status = 'pruefung' and confirmation = 'importiert'`;
 		}
 		await audit(tx as unknown as Sql, { actorId, action: 'place.report.handled', targetType: 'place', targetId: rp.place_id, meta: { decision, notice } });
-		done = { placeId: rp.place_id, kind: rp.kind };
+		done = { placeId: rp.place_id, kind: rp.kind, reporter: (rp.user_id as string | null) ?? null };
 	});
 	if (done && (done.kind === 'defekt' || done.kind === 'gesperrt')) {
 		const word = done.kind === 'gesperrt' ? 'Sperrung' : 'Defekt';
 		if (notice === 'beenden' || decision === 'abgelehnt') await notifyPlaceFollowers(sql, done.placeId, `{ort}: Hinweis „${word}“ aufgehoben`, null, actorId);
 		else if (notice === 'bestaetigen' || notice === 'amtlich') await notifyPlaceFollowers(sql, done.placeId, `{ort}: ${word} ${notice === 'amtlich' ? 'amtlich gemeldet' : 'von der Redaktion bestätigt'}`, null, actorId);
-	}
+	}	// F-036: Melder zurückmelden – immer, bei „erledigt“ und „abgelehnt“ mit demselben neutralen Dank
+	if (done) await thankSender(sql, done.reporter, done.placeId, 'Meldung', extra.toReporter ?? null);
 }
 
 // ---------- Ortspflege ----------

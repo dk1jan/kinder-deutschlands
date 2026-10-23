@@ -198,12 +198,48 @@ d('Orte und Importe (Datenbank)', () => {
 		expect(pl.notices).toEqual([expect.objectContaining({ origin: 'redaktion', text: 'Schaukel defekt, Reparatur beauftragt' })]);
 	});
 
+	it('F-036: Melder bekommt nach Erledigt/Ablehnen eine Mitteilung (Standarddank oder eigener Text), nichts Internes', async () => {
+		const [p] = await sql`select place_id from place_sources where external_id = 'node/1'`;
+		const msgs = async () => (await sql`select text, link, kind from notifications where user_id = ${user} and kind = 'meldung' order by created_at, id`) as unknown as { text: string; link: string | null; kind: string }[];
+		const before = (await msgs()).length;
+		// Erledigt, Standarddank, interne Notiz bleibt intern
+		const r1 = await reportPlace(sql, user, p.place_id, 'sonstiges', 'Bitte prüfen');
+		await handleReport(sql, r1!, 'erledigt', null, null, null, editor, { note: 'INTERN: Rückruf nötig' });
+		let m = await msgs();
+		expect(m.length).toBe(before + 1);
+		expect(m[m.length - 1].text).toContain('Danke für deine Meldung – wir haben sie bearbeitet.');
+		const [pn] = await sql`select name from places where id = ${p.place_id}`;
+		expect(m[m.length - 1].text).toContain(pn.name as string);
+		expect(m[m.length - 1].text).not.toContain('INTERN');
+		expect(m[m.length - 1].link).toBe(`/orte/${p.place_id}`);
+		const [res] = await sql`select resolution from place_reports where id = ${r1!}`;
+		expect(res.resolution).toBe('INTERN: Rückruf nötig');
+		// Abgelehnt, eigener Text
+		const r2 = await reportPlace(sql, user, p.place_id, 'falsche_angabe', 'Öffnungszeit falsch');
+		await handleReport(sql, r2!, 'abgelehnt', null, null, null, editor, { toReporter: 'Super aufgepasst, bitte weiter so!' });
+		m = await msgs();
+		expect(m.length).toBe(before + 2);
+		expect(m[m.length - 1].text).toContain('Super aufgepasst, bitte weiter so!');
+		expect(m[m.length - 1].text).not.toContain('Danke für deine Meldung');
+		// Öffentlicher Hinweis geht nur in den Hinweis am Ort, nicht an den Melder
+		const r3 = await reportPlace(sql, user, p.place_id, 'gesperrt', null);
+		await handleReport(sql, r3!, 'erledigt', 'bestaetigen', 'Bauzaun bis Freitag', null, editor);
+		m = await msgs();
+		expect(m.length).toBe(before + 3);
+		expect(m[m.length - 1].text).not.toContain('Bauzaun');
+		await handleReport(sql, (await reportPlace(sql, user, p.place_id, 'sonstiges', null))!, 'abgelehnt', null, null, null, editor);
+	});
+
 	it('Vorschlag: Dublettenprüfung, erst nach Freigabe sichtbar', async () => {
 		const near = await nearbySameKind(sql, 'spielplatz', 8.8002, 53.0902);
 		expect(near.length).toBeGreaterThan(0);
 		const id = await suggestPlace(sql, user, { kind: 'indoorspielplatz', name: 'Testhalle', lon: 8.79, lat: 53.1, description: null, features: { wickeltisch: true }, openingHours: null });
 		expect((await placesInBbox(sql, { w: 8.7, s: 53.05, e: 8.9, n: 53.12 }, ['drinnen'], [])).features.length).toBe(0);
 		await decideSuggestion(sql, id, true, editor, null);
+		const [ms] = await sql`select text, link from notifications where user_id = ${user} and kind = 'meldung' and text like 'Zu deinem Vorschlag%' order by created_at desc limit 1`;
+		expect(ms.text).toContain('Testhalle');
+		expect(ms.text).toContain('Danke für deinen Vorschlag – wir haben ihn bearbeitet.');
+		expect(ms.link).toBe(`/orte/${id}`);
 		const after = await placesInBbox(sql, { w: 8.7, s: 53.05, e: 8.9, n: 53.12 }, ['drinnen'], []);
 		expect(after.features.map((f) => f.properties.n)).toEqual(['Testhalle']);
 		const [p] = await sql`select confirmation, region_code from places where id = ${id}`;
