@@ -1,7 +1,6 @@
 <script lang="ts">
 	import Bunting from '$lib/components/art/Bunting.svelte';
 	import Pram from '$lib/components/art/Pram.svelte';
-	import RegionMap from '$lib/components/art/RegionMap.svelte';
 	import ModuleArt from '$lib/components/art/ModuleArt.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import AreaTiles from '$lib/components/AreaTiles.svelte';
@@ -120,19 +119,6 @@
 	</svg>
 </section>
 
-{#if total > 0}
-	<section class="container facts" aria-labelledby="daten-titel">
-		<h2 id="daten-titel"><span class="big">{fmtN(total)}</span> Familienorte in ganz Deutschland.</h2>
-		<ul>
-			{#each facts as f}<li><strong>{fmtN(f.n)}</strong><span>{f.l}</span></li>{/each}
-		</ul>
-		<p class="muted">
-			Aus offenen Daten (OpenStreetMap, Overture Maps, Bundesamt für Kartographie), jeder Ort mit Quelle{#if data.stand}, zuletzt abgeglichen am {new Date(data.stand).toLocaleDateString('de-DE')}{/if}.
-			<a href="/karte">Zur Karte</a> · <a href="/karte/quellen">Datenquellen</a>
-		</p>
-	</section>
-{/if}
-
 <section class="band" id="familien-id" aria-labelledby="id-titel">
 	<div class="container id-grid">
 		<div>
@@ -189,10 +175,18 @@
 
 <section class="region" aria-labelledby="reg-titel">
 	<div class="container reg-grid">
-		<div class="atlas">
-			<RegionMap />
-			<p class="atlas-note">Schematische Darstellung</p>
-		</div>
+		{#if total > 0}
+			<div class="facts">
+				<h2 id="daten-titel"><span class="big">{fmtN(total)}</span> Familienorte in ganz Deutschland.</h2>
+				<ul>
+					{#each facts as f}<li><strong>{fmtN(f.n)}</strong><span>{f.l}</span></li>{/each}
+				</ul>
+				<p class="muted">
+					Aus offenen Daten (OpenStreetMap, Overture Maps, Bundesamt für Kartographie), jeder Ort mit Quelle{#if data.stand}, zuletzt abgeglichen am {new Date(data.stand).toLocaleDateString('de-DE')}{/if}.
+					<a href="/karte">Zur Karte</a> · <a href="/karte/quellen">Datenquellen</a>
+				</p>
+			</div>
+		{/if}
 		<div>
 			<h2 id="reg-titel">Zuerst der Norden.</h2>
 			<p class="lead">
@@ -201,7 +195,7 @@
 			</p>
 			<p>
 				Land Bremen, Stadt Bremen und Bremerhaven sind von Anfang an sauber getrennt, damit Nachrichten und Angebote dort
-				ankommen, wo sie gelten. Orte sollen aus offenen Daten wie OpenStreetMap kommen, immer mit Quelle und Stand.
+				ankommen, wo sie gelten. Orte kommen aus offenen Daten wie OpenStreetMap, immer mit Quelle und Stand.
 			</p>
 		</div>
 	</div>
@@ -249,11 +243,10 @@
 
 <style>
 	/* ---------- Hero ---------- */
-	.facts {
-		padding-block: var(--sp-6) var(--sp-5);
-	}
 	.facts h2 {
 		margin: 0 0 var(--sp-4);
+		font-size: var(--fs-2xl);
+		line-height: 1.1;
 	}
 	.facts .big {
 		color: var(--sea-ink);
@@ -263,10 +256,11 @@
 		padding: 0;
 		margin: 0 0 var(--sp-3);
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
 		gap: var(--sp-3);
 	}
 	.facts li {
+		align-content: start;
 		background: var(--surface);
 		border-radius: var(--radius-m);
 		padding: var(--sp-3) var(--sp-4);
@@ -616,23 +610,6 @@
 		display: grid;
 		gap: var(--sp-6);
 		align-items: center;
-	}
-	.atlas {
-		background: var(--surface);
-		border-radius: var(--radius-l);
-		padding: var(--sp-4);
-		box-shadow: var(--shadow);
-		background-image:
-			linear-gradient(var(--line) 1px, transparent 1px),
-			linear-gradient(90deg, var(--line) 1px, transparent 1px);
-		background-size: 46px 46px;
-		background-position: -1px -1px;
-	}
-	.atlas-note {
-		margin: var(--sp-2) 0 0;
-		text-align: right;
-		font-size: var(--fs-xs);
-		color: var(--ink-2);
 	}
 	@media (min-width: 900px) {
 		.reg-grid {

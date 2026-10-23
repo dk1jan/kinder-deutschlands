@@ -2,6 +2,13 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Startseite: Datenübersicht statt Karte (F-031)
+
+**Was** Der Block „N Familienorte in ganz Deutschland“ steht nicht mehr oben unter dem Kopf, sondern im Abschnitt „Zuerst der Norden“ an der Stelle der schematischen Norddeutschland-Karte (Karte entfernt). Text daneben angepasst („Orte kommen aus offenen Daten …“).
+**Warum** Jan: oben entfernen, unten die Karte entfernen, dort die Übersicht hin.
+**Module** Startseite · **DB-Migration** nein
+**Tests** svelte-check, Build, Bildschirmfoto angesehen; Rauchtest-Prüfung der Startseiten-Übersicht unverändert gültig (läuft in CI).
+
 ## 2026-10-23 · Beitrag „Ganz Deutschland“, Oben anheften, „Nachricht schreiben“, Overture im eigenen Prozess (F-030, D-080)
 
 **Was**
