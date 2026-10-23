@@ -6,8 +6,9 @@ Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
 **Was** Die App schickt keine „Link“-Kopfzeile mehr (Liste aller vorzuladenden Skripte, bis ~3 KB). Dieselben Angaben stehen weiterhin als `<link rel="modulepreload">` im HTML-Kopf – Ladezeit unverändert. Antwortköpfe jetzt ~0,9 KB statt ~3,8 KB.
 **Warum** Jan: 502 beim Einrichtungs-Antrag und beim Öffnen eines neuen Beitrags. nginx-Log (Plesk `proxy_error_log`): beide Male „upstream sent too big header“ – Link-Kopfzeile + CSP + Sitzungs-Cookie über dem 4-KB-Kopfpuffer von nginx. Kein Absturz der App (Logs, Neustarts 0). Die Vermutung „Ausrollen/Overture-Lauf“ aus F-030 war falsch.
-**Module** Querschnitt (Server-Hook) · **DB-Migration** nein
-**Tests** svelte-check, Build; Nachstellung mit langem Beitrag (Kopf 3.817 → 871 Bytes); Rauchtest bestanden (neu: Antwortköpfe einer Beitragsseite mit Anmeldung < 2 KB, keine Link-Kopfzeile).
+- **Dubletten:** Beim Zusammenführen entstehen keine Verweisketten mehr (drei Orte am selben Punkt ergaben je nach Reihenfolge A → B → C); bestehende Ketten aus dem ersten automatischen Lauf biegt `0016_verweisketten.sql` einmalig auf den endgültigen Ort um. Gefunden, weil der Dubletten-Test in CI je nach Reihenfolge wackelte – Test erzwingt jetzt genau diese Reihenfolge (ohne Korrektur rot, mit grün).
+**Module** Querschnitt (Server-Hook), M23/M24 Dubletten · **DB-Migration** ja (`0016_verweisketten.sql`, nur Verweise umbiegen)
+**Tests** svelte-check, Build; Nachstellung mit langem Beitrag (Kopf 3.817 → 871 Bytes); 251 Unit/DB-Tests; Migration an künstlicher Kette geprüft; Rauchtest bestanden (neu: Antwortköpfe einer Beitragsseite mit Anmeldung < 2 KB, keine Link-Kopfzeile).
 
 ## 2026-10-23 · Startseite: Datenübersicht statt Karte (F-031)
 

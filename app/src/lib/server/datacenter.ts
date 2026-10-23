@@ -141,6 +141,8 @@ export async function mergePlaces(sql: Sql, keep: string, drop: string, actorId:
 		for (const t of ['media', 'posts', 'organizations', 'events', 'offers', 'notices', 'invitations'])
 			await tx`update ${tx(t)} set place_id = ${keep} where place_id = ${drop}`;
 		await tx`update places set status = 'zusammengefuehrt', merged_into = ${keep}, updated_at = now() where id = ${drop}`;
+		// Keine Ketten (A → B → C): wer schon auf den verwiesenen Ort zeigte, zeigt jetzt direkt auf den bleibenden (F-032)
+		await tx`update places set merged_into = ${keep} where merged_into = ${drop}`;
 		await tx`update places set status = case when status in ('pruefung', 'archiviert') then 'aktiv' else status end, updated_at = now() where id = ${keep}`;
 		await tx`update place_duplicates set status = 'zusammengefuehrt', decided_by = ${actorId}, decided_at = now()
 			where (place_a = ${keep} and place_b = ${drop}) or (place_a = ${drop} and place_b = ${keep})`;

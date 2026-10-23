@@ -65,6 +65,9 @@ d('Dubletten automatisch zusammenführen (F-029)', () => {
 	});
 
 	it('führt Eindeutiges zusammen, lässt Unklares stehen', async () => {
+		// Reihenfolge erzwingen, die vorher eine Kette ergab: t1+t3 zuerst (beide ohne Angaben), dann gegen t2
+		await sql`update place_duplicates set distance_m = 0 where (place_a, place_b) in ((least(${ids.t1}::uuid, ${ids.t3}::uuid), greatest(${ids.t1}::uuid, ${ids.t3}::uuid)))`;
+		await sql`update place_duplicates set distance_m = 0.5 where status = 'offen' and not ((place_a, place_b) in ((least(${ids.t1}::uuid, ${ids.t3}::uuid), greatest(${ids.t1}::uuid, ${ids.t3}::uuid)))) and distance_m < 0.5`;
 		const [{ open }] = await sql`select count(*)::int as open from place_duplicates where status = 'offen'`;
 		expect(open).toBe(7); // t: 3 Paare, s, n, f, c (v ist entschieden)
 		const r = await autoMergeDuplicates(sql);
