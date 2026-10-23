@@ -7,21 +7,23 @@ import { applyOrg } from '$lib/server/angebote/orgs';
 import { formValues, orgFromForm } from '$lib/server/angebote/forms';
 import { tileState } from '$lib/server/import/tiles';
 import { cleanText } from '$lib/server/validate';
+import { userCan } from '$lib/server/roles';
 
 export const load: PageServerLoad = async (event) => {
-	requireMember(event);
+	const user = requireMember(event);
 	const tiles = await tileState(db()).catch(() => null);
-	return { tiles: !!tiles?.present };
+	return { tiles: !!tiles?.present, direct: await userCan(db(), user.id, 'orgs.verify') };
 };
 
 export const actions: Actions = {
 	default: async (event) => {
 		const user = requireMember(event);
 		const f = await event.request.formData();
-		if (f.get('ok') !== 'on') return fail(400, { error: 'Bitte bestätige, dass du für die Einrichtung handeln darfst.', values: formValues(f) });
+		const direct = await userCan(db(), user.id, 'orgs.verify');
+		if (!direct && f.get('ok') !== 'on') return fail(400, { error: 'Bitte bestätige, dass du für die Einrichtung handeln darfst.', values: formValues(f) });
 		try {
 			const o = await applyOrg(db(), user.id, orgFromForm(f), { role: cleanText(f.get('role'), 200) ?? '', proof: cleanText(f.get('proof'), 1000) ?? '' });
-			return { done: o.slug };
+			return { done: o.slug, direct: o.direct };
 		} catch (e) {
 			if (e instanceof PostError) return fail(400, { error: e.message, values: formValues(f) });
 			throw e;

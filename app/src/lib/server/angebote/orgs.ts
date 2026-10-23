@@ -44,6 +44,8 @@ async function uniqueSlug(sql: Sql, name: string) {
 /** Antrag: Die antragstellende Person wird nach der Prüfung erste Verwalterin der Einrichtung. */
 export async function applyOrg(sql: Sql, userId: string, i: OrgInput, application: { role: string; proof: string }) {
 	validateOrg(i);
+	// F-033: Wer Einrichtungen prüfen darf (Verwaltung), legt sie direkt an – sich selbst prüfen wäre sinnlos
+	if (await userCan(sql, userId, 'orgs.verify')) return createVerifiedOrg(sql, userId, i);
 	if (application.role.trim().length < 3) throw new PostError('Bitte angeben, welche Funktion du in der Einrichtung hast.');
 	if (application.proof.trim().length < 10) throw new PostError('Bitte kurz beschreiben, wie wir die Zuordnung prüfen können (z. B. Dienst-E-Mail, Telefon der Einrichtung).');
 	const [{ n }] = await sql`select count(*)::int as n from organizations where created_by = ${userId} and status = 'beantragt'`;
@@ -55,7 +57,23 @@ export async function applyOrg(sql: Sql, userId: string, i: OrgInput, applicatio
 			${sql.json({ role: application.role.trim().slice(0, 200), proof: application.proof.trim().slice(0, 1000), applicant: userId, at: new Date().toISOString() })}, ${userId})
 		returning id, slug`;
 	await audit(sql, { actorId: userId, action: 'org.applied', targetType: 'org', targetId: o.id });
-	return o as { id: string; slug: string };
+	return { ...(o as { id: string; slug: string }), direct: false };
+}
+
+async function createVerifiedOrg(sql: Sql, userId: string, i: OrgInput) {
+	const slug = await uniqueSlug(sql, i.name);
+	const o = await sql.begin(async (tx) => {
+		const [o] = await tx`insert into organizations (slug, name, kind, description, topics, region_code, address, location, website, email, phone,
+				status, verified_at, verified_by, created_by)
+			values (${slug}, ${i.name.trim()}, ${i.kind}, ${i.description.trim()}, ${i.topics.filter(isRadarTopic)}, ${i.regionCode}, ${i.address},
+				${i.lat !== null ? tx`ST_SetSRID(ST_MakePoint(${i.lon}, ${i.lat}), 4326)` : null}, ${i.website}, ${i.email}, ${i.phone},
+				'verifiziert', now(), ${userId}, ${userId})
+			returning id, slug`;
+		await tx`insert into org_members (org_id, user_id, role, added_by) values (${o.id}, ${userId}, 'admin', ${userId}) on conflict do nothing`;
+		return o;
+	});
+	await audit(sql, { actorId: userId, action: 'org.created_verified', targetType: 'org', targetId: o.id });
+	return { id: o.id as string, slug: o.slug as string, direct: true };
 }
 
 /** Entscheidung der Verwaltung. Die Prüfangaben werden danach auf das Nötige gekürzt (Datensparsamkeit). */

@@ -2,6 +2,16 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-23 · Einrichtung anlegen: Verwaltung direkt, verständlicher Fehler (F-033)
+
+**Was**
+- Wer Einrichtungen prüfen darf (Verwaltung), legt sie jetzt **direkt** an: keine Prüfangaben, kein Häkchen, sofort sichtbar, man ist als Verwalter der Einrichtung eingetragen (Protokoll „org.created_verified“). Mitglieder stellen weiter einen Antrag.
+- Antrag für Mitglieder: Das Feld „Wie können wir das prüfen?“ sagt jetzt „Mindestens 10 Zeichen“ und der Browser prüft das vor dem Absenden; „Deine Funktion“ mindestens 3 Zeichen; das Häkchen „Ich darf für diese Einrichtung handeln“ bleibt nach einem Fehler gesetzt.
+- Telefon-, Datums- und Zeitfelder haben jetzt dieselbe Gestaltung wie die übrigen Eingabefelder (Telefon war ein kleines Rohfeld).
+**Warum** Jan: „ich bekomme immer den Fehler, egal was ich mache“ – Prüfangabe „admin“ (5 Zeichen) war zu kurz, das stand nirgends, und das Häkchen ging nach jedem Fehler verloren.
+**Module** M12 Einrichtungen · **DB-Migration** nein
+**Tests** svelte-check, Build, Unit/DB-Tests; Rauchtest bestanden (neu: Verwaltung legt Einrichtung direkt an → verifiziert; zu kurze Prüfangabe → Hinweis, Häkchen bleibt).
+
 ## 2026-10-23 · 502-Fehler behoben: zu große Antwortköpfe (F-032)
 
 **Was** Die App schickt keine „Link“-Kopfzeile mehr (Liste aller vorzuladenden Skripte, bis ~3 KB). Dieselben Angaben stehen weiterhin als `<link rel="modulepreload">` im HTML-Kopf – Ladezeit unverändert. Antwortköpfe jetzt ~0,9 KB statt ~3,8 KB.

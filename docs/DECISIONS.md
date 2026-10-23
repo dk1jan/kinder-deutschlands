@@ -254,3 +254,6 @@ Entscheidungen Jan (F-029):
 ## D-080 · Thema freiwillig, Anheften ohne Begründung, Angeheftetes überall oben (23.10.2026)
 Anlass Jan (F-030). Seit D-076 ist jeder Beitrag über „Ganz Deutschland“ oder das Bundesland auffindbar – Thema und Region sind daher freiwillig. Anheften ist keine Sanktion: eigener Knopf für alle, die den Beitrag moderieren dürfen, ohne Begründung und ohne Mitteilung an die Verfasserin, mit Protokolleintrag. Angeheftete Beiträge stehen in jedem Feed oben; angeheftete Beiträge für ganz Deutschland (ohne Land/Region) auch im Landes-Feed. Overture-Daten werden in einem eigenen Prozess gelesen, damit die Web-App nicht ausgebremst wird.
 
+## D-081 · Verwaltung legt Einrichtungen ohne Prüfung an (23.10.2026)
+Wer das Recht `orgs.verify` hat, prüft sonst die Anträge – ein Antrag an sich selbst ist sinnlos. Solche Personen legen Einrichtungen direkt verifiziert an und sind deren Verwalter; Mitglieder ohne dieses Recht stellen weiter einen Antrag mit Funktion und Prüfweg (Ablauf für Mitglieder unverändert). Protokolliert als `org.created_verified`.
+

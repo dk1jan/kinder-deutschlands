@@ -62,6 +62,7 @@ Regeln
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-033 | erledigt: Einrichtung anlegen – Verwaltung legt direkt an (ohne Prüfung), Antrag erklärt Mindestlänge, Häkchen bleibt, Telefonfeld gestaltet | CHANGELOG 23.10. Einrichtung anlegen |
 | F-032 | erledigt: 502 bei Einrichtungs-Antrag und neuem Beitrag – Ursache „upstream sent too big header“ (nginx 4 KB), Link-Kopfzeile entfernt | CHANGELOG 23.10. 502-Fehler |
 | F-031 | erledigt: Datenübersicht von oben an die Stelle des Abschnitts „Zuerst der Norden“ (Karte und Text entfernt) | CHANGELOG 23.10. Startseite |
 | F-030 | erledigt: Beitrag „Ganz Deutschland“ ohne Thema, Knopf „Oben anheften“ (überall oben), „Nachricht schreiben“ statt „ab Bauabschnitt 4“, Overture-Abruf im eigenen Prozess. 502 beim Einrichtungs-Antrag: kein Fehler im Code gefunden (Rauchtest grün), vermutlich Ausrollen/Overture-Lauf – Jan testet erneut (D-080) | CHANGELOG 23.10. Ganz Deutschland/Anheften |

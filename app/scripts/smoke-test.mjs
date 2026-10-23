@@ -656,6 +656,16 @@ try {
 	const satDay = berlinDay(satT);
 	r = await X2.req('/veranstaltungen');
 	check(r.status === 200 && r.body.includes('Keine Termine gefunden') && r.body.includes('nichts Erfundenes'), 'Veranstaltungen öffentlich, ehrlich leer');
+	// F-033: Verwaltung legt eine Einrichtung direkt an (ohne Prüfangaben), sofort sichtbar
+	r = await req('/einrichtungen/antrag', { form: { name: 'Smoke-Jugendfarm', kind: 'verein', description: 'Tiere und Natur', region_code: fdf.code } });
+	check(r.status === 200 && r.body.includes('Einrichtung angelegt'), 'Verwaltung legt Einrichtung direkt an');
+	{
+		const [jf] = await sqlT`select status from organizations where name = 'Smoke-Jugendfarm'`;
+		check(jf?.status === 'verifiziert', `Direkt angelegte Einrichtung ist verifiziert (${jf?.status})`);
+	}
+	// Mitglied: Prüfangabe zu kurz → verständlicher Fehler, Häkchen bleibt gesetzt
+	r = await A.req('/einrichtungen/antrag', { form: { name: 'Smoke-Kurz', kind: 'familienzentrum', description: 'Test', region_code: fdf.code, role: 'Leitung', proof: 'admin', ok: 'on' } });
+	check(r.status === 400 && r.body.includes('Bitte kurz beschreiben') && /name="ok"[^>]*checked/.test(r.body) && r.body.includes('Mindestens 10 Zeichen'), 'Antrag: zu kurze Prüfangabe erklärt, Häkchen bleibt');
 	r = await A.req('/einrichtungen/antrag', { form: { name: 'Smoke-Familienzentrum', kind: 'familienzentrum', description: 'Offener Treff', region_code: fdf.code, role: 'Leitung', proof: 'Rückruf über die Nummer der Webseite', ok: 'on' } });
 	check(r.status === 200 && r.body.includes('Antrag eingegangen'), 'Einrichtung beantragt');
 	r = await X2.req('/einrichtungen');
