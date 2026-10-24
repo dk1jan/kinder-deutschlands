@@ -414,7 +414,7 @@ try {
 	check(r.status === 200 && JSON.parse(r.body).active === true && (r.headers.get('cache-control') ?? '').includes('no-store'), 'Live: Freigabe gestartet, nicht zwischengespeichert');
 	r = await B.req('/api/karte/ebenen?bbox=8.7,53,8.9,53.2&e=live');
 	const liveB = JSON.parse(r.body).points ?? [];
-	check(liveB.length === 1 && liveB[0].layer === 'live' && liveB[0].title === 'Anna' && !r.body.includes('8.80123') && !r.body.includes('53.07456'), 'Live: Kontakt sieht Kreis-Mitte (gerastert, nicht der genaue Punkt)');
+	check(liveB.length === 1 && liveB[0].layer === 'live' && liveB[0].title === 'Anna' && liveB[0].contact === true && liveB[0].sub.startsWith('Kontakt') && !r.body.includes('8.80123') && !r.body.includes('53.07456'), 'Live: Kontakt sieht Kreis-Mitte (gerastert, nicht der genaue Punkt)');
 	r = await X.req('/api/karte/ebenen?bbox=8.7,53,8.9,53.2&e=live');
 	check(JSON.parse(r.body).points.length === 0, 'Live: ohne Anmeldung nichts');
 	r = await B.req(liveB[0]?.href ?? '/live/x');

@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-24 · Karte: eigener Live-Knopf, Kontakt/Mitglied unterscheidbar (F-049, zu F-037/D-088)
+
+**Was**
+- **Live-Knopf direkt auf der Karte** (nur angemeldet): grau = nicht live, **rot und pulsierend = ich teile**, mit Restzeit („Live · 24 Min.“). Antippen öffnet ein eigenes Fenster: Wer sieht mich (Kontakte / Alle Mitglieder), 30/60 Min., „Live gehen“, bzw. großer „Stoppen“-Knopf. „Live gehen“ schaltet die Ebene automatisch an.
+- **Ebenen:** Teilen-Panel entfernt; dort nur noch der Haken „Live unterwegs (andere anzeigen)“. Ebenen- und Live-Fenster scrollen jetzt, wenn der Bildschirm zu klein ist (Handy-Überlauf aus dem Test).
+- **Kontakt vs. Mitglied:** Kontakte rot (Kreis, Symbol, Listenpunkt, „Kontakt · …“), Mitglieder, die nicht Kontakt sind, blau („Mitglied · …“). Neues Feld `contact` in der Ebenen-Antwort; Sichtbarkeitsregeln unverändert.
+
+**Warum:** Handytest von Jan: Teilen im Ebenen-Fenster nicht bedienbar.
+**Module:** M10, M06. **DB-Migration:** nein.
+**Getestet (echter Lauf):** `npm run check` 0 Fehler; `npm test` 28 Dateien, 289 bestanden, 3 übersprungen (Live-Test prüft jetzt `contact` true/false und die Textvorsilbe); `npm run build`; Rauchtest bestanden (inkl. `contact`). **Nicht geprüft:** Darstellung im Browser/auf dem Handy (Knopf, Fenster, Farben) – bitte testen.
+
 ## 2026-10-24 · Karte: Ebene „Live unterwegs“ (F-037, D-088)
 
 **Was**

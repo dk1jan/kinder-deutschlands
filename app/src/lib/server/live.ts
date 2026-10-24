@@ -73,6 +73,8 @@ export interface LivePoint {
 	lon: number;
 	lat: number;
 	minutesLeft: number;
+	/** true = mein Kontakt, false = Mitglied, das ich nicht als Kontakt habe */
+	contact: boolean;
 }
 
 /**
@@ -97,6 +99,7 @@ export async function visibleShares(sql: Sql, viewerId: string, b: Bbox): Promis
 			name: cardFor(p, relation).displayName ?? 'Eine Familie',
 			lon: r.lon,
 			lat: r.lat,
+			contact,
 			minutesLeft: Math.max(1, Math.ceil((new Date(r.expires_at).getTime() - Date.now()) / 60_000))
 		});
 	}

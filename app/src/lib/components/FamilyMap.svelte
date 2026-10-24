@@ -15,6 +15,8 @@
 		lon: number;
 		lat: number;
 		count?: number;
+		/** nur Ebene live: mein Kontakt? */
+		contact?: boolean;
 	}
 	export interface MapView {
 		center: [number, number];
@@ -102,7 +104,7 @@
 
 	const extraData = (ps: ExtraPoint[]): GeoJSON.FeatureCollection => ({
 		type: 'FeatureCollection',
-		features: ps.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: p.id, l: p.layer, n: p.count ? String(p.count) : '' } }))
+		features: ps.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: p.id, l: p.layer === 'live' && p.contact === false ? 'livemitglied' : p.layer, n: p.count ? String(p.count) : '' } }))
 	});
 
 	// F-037: Live-Freigaben als Kreis (200 m) um die Rastermitte – nie ein genauer Punkt
@@ -116,7 +118,7 @@
 					const a = (i / 48) * Math.PI * 2;
 					ring.push([p.lon + (200 * Math.cos(a)) / (111_320 * Math.cos((p.lat * Math.PI) / 180)), p.lat + (200 * Math.sin(a)) / 110_540]);
 				}
-				return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [ring] }, properties: { id: p.id } };
+				return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [ring] }, properties: { id: p.id, c: p.contact === false ? '#1a73c9' : '#d6336c' } };
 			})
 	});
 
@@ -226,8 +228,8 @@
 			...(mode === 'mini' ? { paint: { 'text-color': dark ? '#ffffff' : '#0f2238', 'text-halo-color': dark ? '#0a1626' : '#ffffff', 'text-halo-width': 2 } } : {})
 		});
 		map.addSource('live-kreis', { type: 'geojson', data: liveCircles(extra) });
-		map.addLayer({ id: 'live-kreis-flaeche', type: 'fill', source: 'live-kreis', paint: { 'fill-color': '#d6336c', 'fill-opacity': 0.18 } }, 'orte');
-		map.addLayer({ id: 'live-kreis-rand', type: 'line', source: 'live-kreis', paint: { 'line-color': '#d6336c', 'line-width': 2 } }, 'orte');
+		map.addLayer({ id: 'live-kreis-flaeche', type: 'fill', source: 'live-kreis', paint: { 'fill-color': ['get', 'c'], 'fill-opacity': 0.18 } }, 'orte');
+		map.addLayer({ id: 'live-kreis-rand', type: 'line', source: 'live-kreis', paint: { 'line-color': ['get', 'c'], 'line-width': 2 } }, 'orte');
 		map.addSource('extra', { type: 'geojson', data: extraData(extra) });
 		map.addLayer(
 			{

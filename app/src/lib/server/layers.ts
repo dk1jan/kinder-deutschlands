@@ -29,6 +29,8 @@ export interface LayerPoint {
 	lon: number;
 	lat: number;
 	count?: number;
+	/** nur Ebene „live“: mein Kontakt (true) oder Mitglied (false) */
+	contact?: boolean;
 }
 export interface LayerLine {
 	id: string;
@@ -128,7 +130,7 @@ export async function layerData(sql: Sql, viewerId: string | null, b: Bbox, laye
 	// F-037: Live unterwegs – nur Mitglieder, nur freigegebene, nicht abgelaufene, nicht blockierte (siehe live.ts)
 	if (want.includes('live') && viewerId) {
 		for (const x of await visibleShares(sql, viewerId, b))
-			points.push({ id: `v:${x.id}`, layer: 'live', title: x.name, sub: `Live unterwegs · noch ca. ${x.minutesLeft} Min.`, href: `/live/${x.id}`, lon: x.lon, lat: x.lat });
+			points.push({ id: `v:${x.id}`, layer: 'live', title: x.name, sub: `${x.contact ? 'Kontakt' : 'Mitglied'} · live unterwegs · noch ca. ${x.minutesLeft} Min.`, href: `/live/${x.id}`, lon: x.lon, lat: x.lat, contact: x.contact });
 	}
 
 	return { points, lines, hidden: layers.filter((l) => !want.includes(l)) };

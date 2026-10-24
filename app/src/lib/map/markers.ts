@@ -110,7 +110,9 @@ export const LAYER_STYLE = {
 	marktplatz: { color: '#2f7d4f', ink: '#ffffff', icon: 'flagge' },
 	hilfe: { color: '#1a5c9a', ink: '#ffffff', icon: 'gruppe' },
 	routen: { color: '#1f7468', ink: '#ffffff', icon: 'route' },
-	live: { color: '#d6336c', ink: '#ffffff', icon: 'pin' }
+	live: { color: '#d6336c', ink: '#ffffff', icon: 'pin' },
+	// Live-Mitglied, das nicht mein Kontakt ist (F-049)
+	livemitglied: { color: '#1a73c9', ink: '#ffffff', icon: 'pin' }
 } as const;
 
 export function addLayerImages(map: MlMap, theme: 'light' | 'dark') {

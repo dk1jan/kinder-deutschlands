@@ -59,12 +59,13 @@
 		{ key: 'routen', label: 'Kinderwagenrouten', members: false },
 		{ key: 'marktplatz', label: 'Marktplatz', members: true },
 		{ key: 'hilfe', label: 'Hilfe', members: true },
-		{ key: 'live', label: 'Live unterwegs', members: true }
+		{ key: 'live', label: 'Live unterwegs (andere anzeigen)', members: true }
 	];
 	interface XPoint extends ExtraPoint { sub: string; href: string }
 	interface XLine { id: string; title: string; sub: string; href: string; coords: [number, number][] }
 	let layers = $state<LayerKey[]>([]);
 	let layerOpen = $state(false);
+	let liveOpen = $state(false);
 	let xPoints = $state<XPoint[]>([]);
 	let xLines = $state<XLine[]>([]);
 	let xSel = $state<{ layer: string; title: string; sub: string; href: string } | null>(null);
@@ -175,6 +176,7 @@
 					applyShare(await r.json());
 					lastSent = Date.now();
 					watch();
+					liveOpen = false;
 					if (!layers.includes('live')) toggleLayer('live');
 					else loadLayers(true);
 				} catch (e) {
@@ -221,8 +223,8 @@
 		xSel = { layer: 'routen', title: l.title, sub: l.sub, href: l.href };
 	}
 	const xList = $derived([
-		...xPoints.map((p) => ({ id: p.id, layer: p.layer, title: p.title, sub: p.sub, href: p.href, m: distanceM(ref, [p.lon, p.lat]) })),
-		...xLines.map((l) => ({ id: l.id, layer: 'routen', title: l.title, sub: l.sub, href: l.href, m: Math.min(...l.coords.map((c) => distanceM(ref, c))) }))
+		...xPoints.map((p) => ({ id: p.id, contact: p.contact, layer: p.layer, title: p.title, sub: p.sub, href: p.href, m: distanceM(ref, [p.lon, p.lat]) })),
+		...xLines.map((l) => ({ id: l.id, contact: undefined as boolean | undefined, layer: 'routen', title: l.title, sub: l.sub, href: l.href, m: Math.min(...l.coords.map((c) => distanceM(ref, c))) }))
 	].sort((a, b) => a.m - b.m).slice(0, 40));
 
 	const ref = $derived<[number, number]>(me ?? viewC);
@@ -395,7 +397,7 @@
 				{:else if !xState}<p class="state">Zum Anzeigen der Ebenen näher heranzoomen.</p>{/if}
 				<ul>
 					{#each xList as x (x.id)}
-						<li><a href={x.href}><span class="dot" style:background={LAYER_STYLE[x.layer as LayerKey].color}></span><span class="t"><b>{x.title}</b><small>{x.sub}</small></span><span class="d">{distanceText(x.m)}</span></a></li>
+						<li><a href={x.href}><span class="dot" style:background={x.layer === 'live' && x.contact === false ? '#1a73c9' : LAYER_STYLE[x.layer as LayerKey].color}></span><span class="t"><b>{x.title}</b><small>{x.sub}</small></span><span class="d">{distanceText(x.m)}</span></a></li>
 					{/each}
 				</ul>
 			{/if}
@@ -432,7 +434,7 @@
 			<p class="banner"><Icon name="hinweis" size={18} />Für diese Gegend gibt es kein frei nutzbares Luftbild – hier siehst du die Karte.</p>
 		{/if}
 		<div class="fabs">
-			<button type="button" class="fab" onclick={() => (layerOpen = !layerOpen)} aria-expanded={layerOpen} aria-controls="ebenen">
+			<button type="button" class="fab" onclick={() => ((layerOpen = !layerOpen), (liveOpen = false))} aria-expanded={layerOpen} aria-controls="ebenen">
 				<Icon name="ebenen" /><span class="fab-t">Ebenen{layers.length ? ` · ${layers.length}` : ''}</span>
 			</button>
 			<button type="button" class="fab" onclick={locate} aria-label="Meinen Standort zeigen" disabled={locating}><Icon name="standort" /></button>
@@ -440,6 +442,38 @@
 				<Icon name={listOpen ? 'karte' : 'liste'} /><span>{listOpen ? 'Karte' : 'Liste'}</span>
 			</button>
 		</div>
+		{#if data.loggedIn && !layerOpen && !liveOpen}
+			<button type="button" class="livefab" class:on={!!shareUntil} onclick={() => ((liveOpen = true), (layerOpen = false))} aria-expanded={liveOpen} aria-controls="live" aria-label={shareUntil ? `Live, noch ${shareLeft} Minuten – Einstellungen` : 'Live-Standort teilen'}>
+				<span class="ldot2"></span><span class="fab-t">{shareUntil ? `Live · ${shareLeft} Min.` : 'Live'}</span>
+			</button>
+		{/if}
+		{#if liveOpen && data.loggedIn}
+			<section class="layerbox livebox" id="live" aria-label="Live-Standort">
+				<button type="button" class="close" onclick={() => (liveOpen = false)} aria-label="Schließen"><Icon name="schliessen" size={20} /></button>
+				<h2>Live unterwegs</h2>
+				{#if shareUntil}
+					<p class="status on"><span class="ldot2"></span><b>Du bist live</b> – noch ca. {shareLeft} Min.</p>
+					<p class="hint">Andere sehen dich als Kreis von etwa 200 m. Das gilt nur, solange diese Seite offen bleibt.</p>
+					<div class="row"><button type="button" class="btn stop" onclick={stopShare}>Stoppen</button></div>
+				{:else}
+					<p class="status"><span class="ldot2"></span>Du bist nicht live</p>
+					<h2 class="sub">Wer sieht mich?</h2>
+					<div class="seg" role="group" aria-label="Wer sieht dich">
+						<button type="button" aria-pressed={shareAud === 'kontakte'} onclick={() => (shareAud = 'kontakte')}>Meine Kontakte</button>
+						<button type="button" aria-pressed={shareAud === 'mitglieder'} onclick={() => (shareAud = 'mitglieder')}>Alle Mitglieder</button>
+					</div>
+					<h2 class="sub">Wie lange?</h2>
+					<div class="seg" role="group" aria-label="Dauer">
+						<button type="button" aria-pressed={shareMin === 30} onclick={() => (shareMin = 30)}>30 Min.</button>
+						<button type="button" aria-pressed={shareMin === 60} onclick={() => (shareMin = 60)}>60 Min.</button>
+					</div>
+					<div class="row"><button type="button" class="btn" disabled={shareBusy} onclick={startShare}>Live gehen</button></div>
+					<p class="hint">Andere sehen nur deinen Anzeigenamen (je nach deiner Sichtbarkeit) und einen Kreis von etwa 200 m – kein Foto, keine Angaben zu Kindern. Beenden jederzeit mit „Stoppen“, spätestens nach Ablauf.</p>
+				{/if}
+				{#if shareErr}<p class="hint" role="alert">{shareErr}</p>{/if}
+				<p class="hint">Live-Standorte anderer siehst du, wenn unter „Ebenen“ der Haken „Live unterwegs“ gesetzt ist. <span class="leg c"></span> Kontakt · <span class="leg m"></span> Mitglied</p>
+			</section>
+		{/if}
 		{#if layerOpen}
 			<section class="layerbox" id="ebenen" aria-label="Ebenen">
 				<button type="button" class="close" onclick={() => (layerOpen = false)} aria-label="Schließen"><Icon name="schliessen" size={20} /></button>
@@ -461,25 +495,7 @@
 					{/each}
 				</ul>
 				<p class="hint">Marktplatz und Hilfe zeigen nur die Anzahl je Gegend – nie, wo jemand wohnt.</p>
-				{#if data.loggedIn}
-					<h2>Live unterwegs</h2>
-					{#if shareUntil}
-						<p class="hint"><b>Du teilst deinen Standort</b> (ungefähr, Kreis von 200 m) – noch ca. {shareLeft} Min. Das gilt nur, solange diese Seite offen bleibt.</p>
-						<div class="row"><button type="button" class="btn" onclick={stopShare}>Stoppen</button></div>
-					{:else}
-						<div class="seg" role="group" aria-label="Wer sieht dich">
-							<button type="button" aria-pressed={shareAud === 'kontakte'} onclick={() => (shareAud = 'kontakte')}>Meine Kontakte</button>
-							<button type="button" aria-pressed={shareAud === 'mitglieder'} onclick={() => (shareAud = 'mitglieder')}>Alle Mitglieder</button>
-						</div>
-						<div class="seg" role="group" aria-label="Dauer">
-							<button type="button" aria-pressed={shareMin === 30} onclick={() => (shareMin = 30)}>30 Min.</button>
-							<button type="button" aria-pressed={shareMin === 60} onclick={() => (shareMin = 60)}>60 Min.</button>
-						</div>
-						<div class="row"><button type="button" class="btn" disabled={shareBusy} onclick={startShare}>Standort teilen</button></div>
-						<p class="hint">Andere sehen nur deinen Anzeigenamen (je nach deiner Sichtbarkeit) und einen Kreis von etwa 200 m – kein Foto, keine Angaben zu Kindern. Beenden jederzeit mit „Stoppen“, spätestens nach Ablauf.</p>
-					{/if}
-					{#if shareErr}<p class="hint" role="alert">{shareErr}</p>{/if}
-				{/if}
+
 			</section>
 		{/if}
 		{#if locError}<p class="banner err" role="alert">{locError}</p>{/if}
@@ -887,6 +903,85 @@
 		font-weight: 700;
 		cursor: pointer;
 	}
+	.layerbox {
+		max-height: calc(100% - 90px);
+		overflow-y: auto;
+	}
+	.livefab {
+		position: absolute;
+		z-index: 9;
+		right: var(--sp-3);
+		bottom: calc(var(--sp-3) + 64px);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sp-2);
+		height: 48px;
+		padding: 0 var(--sp-4);
+		border: 0;
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--ink-2);
+		box-shadow: var(--shadow);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.livefab.on {
+		background: #d6336c;
+		color: #fff;
+		animation: livepulse 2s ease-in-out infinite;
+	}
+	@keyframes livepulse {
+		50% {
+			box-shadow: var(--shadow), 0 0 0 6px rgba(214, 51, 108, 0.3);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.livefab.on {
+			animation: none;
+		}
+	}
+	.ldot2 {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #8a94a0;
+		flex: none;
+	}
+	.livefab.on .ldot2 {
+		background: #fff;
+	}
+	.status {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
+		margin: 0 0 var(--sp-2);
+		font-weight: 600;
+	}
+	.status.on .ldot2 {
+		background: #d6336c;
+	}
+	.livebox h2.sub {
+		min-height: 0;
+		margin: var(--sp-2) 0 var(--sp-1);
+	}
+	.btn.stop {
+		background: #d6336c;
+		color: #fff;
+	}
+	.leg {
+		display: inline-block;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		vertical-align: middle;
+	}
+	.leg.c {
+		background: #d6336c;
+	}
+	.leg.m {
+		background: #1a73c9;
+	}
 	.fab-t {
 		font-size: var(--fs-s);
 	}
@@ -1011,6 +1106,9 @@
 		}
 		.fabs {
 			bottom: 44px;
+		}
+		.livefab {
+			bottom: calc(44px + 64px);
 		}
 		.sheet {
 			left: var(--sp-4);

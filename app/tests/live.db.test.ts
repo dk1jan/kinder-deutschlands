@@ -75,7 +75,12 @@ d('Live unterwegs (Datenbank)', () => {
 		expect(anon.points).toEqual([]);
 		const dat = await layerData(sql, u.cem, BB, ['live']);
 		expect(dat.points).toHaveLength(1);
-		expect(Object.keys(dat.points[0]).sort()).toEqual(['count', 'href', 'id', 'lat', 'layer', 'lon', 'sub', 'title'].filter((k) => k !== 'count'));
+		expect(Object.keys(dat.points[0]).sort()).toEqual(['contact', 'href', 'id', 'lat', 'layer', 'lon', 'sub', 'title']);
+		expect(dat.points[0]).toMatchObject({ contact: false });
+		expect(dat.points[0].sub).toMatch(/^Mitglied · /);
+		const fromBen = await layerData(sql, u.ben, BB, ['live']);
+		expect(fromBen.points[0]).toMatchObject({ contact: true });
+		expect(fromBen.points[0].sub).toMatch(/^Kontakt · /);
 		expect(dat.points[0].href).toMatch(/^\/live\/[0-9a-f-]{36}$/);
 		expect(JSON.stringify(dat)).not.toContain(u.anna);
 	});
