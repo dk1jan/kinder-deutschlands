@@ -11,7 +11,8 @@ export const KINDS = {
 	ausflugsort: { label: 'Ausflugsort', plural: 'Ausflugsorte', color: '#0f2238', ink: '#ffc53d', icon: 'ausflug' },
 	schwimmbad: { label: 'Schwimmbad', plural: 'Bäder', color: '#1f7468', ink: '#ffffff', icon: 'bad' },
 	bibliothek: { label: 'Bibliothek', plural: 'Bibliotheken', color: '#7b4fa3', ink: '#ffffff', icon: 'buch' },
-	familienzentrum: { label: 'Familienzentrum', plural: 'Familienzentren', color: '#2f7d4f', ink: '#ffffff', icon: 'haus' }
+	familienzentrum: { label: 'Familienzentrum', plural: 'Familienzentren', color: '#2f7d4f', ink: '#ffffff', icon: 'haus' },
+	unterkunft: { label: 'Unterkunft', plural: 'Unterkünfte', color: '#5a4fa3', ink: '#ffffff', icon: 'bett' }
 } as const;
 export type Kind = keyof typeof KINDS;
 export const KIND_KEYS = Object.keys(KINDS) as Kind[];
@@ -26,7 +27,8 @@ export const KIND_FILTERS: { key: string; label: string; kinds: Kind[]; feature?
 	{ key: 'ausflug', label: 'Ausflüge & Bäder', kinds: ['ausflugsort', 'schwimmbad'] },
 	{ key: 'cafe', label: 'Cafés & Stillen', kinds: ['familiencafe', 'stillraum'] },
 	{ key: 'bibliothek', label: 'Bibliotheken', kinds: ['bibliothek'] },
-	{ key: 'familienzentrum', label: 'Familienzentren', kinds: ['familienzentrum'] }
+	{ key: 'familienzentrum', label: 'Familienzentren', kinds: ['familienzentrum'] },
+	{ key: 'unterkunft', label: 'Unterkünfte', kinds: ['unterkunft'] }
 ];
 
 export type FeatureGroup = 'ausstattung' | 'spielgeraete' | 'zugang' | 'service';
@@ -55,9 +57,10 @@ export const FEATURES: Record<string, FeatureDef> = {
 	kinderwagen: { label: 'Kinderwagengerecht', group: 'zugang', kinds: 'alle', filter: true },
 	rollstuhl: { label: 'Rollstuhlgerecht', group: 'zugang', kinds: 'alle' },
 	inklusiv: { label: 'Inklusive Spielgeräte', group: 'zugang', kinds: ['spielplatz'] },
-	wickeltisch: { label: 'Wickeltisch', group: 'service', kinds: ['toilette', 'wickelraum', 'familiencafe', 'indoorspielplatz', 'schwimmbad', 'ausflugsort', 'stillraum', 'bibliothek', 'familienzentrum'] },
+	wickeltisch: { label: 'Wickeltisch', group: 'service', kinds: ['toilette', 'wickelraum', 'familiencafe', 'indoorspielplatz', 'schwimmbad', 'ausflugsort', 'stillraum', 'bibliothek', 'familienzentrum', 'unterkunft'] },
 	toilette: { label: 'Toilette vor Ort', group: 'service', kinds: ['spielplatz', 'ausflugsort', 'familiencafe', 'bibliothek', 'familienzentrum'] },
-	spielecke: { label: 'Spielecke', group: 'service', kinds: ['familiencafe', 'bibliothek', 'familienzentrum'] },
+	spielecke: { label: 'Spielecke', group: 'service', kinds: ['familiencafe', 'bibliothek', 'familienzentrum', 'unterkunft'] },
+	spielplatz_vorort: { label: 'Spielplatz vor Ort', group: 'service', kinds: ['unterkunft'] },
 	hochstuhl: { label: 'Hochstuhl', group: 'service', kinds: ['familiencafe'] },
 	stillraum: { label: 'Eigener Stillraum', group: 'service', kinds: ['stillraum', 'familiencafe', 'bibliothek', 'familienzentrum'] },
 	kostenlos: { label: 'Kostenlos', group: 'service', kinds: ['toilette', 'wickelraum', 'ausflugsort', 'schwimmbad'] }

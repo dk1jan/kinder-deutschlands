@@ -2,6 +2,7 @@
 // - Länder, Kreise, Gemeinden amtlich aus BKG VG250 (WFS, © BKG, dl-de/by-2-0)
 // - Stadtteile Bremen/Bremerhaven aus OpenStreetMap (ODbL), solange keine offene amtliche Geometrie angebunden ist (D-020)
 import type { Sql } from '../db';
+import { LAND_CODES } from '$lib/laender';
 import { overpass, type FetchOptions } from './osm';
 import { fetchRetry } from './net';
 
@@ -56,7 +57,7 @@ async function upsertRegion(sql: Sql, code: string, name: string, level: string,
 
 /** Länder, Kreise, Gemeinden der eingestellten Länder. Kreisfreie Städte erscheinen nur als Kreis, nicht doppelt als Gemeinde. */
 export async function importVg250(sql: Sql, cfg: { laender?: string[]; url?: string }, fetchImpl: typeof fetch = fetch) {
-	const laender = cfg.laender?.length ? cfg.laender : ['03', '04'];
+	const laender = cfg.laender?.length ? cfg.laender : LAND_CODES;
 	const counts = { laender: 0, kreise: 0, gemeinden: 0 };
 	let version: string | null = null;
 	for (const land of laender) {

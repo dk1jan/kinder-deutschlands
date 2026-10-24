@@ -11,6 +11,7 @@
 		region: { code: string; name: string } | null;
 		group: { slug: string; name: string; kind: string } | null;
 		land?: { code: string; name: string; invited: boolean } | null;
+		team?: boolean;
 		author: { name: string; pseudonym: boolean };
 		labels: string[];
 		tags: string[];
@@ -38,6 +39,7 @@
 <article class="pc" class:pinned={item.pinned}>
 	<p class="meta">
 		<span class="kind k-{item.kind}">{KIND[item.kind] ?? item.kind}</span>
+		{#if item.team}<span class="land">Moderatoren-Forum</span>{/if}
 		{#if item.land}<span class="land">{item.land.invited ? `Eingeladen · ${item.land.name}` : `Nur ${item.land.name}`}</span>{/if}
 		{#if item.solved}<span class="solved">✓ gelöst</span>{/if}
 		{#if item.pinned}<span class="pin">angeheftet</span>{/if}

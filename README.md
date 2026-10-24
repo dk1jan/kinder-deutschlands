@@ -1,6 +1,6 @@
 # Kinder Deutschlands
 
-Geschütztes Familiennetzwerk für Eltern – Start in Bremen und Niedersachsen.
+Geschütztes Familiennetzwerk für Eltern in ganz Deutschland.
 
 - Stand und offene Punkte: [docs/STATUS.md](docs/STATUS.md)
 - Änderungen: [docs/CHANGELOG.md](docs/CHANGELOG.md)

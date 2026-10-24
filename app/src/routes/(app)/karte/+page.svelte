@@ -15,6 +15,8 @@
 	let selected = $state<MapFeature | null>(data.focus);
 	let items = $state<MapFeature[]>([]);
 	let dataState = $state<'ok' | 'zoom' | 'error' | 'truncated' | 'init'>('init');
+	// Weit herausgezoomt: passende Orte in ganz Deutschland (Übersicht)
+	let ovTotal = $state<number | null>(null);
 	// svelte-ignore state_referenced_locally
 	let viewC = $state<[number, number]>(data.center);
 	let me = $state<[number, number] | null>(null);
@@ -42,10 +44,11 @@
 			/* egal */
 		}
 	}
-	// Bremen hat kein frei nutzbares Luftbild – ehrlich sagen, solange kein Esri-Schlüssel hinterlegt ist
+	// Ohne Esri-Schlüssel gibt es nur das offene Luftbild Niedersachsens (LGLN) – außerhalb ehrlich sagen
 	const inBremen = $derived(
 		(viewC[0] > 8.48 && viewC[0] < 8.99 && viewC[1] > 52.98 && viewC[1] < 53.23) || (viewC[0] > 8.47 && viewC[0] < 8.66 && viewC[1] > 53.46 && viewC[1] < 53.61)
 	);
+	const noAerial = $derived(inBremen || !(viewC[0] > 6.6 && viewC[0] < 11.62 && viewC[1] > 51.29 && viewC[1] < 53.9));
 	let urlTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// Zusatzebenen: Einrichtungen, Termine (7 Tage), Kinderwagenrouten, Marktplatz und Hilfe (nur Mitglieder, je Gegend)
@@ -282,7 +285,7 @@
 
 		<div class="list" aria-live="polite">
 			<p class="state">
-				{#if dataState === 'zoom'}Zum Anzeigen der Orte näher heranzoomen.
+				{#if dataState === 'zoom'}{ovTotal != null ? `${ovTotal.toLocaleString('de-DE')} ${filters.length || feats.length ? 'passende Orte' : 'Familienorte'} in ganz Deutschland – Gegend antippen oder näher heranzoomen.` : 'Zum Anzeigen der Orte näher heranzoomen.'}
 				{:else if dataState === 'error'}Orte konnten nicht geladen werden. Bitte später erneut versuchen.
 				{:else if dataState === 'init'}{data.near.length ? 'In der Nähe' : ''}
 				{:else if !items.length}{data.total ? 'Hier gibt es noch keine passenden Orte.' : 'Die Orte werden gerade aus offenen Daten übernommen. Schau bald wieder vorbei.'}
@@ -334,6 +337,7 @@
 			aerialAttribution={data.aerial.attribution}
 			onSelect={(f) => ((selected = f), f && (xSel = null))}
 			onData={(f, s) => ((items = f), (dataState = s), layers.length && !xState && loadLayers(true))}
+			onOverview={(n) => (ovTotal = n)}
 			extra={xPoints}
 			onExtra={pickExtra}
 			lines={xLines.map((l) => ({ id: l.id, coords: l.coords }))}
@@ -344,8 +348,8 @@
 		{#if !data.tiles}
 			<p class="banner"><Icon name="hinweis" size={18} />Kartenhintergrund wird gerade eingerichtet – Orte sind schon sichtbar.</p>
 		{/if}
-		{#if basemap === 'luftbild' && inBremen && !data.aerial.bremen}
-			<p class="banner"><Icon name="hinweis" size={18} />Für Bremen gibt es kein frei nutzbares Luftbild – hier siehst du die Karte.</p>
+		{#if basemap === 'luftbild' && noAerial && !data.aerial.bremen}
+			<p class="banner"><Icon name="hinweis" size={18} />Für diese Gegend gibt es kein frei nutzbares Luftbild – hier siehst du die Karte.</p>
 		{/if}
 		<div class="fabs">
 			<button type="button" class="fab" onclick={() => (layerOpen = !layerOpen)} aria-expanded={layerOpen} aria-controls="ebenen">

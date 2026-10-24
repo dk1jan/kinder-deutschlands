@@ -14,7 +14,7 @@
 		<p><a href="/anmelden">Zur Anmeldung</a></p>
 	{:else if !data.open}
 		<Notice kind="info" title="Registrierung noch geschlossen">
-			Die Registrierung öffnet, sobald der E-Mail-Versand eingerichtet ist. Wer schon ein Konto hat, kann sich anmelden.
+			Die Registrierung ist gerade nicht möglich. Wer schon ein Konto hat, kann sich anmelden.
 		</Notice>
 		<a class="btn secondary" href="/anmelden">Anmelden</a>
 	{:else}

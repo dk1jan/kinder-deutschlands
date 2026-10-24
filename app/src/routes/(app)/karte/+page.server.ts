@@ -6,13 +6,14 @@ import { displayName, type Kind } from '$lib/places';
 import { isUuid } from '$lib/server/contacts';
 import { aerialInfo } from '$lib/server/aerial';
 
-const BREMEN: [number, number] = [8.8017, 53.0793];
+// Ohne Ort und ohne Wohnregion: ganz Deutschland im Überblick (Jan 24.10.: kein Startpunkt Bremen mehr)
+const DEUTSCHLAND: [number, number] = [10.45, 51.16];
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const sql = db();
 	const [tiles, counts] = await Promise.all([tileState(sql), placeCounts(sql)]);
-	let center: [number, number] = BREMEN;
-	let zoom = 12.5;
+	let center: [number, number] = DEUTSCHLAND;
+	let zoom = 5.6;
 	let focus: { id: string; k: Kind; n: string; f: string; lon: number; lat: number } | null = null;
 	const lon = Number(url.searchParams.get('lon'));
 	const lat = Number(url.searchParams.get('lat'));
@@ -46,7 +47,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		}
 	}
 	// Liste ohne JavaScript bzw. vor dem Laden der Karte: nächste Orte zum Startpunkt
-	const near = await sql`select p.id, p.kind, p.name, r.name as region_name,
+	const near = zoom < 8 ? [] : await sql`select p.id, p.kind, p.name, r.name as region_name,
 			round(ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(${center[0]}, ${center[1]}), 4326)::geography))::int as m
 		from places p left join regions r on r.code = p.region_code
 		where p.status = 'aktiv' and p.location && ST_Expand(ST_SetSRID(ST_MakePoint(${center[0]}, ${center[1]}), 4326), 0.08)

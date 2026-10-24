@@ -46,7 +46,7 @@
 		<input type="hidden" name="coords" value={JSON.stringify(pts)} />
 		<label class="check warn"><input type="checkbox" name="public_ends" required /> <span>Start und Ziel sind öffentliche Orte (z. B. Spielplatz, Haltestelle, Parkeingang) – <strong>nicht</strong> meine oder eine andere Wohnadresse.</span></label>
 
-		<div class="field"><label for="title">Name der Route</label><input id="title" name="title" required minlength="3" maxlength="120" value={v('title')} placeholder="z. B. Runde um den Werdersee" /></div>
+		<div class="field"><label for="title">Name der Route</label><input id="title" name="title" required minlength="3" maxlength="120" value={v('title')} placeholder="z. B. Runde um den Stadtparksee" /></div>
 		<div class="field"><label for="description">Beschreibung</label><textarea id="description" name="description" rows="4" maxlength="3000" placeholder="Was ist gut, worauf achten? (z. B. Bordsteine, Brücke, Café)">{v('description')}</textarea></div>
 		<div class="two">
 			<label>Untergrund<select name="surface"><option value="">keine Angabe</option><option value="asphalt">Asphalt</option><option value="pflaster">Pflaster</option><option value="wassergebunden">Wassergebunden (Kies/Splitt)</option><option value="waldweg">Wald-/Feldweg</option><option value="gemischt">Gemischt</option></select></label>

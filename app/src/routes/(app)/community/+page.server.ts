@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
-import { feed, PostError, setSubscription, subscriptions, userLand } from '$lib/server/community/posts';
+import { feed, isTeam, PostError, setSubscription, subscriptions, userLand } from '$lib/server/community/posts';
 import { listKnowledge } from '$lib/server/community/knowledge';
 
 const MODES = ['abos', 'neu', 'geloest', 'lesezeichen'] as const;
@@ -20,11 +20,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const region = url.searchParams.get('region');
 	const q = url.searchParams.get('q');
 	const tag = url.searchParams.get('schlagwort');
-	const mode = (MODES as readonly string[]).includes(m ?? '') ? (m as (typeof MODES)[number]) : topic || region || q || tag ? 'neu' : 'abos';
+	let mode = (MODES as readonly string[]).includes(m ?? '') ? (m as (typeof MODES)[number]) : topic || region || q || tag ? 'neu' : 'abos';
 	// F-023: „Ganz Deutschland“ oder das eigene Bundesland (Standard, wenn eins eingetragen ist)
-	const land = await userLand(sql, uid);
+	const [land, team] = await Promise.all([userLand(sql, uid), isTeam(sql, uid)]);
 	const b = url.searchParams.get('bereich');
-	const scope: 'de' | 'land' = b === 'de' || !land ? 'de' : b === 'land' ? 'land' : 'land';
+	// Dritter Bereich nur fürs Team: Forum für Moderation und Verwaltung (Jan 24.10.)
+	const scope: 'de' | 'land' | 'team' = b === 'team' && team ? 'team' : b === 'de' || !land ? 'de' : 'land';
+	// Im Team-Forum gibt es keine Abos – „Für dich“ zeigt dort einfach alles Neue
+	if (scope === 'team' && mode === 'abos') mode = 'neu';
 	const [f, subs, groups, regionRow, topicRow] = await Promise.all([
 		feed(sql, uid, { mode, topic, region, q, tag, scope: region ? null : scope, before: url.searchParams.get('vor') }),
 		subscriptions(sql, uid),
@@ -37,6 +40,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		topics,
 		mode,
 		land,
+		team,
 		scope,
 		filter: { topic: topicRow[0] ?? null, region: regionRow[0] ?? null, q, tag },
 		feed: f,

@@ -49,11 +49,16 @@
 			<fieldset class="scope">
 				<legend>Wer soll das lesen?</legend>
 				{#if data.land}
-					<label class="opt"><input type="radio" name="sichtbar" value="land" checked={(v?.sichtbar ?? 'land') === 'land'} /><span><b>Nur {data.land.name}</b><small>Mitglieder aus {data.land.name} – andere lädst du gezielt ein.</small></span></label>
-					<label class="opt"><input type="radio" name="sichtbar" value="de" checked={v?.sichtbar === 'de'} /><span><b>Ganz Deutschland</b><small>Alle angemeldeten Mitglieder.</small></span></label>
+					<label class="opt"><input type="radio" name="sichtbar" value="land" checked={(v?.sichtbar ?? (data.prefill.sichtbar || 'land')) === 'land'} /><span><b>Nur {data.land.name}</b><small>Mitglieder aus {data.land.name} – andere lädst du gezielt ein.</small></span></label>
+					<label class="opt"><input type="radio" name="sichtbar" value="de" checked={(v?.sichtbar ?? data.prefill.sichtbar) === 'de'} /><span><b>Ganz Deutschland</b><small>Alle angemeldeten Mitglieder.</small></span></label>
+				{:else if data.team}
+					<label class="opt"><input type="radio" name="sichtbar" value="de" checked={(v?.sichtbar ?? data.prefill.sichtbar) !== 'team'} /><span><b>Ganz Deutschland</b><small>Alle angemeldeten Mitglieder.</small></span></label>
 				{:else}
 					<input type="hidden" name="sichtbar" value="de" />
 					<p class="hint">Sichtbar für ganz Deutschland. Für Beiträge nur in deinem Bundesland trag zuerst deine <a href="/profil/bearbeiten">Wohnregion im Profil</a> ein.</p>
+				{/if}
+				{#if data.team}
+					<label class="opt"><input type="radio" name="sichtbar" value="team" checked={(v?.sichtbar ?? data.prefill.sichtbar) === 'team'} /><span><b>Moderatoren-Forum</b><small>Nur Moderation und Verwaltung – Mitglieder sehen das nicht.</small></span></label>
 				{/if}
 			</fieldset>
 		{/if}

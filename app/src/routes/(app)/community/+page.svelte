@@ -18,7 +18,10 @@
 		const u = new URLSearchParams();
 		for (const [k, v] of Object.entries(params)) if (v) u.set(k, v);
 		// Bereich (F-023) bleibt beim Wechsel von Ansicht/Thema/Suche erhalten
-		if (data.member && !('bereich' in params) && data.scope === 'de' && data.land) u.set('bereich', 'de');
+		if (data.member && !('bereich' in params)) {
+			if (data.scope === 'team') u.set('bereich', 'team');
+			else if (data.scope === 'de' && data.land) u.set('bereich', 'de');
+		}
 		const s = u.toString();
 		return `/community${s ? '?' + s : ''}`;
 	};
@@ -85,16 +88,20 @@
 						<a href={href({ bereich: 'land', ansicht: data.mode === 'abos' ? null : data.mode, thema: data.filter.topic?.key, q: data.filter.q, schlagwort: data.filter.tag })} aria-current={data.scope === 'land' ? 'page' : undefined}><Icon name="standort" size={18} /> {data.land.name}</a>
 					{/if}
 					<a href={href({ bereich: data.land ? 'de' : null, ansicht: data.mode === 'abos' ? null : data.mode, thema: data.filter.topic?.key, q: data.filter.q, schlagwort: data.filter.tag })} aria-current={data.scope === 'de' ? 'page' : undefined}><Icon name="entdecken" size={18} /> Ganz Deutschland</a>
+					{#if data.team}
+						<a href={href({ bereich: 'team', ansicht: data.mode === 'abos' ? null : data.mode, thema: data.filter.topic?.key, q: data.filter.q, schlagwort: data.filter.tag })} aria-current={data.scope === 'team' ? 'page' : undefined}><Icon name="schild" size={18} /> Moderatoren</a>
+					{/if}
 				</nav>
 				<p class="scope-hint muted">
-					{#if data.scope === 'land' && data.land}Beiträge aus {data.land.name} – nur für Mitglieder aus {data.land.name} und Eingeladene.
+					{#if data.scope === 'team'}Forum für Moderation und Verwaltung – Meldungen, Problemfälle, Absprachen. Mitglieder sehen diesen Bereich nicht.
+					{:else if data.scope === 'land' && data.land}Beiträge aus {data.land.name} – nur für Mitglieder aus {data.land.name} und Eingeladene.
 					{:else if data.land}Beiträge für alle Mitglieder in Deutschland, dazu Themen, zu denen du eingeladen wurdest.
 					{:else}Trag deine <a href="/profil/bearbeiten">Wohnregion im Profil</a> ein, dann bekommst du einen eigenen Bereich für dein Bundesland.{/if}
 				</p>
 			{/if}
 
 			<form class="search" role="search" method="GET" action="/community">
-				{#if data.scope === 'de' && data.land}<input type="hidden" name="bereich" value="de" />{/if}
+				{#if data.scope === 'team'}<input type="hidden" name="bereich" value="team" />{:else if data.scope === 'de' && data.land}<input type="hidden" name="bereich" value="de" />{/if}
 				<label class="sf"><Icon name="suche" size={20} /><span class="sr">Community durchsuchen</span>
 					<input type="search" name="q" value={data.filter.q ?? ''} placeholder="Suchen, z. B. „Eingewöhnung Kita“" />
 				</label>
@@ -129,7 +136,7 @@
 				<div class="empty">
 					<p><strong>{data.mode === 'lesezeichen' ? 'Noch nichts gemerkt.' : data.filter.q ? 'Nichts gefunden.' : 'Hier ist es noch ruhig.'}</strong></p>
 					<p class="muted">{data.mode === 'lesezeichen' ? 'Tippe bei einem Beitrag auf „Merken“.' : 'Stell die erste Frage oder teile eine Erfahrung – echte Beiträge von echten Eltern, keine Füllinhalte.'}</p>
-					{#if data.mode !== 'lesezeichen'}<a class="btn" href="/community/neu{data.filter.topic ? '?thema=' + data.filter.topic.key : ''}">Ersten Beitrag schreiben</a>{/if}
+					{#if data.mode !== 'lesezeichen'}<a class="btn" href={data.scope === 'team' ? '/community/neu?bereich=team' : `/community/neu${data.filter.topic ? '?thema=' + data.filter.topic.key : ''}`}>Ersten Beitrag schreiben</a>{/if}
 				</div>
 			{/if}
 		</div>

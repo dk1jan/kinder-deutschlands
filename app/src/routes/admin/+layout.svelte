@@ -12,6 +12,8 @@
 			{ href: '/admin/freigaben', label: data.openApprovals ? `Freigaben (${data.openApprovals})` : 'Freigaben', icon: 'schloss', show: data.may.approvals },
 			{ href: '/admin/statistik', label: 'Statistik', icon: 'daten', show: data.may.stats },
 			{ href: '/admin/moderation', label: 'Moderation', icon: 'flagge', show: data.may.moderation },
+			{ href: '/community?bereich=team', label: 'Moderatoren-Forum', icon: 'community', show: data.may.team },
+			{ href: '/admin/rundnachrichten', label: 'Rundnachrichten', icon: 'megafon', show: data.may.broadcast },
 			{ href: '/admin/gruppen', label: 'Gruppen', icon: 'community', show: data.may.groups },
 			{ href: '/admin/wissen', label: 'Wissen', icon: 'protokoll', show: data.may.knowledge },
 			{ href: '/admin/einrichtungen', label: 'Einrichtungen', icon: 'ok', show: data.may.orgs },

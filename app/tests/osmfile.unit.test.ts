@@ -47,12 +47,22 @@ ${node(53.096, 8.896, { shop: 'department_store', baby_feeding: 'room', name: 'T
 ${node(53.097, 8.897, { amenity: 'community_centre', community_centre: 'family_centre', name: 'Testfamilienzentrum' }, 35)}
 ${node(53.098, 8.898, { tourism: 'attraction', name: 'Testturm' }, 36)}
 ${node(53.099, 8.899, { highway: 'bus_stop', name: 'Kinderland (Haltestelle)' }, 37)}
+${node(53.2, 8.7, { amenity: 'cafe', name: 'Elterncafé Testviertel' }, 60)}
+${node(53.201, 8.701, { amenity: 'cafe', name: 'Brettspielcafé Testwürfel' }, 61)}
+${node(53.202, 8.702, { amenity: 'kindergarten', name: 'Elterncafé Kita Test' }, 62)}
+${node(53.203, 8.703, { shop: 'chemist', diaper: 'yes', name: 'Testdrogerie' }, 63)}
+${node(53.204, 8.704, { tourism: 'camp_site', name: 'Campingplatz Testsee' }, 64)}
+${node(53.205, 8.705, { tourism: 'camp_site', name: 'FKK-Camp Test', nudism: 'yes' }, 65)}
+${node(53.206, 8.706, { tourism: 'hostel', name: 'Jugendherberge Teststadt' }, 66)}
+${node(53.207, 8.707, { tourism: 'hotel', name: 'Hotel Testhof' }, 67)}
+${node(53.208, 8.708, { tourism: 'hotel', name: 'Familienhotel Testberg' }, 68)}
+${node(53.209, 8.709, { leisure: 'sports_hall', name: 'Spielparadies Testhalle' }, 69)}
 <way id="40" version="1"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>${tagXml({ leisure: 'playground', name: 'Testspielplatz' })}</way>
 <way id="41" version="1"><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="11"/></way>
 <relation id="50" version="1"><member type="way" ref="41" role="outer"/>${tagXml({ type: 'multipolygon', tourism: 'zoo', name: 'Testtierpark' })}</relation>
 </osm>`;
 
-const SELECTORS: Selector[] = ['spielplatz', 'toilette', 'wickeln', 'indoor', 'ausflug', 'familiencafe', 'stillen', 'bibliothek', 'familienzentrum'];
+const SELECTORS: Selector[] = ['spielplatz', 'toilette', 'wickeln', 'indoor', 'ausflug', 'familiencafe', 'stillen', 'bibliothek', 'familienzentrum', 'unterkunft'];
 
 describe('Auswahlregeln (Overpass und Datei gleich)', () => {
 	it('Indoor (F-021): drinnen, Trampolin, typische Namen – keine Kitas, Läden, Haltestellen', () => {
@@ -130,11 +140,15 @@ describe('Auswahlregeln (Overpass und Datei gleich)', () => {
 		}
 		expect(hits).toBe(1); // ein Download für alle Quellen
 		expect(got.spielplatz).toEqual(['spielplatz:Testspielplatz']);
-		expect(got.indoor).toEqual(['indoorspielplatz:Test-Indoorspielplatz', 'indoorspielplatz:Testhalle drinnen', 'indoorspielplatz:Testsprung', 'indoorspielplatz:Tobeland Testdorf']);
+		// „Spielparadies Testhalle“ kommt nur über den Namen in den Auszug (osmium-Platzhalter je Ausdruck einzeln, D-084)
+		expect(got.indoor).toEqual(['indoorspielplatz:Spielparadies Testhalle', 'indoorspielplatz:Test-Indoorspielplatz', 'indoorspielplatz:Testhalle drinnen', 'indoorspielplatz:Testsprung', 'indoorspielplatz:Tobeland Testdorf']);
 		expect(got.ausflug).toEqual(['ausflugsort:Testkletterhalle', 'ausflugsort:Testtierpark', 'schwimmbad:Testbad']);
-		expect(got.familiencafe).toEqual(['familiencafe:Testcafé mit Spielecke']);
+		// D-084: Elterncafé über den Namen; Brettspielcafé und Kita bleiben draußen
+		expect(got.familiencafe).toEqual(['familiencafe:Elterncafé Testviertel', 'familiencafe:Testcafé mit Spielecke']);
 		expect(got.toilette).toEqual(['toilette:node/31']);
-		expect(got.wickeln).toEqual([]); // Wickeltisch nur an der Toilette – die zählt bei Toiletten
+		// Wickeltisch an der Toilette zählt bei Toiletten; die Drogerie kommt über das alte Merkmal diaper
+		expect(got.wickeln).toEqual(['wickelraum:Testdrogerie']);
+		expect(got.unterkunft).toEqual(['unterkunft:Campingplatz Testsee', 'unterkunft:Familienhotel Testberg', 'unterkunft:Jugendherberge Teststadt']);
 		expect(got.stillen).toEqual(['stillraum:Testkaufhaus']);
 		expect(got.bibliothek).toEqual(['bibliothek:Teststadtbibliothek']);
 		expect(got.familienzentrum).toEqual(['familienzentrum:Testfamilienzentrum']);

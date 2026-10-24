@@ -6,7 +6,7 @@ import { userCan } from '$lib/server/roles';
 export const load: LayoutServerLoad = async (event) => {
 	const user = await requireAction(event, 'admin.access');
 	const sql = db();
-	const [users, rights, audit, settings, data, moderation, groups, knowledge, orgs, notices, compass, approvals, stats, affiliate, routes] = await Promise.all([
+	const [users, rights, audit, settings, data, moderation, groups, knowledge, orgs, notices, compass, approvals, stats, affiliate, routes, broadcast, team] = await Promise.all([
 		userCan(sql, user.id, 'users.view'),
 		userCan(sql, user.id, 'roles.assign'),
 		userCan(sql, user.id, 'audit.view'),
@@ -21,9 +21,11 @@ export const load: LayoutServerLoad = async (event) => {
 		import('$lib/server/approvals').then((a) => a.openCount(sql, user.id)),
 		userCan(sql, user.id, 'stats.view'),
 		userCan(sql, user.id, 'settings.manage'),
-		userCan(sql, user.id, 'routes.edit')
+		userCan(sql, user.id, 'routes.edit'),
+		import('$lib/server/broadcasts').then((b) => b.broadcastRights(sql, user.id)).then((r) => r.any),
+		sql`select kd_is_team(${user.id}::uuid) as t`.then((r) => !!r[0]?.t)
 	]);
 	const approver = rights || (await userCan(sql, user.id, 'users.suspend'));
 	const [me] = await sql`select contact_id from user_profiles where user_id = ${user.id}`;
-	return { adminId: me ? `${me.contact_id.slice(0, 3)}-${me.contact_id.slice(3, 6)}-${me.contact_id.slice(6)}` : '', may: { users, rights, audit, settings, data, moderation, groups, knowledge, orgs, notices, compass, approvals: approver, stats, affiliate, routes }, openApprovals: approvals };
+	return { adminId: me ? `${me.contact_id.slice(0, 3)}-${me.contact_id.slice(3, 6)}-${me.contact_id.slice(6)}` : '', may: { users, rights, audit, settings, data, moderation, groups, knowledge, orgs, notices, compass, approvals: approver, stats, affiliate, routes, broadcast, team }, openApprovals: approvals };
 };

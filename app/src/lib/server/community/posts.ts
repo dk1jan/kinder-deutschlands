@@ -132,8 +132,17 @@ export async function userLand(sql: Sql, userId: string): Promise<{ code: string
 /** „Bremen (Land)“ → „Bremen“ für die Anzeige */
 export const landName = (n: string) => n.replace(/\s*\(Land\)$/, '');
 
-/** Darf diese Person einen Landes-Beitrag lesen? (Verfasserin, gleiches Land, eingeladen) */
-async function landAccess(sql: Sql, viewerId: string, p: { id: string; land_code: string | null; author_id: string | null }): Promise<boolean> {
+// ---------- Forum für Moderation und Verwaltung (Jan 24.10.) ----------
+
+/** Gehört die Person zum Team (Moderation, Redaktion, Technik, Betreiber – egal für welche Region/welches Thema)? */
+export async function isTeam(sql: Sql, userId: string): Promise<boolean> {
+	const [r] = await sql`select kd_is_team(${userId}::uuid) as t`;
+	return !!r?.t;
+}
+
+/** Darf diese Person den Beitrag lesen? Team-Forum nur fürs Team; Landes-Beiträge: Verfasserin, gleiches Land, eingeladen. */
+async function landAccess(sql: Sql, viewerId: string, p: { id: string; land_code: string | null; author_id: string | null; team?: boolean }): Promise<boolean> {
+	if (p.team) return isTeam(sql, viewerId);
 	if (!p.land_code || p.author_id === viewerId) return true;
 	const [r] = await sql`select (kd_land_of((select region_code from user_profiles where user_id = ${viewerId})) = ${p.land_code}) as same,
 		exists(select 1 from post_invites where post_id = ${p.id} and user_id = ${viewerId}) as invited`;
@@ -152,6 +161,8 @@ export interface NewPost {
 	placeId: string | null;
 	/** F-023: nur Mitglieder des eigenen Bundeslands (+ Eingeladene) lesen den Beitrag */
 	landOnly?: boolean;
+	/** Forum für Moderation und Verwaltung: nur das Team liest und schreibt */
+	team?: boolean;
 	labels: string[];
 	tags: string[];
 	linkUrl: string | null;
@@ -183,7 +194,8 @@ async function linkPreview(sql: Sql, url: string, ownerId: string): Promise<(Lin
 	return { ...card, image: null, imageId };
 }
 
-export async function createPost(sql: Sql, authorId: string, p: NewPost): Promise<{ id: string; held: string | null }> {
+export async function createPost(sql: Sql, authorId: string, input: NewPost): Promise<{ id: string; held: string | null }> {
+	let p = input;
 	if (!(p.kind in POST_KINDS)) throw new PostError('Bitte eine Art wählen.');
 	const title = p.title.trim().replace(/\s+/g, ' ');
 	if (title.length < 3 || title.length > 160) throw new PostError('Der Titel braucht 3 bis 160 Zeichen.');
@@ -200,6 +212,12 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 	if (p.groupId) {
 		const g = await groupAccess(sql, authorId, p.groupId);
 		if (!g || (!g.member && !g.moderator)) throw new PostError('Du bist nicht Mitglied dieser Gruppe.');
+	}
+	const team = !!p.team;
+	if (team) {
+		if (!(await isTeam(sql, authorId))) throw new PostError('Das Forum für Moderation und Verwaltung ist nur für das Team.');
+		// Team-Beiträge hängen an keiner Gruppe, keinem Ort und keiner Region – sonst könnten sie dort auftauchen
+		p = { ...p, groupId: null, placeId: null, regionCode: null, landOnly: false };
 	}
 	// Seit D-076 ist jeder Beitrag über „Ganz Deutschland“ bzw. das Bundesland auffindbar – Thema/Region sind freiwillig (F-030)
 	let landCode: string | null = null;
@@ -225,11 +243,17 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 	const held = holdMessage(flags);
 	const card = url ? await linkPreview(sql, url, authorId) : null;
 	const labels = p.labels.filter((l) => l in LABELS);
-	const [row] = await sql`insert into posts (kind, title, body, topic_key, region_code, group_id, place_id, author_id, labels, tags, link_url, link_card, status, land_code)
+	const [row] = await sql`insert into posts (kind, title, body, topic_key, region_code, group_id, place_id, author_id, labels, tags, link_url, link_card, status, land_code, team)
 		values (${p.kind}, ${title}, ${p.body.trim()}, ${p.topicKey}, ${p.regionCode}, ${p.groupId}, ${p.placeId}, ${authorId}, ${labels}, ${p.tags},
-			${card?.url ?? null}, ${card ? sql.json(card as never) : null}, ${held ? 'pruefung' : 'sichtbar'}, ${landCode})
+			${card?.url ?? null}, ${card ? sql.json(card as never) : null}, ${held ? 'pruefung' : 'sichtbar'}, ${landCode}, ${team})
 		returning id`;
 	const id = row.id as string;
+	if (team && !held) {
+		// Das übrige Team erfährt es in der Glocke (Push nur, wer Community-Mitteilungen als Push will)
+		const others = await sql`select distinct a.user_id from role_assignments a join role_permissions rp on rp.role_key = a.role_key join users u on u.id = a.user_id
+			where rp.action in ('*', 'team.forum') and a.revoked_at is null and (a.expires_at is null or a.expires_at > now()) and u.status = 'active' and a.user_id <> ${authorId}`;
+		for (const o of others) await notify(sql, o.user_id as string, 'team', `Neuer Beitrag im Moderatoren-Forum: „${title}“`, `/community/b/${id}`);
+	}
 	if (p.kind === 'umfrage' && p.poll) {
 		await sql`insert into polls (post_id, options, multiple, closes_at) values (${id}, ${p.poll.options.map((o) => o.trim()).filter(Boolean)}, ${p.poll.multiple},
 			${p.poll.days ? sql`now() + make_interval(days => ${p.poll.days})` : null})`;
@@ -244,6 +268,7 @@ export async function createPost(sql: Sql, authorId: string, p: NewPost): Promis
 /** SQL-Bedingung: für diese Person sichtbare Beiträge (Gruppen nur als aktives Mitglied). */
 function visible(sql: Sql, viewerId: string) {
 	return sql`p.status = 'sichtbar' and (p.group_id is null or p.group_id in (select group_id from group_members where user_id = ${viewerId} and status = 'aktiv'))
+		and (not p.team or kd_is_team(${viewerId}::uuid))
 		and (p.land_code is null or p.author_id = ${viewerId} or p.land_code = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))
 			or exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}))`;
 }
@@ -254,8 +279,8 @@ function subtree(sql: Sql, code: string) {
 
 export interface FeedQuery {
 	mode: 'abos' | 'neu' | 'geloest' | 'lesezeichen';
-	/** F-023: 'de' = ganz Deutschland (+ Einladungen), 'land' = Beiträge aus dem eigenen Bundesland */
-	scope?: 'de' | 'land' | null;
+	/** F-023: 'de' = ganz Deutschland (+ Einladungen), 'land' = Beiträge aus dem eigenen Bundesland, 'team' = Moderatoren-Forum */
+	scope?: 'de' | 'land' | 'team' | null;
 	topic?: string | null;
 	region?: string | null;
 	groupId?: string | null;
@@ -276,13 +301,14 @@ export async function feed(sql: Sql, viewerId: string, f: FeedQuery) {
 	const q = f.q?.trim().slice(0, 120) || null;
 	const rows = await sql`
 		select p.id, p.kind, p.title, p.body, p.topic_key, t.name as topic_name, p.region_code, r.name as region_name, p.group_id, g.name as group_name, g.kind as group_kind, g.slug as group_slug,
-			p.land_code, (select name from regions where code = p.land_code) as land_name,
+			p.land_code, (select name from regions where code = p.land_code) as land_name, p.team,
 			exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}) as invited,
 			p.author_id, p.labels, p.tags, p.link_card, p.pinned, p.closed, p.archived, p.solved_comment is not null as solved, p.comment_count, p.created_at, p.activity_at,
 			(select count(*)::int from media m where m.post_id = p.id and m.status = 'sichtbar' and m.purpose = 'beitrag') as images,
 			exists(select 1 from bookmarks b where b.post_id = p.id and b.user_id = ${viewerId}) as bookmarked
 		from posts p left join topics t on t.key = p.topic_key left join regions r on r.code = p.region_code left join community_groups g on g.id = p.group_id
 		where ${visible(sql, viewerId)}
+			${f.mode === 'lesezeichen' ? sql`` : f.scope === 'team' ? sql`and p.team` : sql`and not p.team`}
 			${f.scope === 'de' && !f.groupId && !f.region ? sql`and (p.land_code is null or exists(select 1 from post_invites i where i.post_id = p.id and i.user_id = ${viewerId}))` : sql``}
 			${f.scope === 'land' && !f.groupId && !f.region
 				? sql`and p.group_id is null and (p.land_code = kd_land_of((select region_code from user_profiles where user_id = ${viewerId}))
@@ -330,6 +356,7 @@ export async function feed(sql: Sql, viewerId: string, f: FeedQuery) {
 			region: r.region_code ? { code: r.region_code as string, name: r.region_name as string } : null,
 			group: r.group_id ? { slug: r.group_slug as string, name: r.group_name as string, kind: r.group_kind as string } : null,
 			land: r.land_code ? { code: r.land_code as string, name: landName(r.land_name as string), invited: r.invited as boolean } : null,
+			team: !!r.team,
 			author: names.get(r.group_kind === 'geschuetzt' ? r.group_id : '')?.get(r.author_id) ?? { name: 'Ein Mitglied', pseudonym: false, contactId: null, region: null },
 			labels: r.labels as string[],
 			tags: r.tags as string[],
@@ -362,6 +389,7 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 	}
 	const own = p.author_id === viewerId;
 	if (p.status !== 'sichtbar' && !own && !moderator) return null;
+	if (p.team && !(await isTeam(sql, viewerId))) return null;
 	if (!moderator && !(await landAccess(sql, viewerId, p as never))) return null;
 	const comments = await sql`select c.id, c.author_id, c.body, c.status, c.mod_note, c.helpful, c.created_at, c.edited_at,
 			exists(select 1 from helpful_marks h where h.comment_id = c.id and h.user_id = ${viewerId}) as marked
@@ -393,6 +421,7 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 		region: p.region_code ? { code: p.region_code as string, name: p.region_name as string } : null,
 		group: p.group_id ? { id: p.group_id as string, slug: p.group_slug as string, name: p.group_name as string, kind: p.group_kind as string } : null,
 		land: p.land_code ? { code: p.land_code as string, name: landName((landRow?.name as string) ?? p.land_code), invited: !!inv } : null,
+		team: !!p.team,
 		invites,
 		placeId: p.place_id as string | null,
 		author: names.get(p.author_id) ?? { name: 'Ein Mitglied', pseudonym: false, contactId: null, region: null },
@@ -429,7 +458,7 @@ export async function getPost(sql: Sql, viewerId: string, id: string) {
 }
 
 async function readablePost(sql: Sql, viewerId: string, postId: string) {
-	const [p] = await sql`select p.id, p.author_id, p.status, p.closed, p.archived, p.group_id, p.region_code, p.topic_key, p.title, p.solved_comment, p.land_code from posts p where p.id = ${postId}`;
+	const [p] = await sql`select p.id, p.author_id, p.status, p.closed, p.archived, p.group_id, p.region_code, p.topic_key, p.title, p.solved_comment, p.land_code, p.team from posts p where p.id = ${postId}`;
 	if (!p) throw new PostError('Beitrag nicht gefunden.');
 	if (!(await landAccess(sql, viewerId, p as never))) throw new PostError('Beitrag nicht gefunden.');
 	if (p.group_id) {

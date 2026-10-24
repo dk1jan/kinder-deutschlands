@@ -12,10 +12,12 @@
 	const facts = $derived(
 		[
 			{ n: c('spielplatz'), l: 'Spielplätze' },
-			{ n: c('toilette') + c('wickelraum') + c('stillraum'), l: 'Toiletten, Wickel- und Stillorte' },
+			{ n: c('toilette') + c('wickelraum'), l: 'Toiletten und Wickelplätze' },
 			{ n: c('indoorspielplatz'), l: 'Indoorspielplätze' },
-			{ n: c('ausflugsort') + c('schwimmbad'), l: 'Ausflugsorte und Bäder' },
-			{ n: c('bibliothek') + c('familienzentrum') + c('familiencafe'), l: 'Bibliotheken, Familienzentren, Familiencafés' }
+			{ n: c('ausflugsort') + c('schwimmbad'), l: 'Ausflugsziele und Bäder' },
+			{ n: c('familiencafe') + c('stillraum'), l: 'Eltern- und Familiencafés, Stillorte' },
+			{ n: c('unterkunft'), l: 'Unterkünfte für Familien' },
+			{ n: c('bibliothek') + c('familienzentrum'), l: 'Bibliotheken und Familienzentren' }
 		].filter((f) => f.n > 0)
 	);
 	const total = $derived(Object.values(data.counts as Record<string, number>).reduce((a, b) => a + (b ?? 0), 0));
@@ -34,7 +36,7 @@
 		{
 			art: 'treffen',
 			title: 'Treffen',
-			text: 'Kinderwagenrunde am Werdersee? Treffpunkt teilen und den Standort nur für 15, 30 oder 60 Minuten freigeben.',
+			text: 'Kinderwagenrunde im Park? Treffpunkt teilen und den Standort nur für 15, 30 oder 60 Minuten freigeben.',
 			stage: 'Treffpunkt teilen, Standort auf Zeit',
 			theme: 'yellow',
 			href: '/nachrichten/treffen'
@@ -83,14 +85,14 @@
 
 <svelte:head>
 	<title>Kinder Deutschlands – Eltern finden Eltern</title>
-	<meta name="description" content="Geschütztes Familiennetzwerk für Eltern in Bremen und Niedersachsen: Kontakt über eine Familien-ID statt Telefonnummer, Familienkarte, Treffen und Gruppen." />
+	<meta name="description" content="Geschütztes Familiennetzwerk für Eltern in ganz Deutschland: Kontakt über eine Familien-ID statt Telefonnummer, Familienkarte, Unwetterwarnungen, Treffen und Gruppen." />
 </svelte:head>
 
 <section class="hero">
 	<Bunting />
 	<div class="container hero-grid">
 		<div class="copy">
-			<span class="tag">Im Aufbau. Start in Bremen und Niedersachsen.</span>
+			<span class="tag">Für Familien in ganz Deutschland.</span>
 			<h1 class="display">Eltern finden Eltern.</h1>
 			<p class="lead">
 				Kinder Deutschlands verbindet Familien in deiner Gegend. Mit einer eigenen Familien-ID statt Telefonnummer, einer
@@ -145,6 +147,28 @@
 	</div>
 </section>
 
+<section class="warnband" aria-labelledby="warn-titel">
+	<div class="container warn-grid">
+		<div>
+			<p class="eyebrow">Amtlich vom Deutschen Wetterdienst</p>
+			<h2 id="warn-titel">Unwetterwarnungen direkt aufs Handy.</h2>
+			<p class="band-lead">
+				Sturm, Starkregen, Gewitter: Abonniere deine Region – und gleich Kita, Schule oder Großeltern mit. Neue Warnungen kommen als Mitteilung und auf Wunsch als
+				Push. Ohne extra App, für jeden Kreis in Deutschland.
+			</p>
+			{#if data.warn.severe > 0}
+				<p class="warn-live"><span class="pulse" aria-hidden="true"></span>Gerade aktiv: {data.warn.severe.toLocaleString('de-DE')} {data.warn.severe === 1 ? 'Unwetterwarnung' : 'Unwetterwarnungen'} in {data.warn.kreise === 1 ? '1 Kreis' : `${data.warn.kreise.toLocaleString('de-DE')} Kreisen`}</p>
+			{:else if data.warn.markant > 0}
+				<p class="warn-live calm">Gerade aktiv: {data.warn.markant.toLocaleString('de-DE')} {data.warn.markant === 1 ? 'markante Wetterwarnung' : 'markante Wetterwarnungen'}</p>
+			{/if}
+			<div class="cta">
+				<a class="btn signal" href="/warnungen">{data.user ? 'Warnungen einrichten' : 'Warnungen ansehen'}</a>
+			</div>
+		</div>
+		<div class="warn-art"><ModuleArt name="warnung" /></div>
+	</div>
+</section>
+
 <section class="container tilesec" aria-labelledby="bereiche">
 	<h2 id="bereiche">Was es hier alles gibt.</h2>
 	<p class="lead">Alle Bereiche findest du auch im Menü.{data.user ? '' : ' Manche sind nur für Mitglieder.'}</p>
@@ -157,8 +181,8 @@
 <section class="modules" aria-labelledby="mod-titel">
 	<div class="container">
 		<div class="mod-head">
-			<h2 id="mod-titel">Was hier entsteht.</h2>
-			<p class="lead">Kein Forum mit tausend leeren Ecken, sondern Werkzeuge für den Familienalltag. Schritt für Schritt, jedes Teil erst, wenn es wirklich funktioniert.</p>
+			<h2 id="mod-titel">Alles für den Familienalltag.</h2>
+			<p class="lead">Vom Spielplatz um die Ecke bis zur Kinderwagenrunde, vom Marktplatz bis zum verschlüsselten Chat – in ganz Deutschland.</p>
 		</div>
 	</div>
 	<ul class="cards" role="list">
@@ -167,7 +191,7 @@
 				<ModuleArt name={m.art} />
 				<h3>{#if m.href}<a href={m.href}>{m.title}</a>{:else}{m.title}{/if}</h3>
 				<p>{m.text}</p>
-				<span class="stage">{m.href ? `Jetzt da · ${m.stage}` : `In Arbeit, ${m.stage}`}</span>
+				<span class="stage">{m.stage}</span>
 			</li>
 		{/each}
 	</ul>
@@ -179,10 +203,7 @@
 		<ul>
 			{#each facts as f}<li><strong>{fmtN(f.n)}</strong><span>{f.l}</span></li>{/each}
 		</ul>
-		<p class="muted">
-			Aus offenen Daten (OpenStreetMap, Overture Maps, Bundesamt für Kartographie), jeder Ort mit Quelle{#if data.stand}, zuletzt abgeglichen am {new Date(data.stand).toLocaleDateString('de-DE')}{/if}.
-			<a href="/karte">Zur Karte</a> · <a href="/karte/quellen">Datenquellen</a>
-		</p>
+		<a class="btn secondary small" href="/karte">Zur Karte</a>
 	</section>
 {/if}
 
@@ -206,8 +227,8 @@
 <section class="final" aria-labelledby="los-titel">
 	<div class="container final-inner">
 		<div>
-			<h2 id="los-titel">{data.mailOpen ? 'Mach mit.' : 'Mitmachen, sobald es losgeht.'}</h2>
-			<p>{data.mailOpen ? 'Konto anlegen, Familien-ID bekommen, Wimpel drucken – und los.' : 'Die Registrierung öffnet, sobald der E-Mail-Versand eingerichtet ist. Wer schon einen Zugang hat, meldet sich hier an.'}</p>
+			<h2 id="los-titel">{data.user ? 'Schön, dass du dabei bist.' : data.mailOpen ? 'Mach mit.' : 'Schon dabei?'}</h2>
+			<p>{data.user ? 'Familien-ID teilen, Wimpel drucken, deine Region für Unwetterwarnungen abonnieren.' : data.mailOpen ? 'Konto anlegen, Familien-ID bekommen, Wimpel drucken – und los.' : 'Melde dich mit deinem Zugang an.'}</p>
 		</div>
 		{#if data.user}
 			<a class="btn" href="/profil">Zu meinem Konto</a>
@@ -222,7 +243,7 @@
 <footer class="foot">
 	<div class="container foot-inner">
 		<span class="foot-brand">Kinder Deutschlands</span>
-		<span>Ein Familiennetzwerk aus Bremen. Testbetrieb, noch nicht öffentlich.</span>
+		<span>Das Familiennetzwerk für ganz Deutschland.</span>
 	</div>
 </footer>
 
@@ -432,6 +453,71 @@
 	@media (min-width: 900px) {
 		.id-grid {
 			grid-template-columns: 1.1fr 0.9fr;
+		}
+	}
+
+	/* ---------- Unwetterwarnungen ---------- */
+	.warnband {
+		background: linear-gradient(160deg, #1b2f4f 0%, #0f2238 70%);
+		color: var(--on-band);
+		padding: var(--sp-7) 0;
+	}
+	.warnband h2 {
+		color: var(--white);
+		max-width: 14ch;
+		margin: var(--sp-2) 0 var(--sp-3);
+	}
+	.warnband .eyebrow {
+		margin: 0;
+		color: var(--yellow);
+		font-weight: 700;
+	}
+	.warn-grid {
+		display: grid;
+		gap: var(--sp-5);
+		align-items: center;
+	}
+	.warn-art {
+		color: var(--sky);
+		max-width: 380px;
+		justify-self: center;
+		width: 100%;
+	}
+	.warn-live {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sp-2);
+		margin: var(--sp-2) 0 0;
+		padding: var(--sp-2) var(--sp-3);
+		border-radius: var(--radius-m);
+		background: #d63d31;
+		color: var(--white);
+		font-weight: 700;
+	}
+	.warn-live.calm {
+		background: #f08a00;
+		color: var(--navy);
+	}
+	.pulse {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--white);
+		animation: pulse 1.6s ease-in-out infinite;
+	}
+	@keyframes pulse {
+		50% {
+			opacity: 0.25;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.pulse {
+			animation: none;
+		}
+	}
+	@media (min-width: 900px) {
+		.warn-grid {
+			grid-template-columns: 1.2fr 0.8fr;
 		}
 	}
 

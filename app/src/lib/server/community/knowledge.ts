@@ -115,9 +115,10 @@ export async function saveKnowledge(sql: Sql, editorId: string, id: string | nul
 /** Entwurf aus einem Beitrag – nur aus offenen Bereichen, Zustimmung wird angefragt. */
 export async function draftFromPost(sql: Sql, editorId: string, postId: string) {
 	if (!(await userCan(sql, editorId, 'knowledge.edit'))) throw new PostError('Keine Berechtigung.');
-	const [p] = await sql`select p.id, p.title, p.body, p.topic_key, p.region_code, p.group_id, p.author_id, p.status from posts p where p.id = ${postId}`;
+	const [p] = await sql`select p.id, p.title, p.body, p.topic_key, p.region_code, p.group_id, p.author_id, p.status, p.team from posts p where p.id = ${postId}`;
 	if (!p || p.status !== 'sichtbar') throw new PostError('Beitrag nicht gefunden.');
 	if (p.group_id) throw new PostError('Beiträge aus Gruppen werden nicht in Wissenseinträge übernommen.');
+	if (p.team) throw new PostError('Beiträge aus dem Moderatoren-Forum werden nicht in Wissenseinträge übernommen.');
 	const comments = await sql`select body from comments where post_id = ${postId} and status = 'sichtbar' order by helpful desc, created_at limit 5`;
 	let slug = slugify(p.title) || 'eintrag';
 	const [taken] = await sql`select 1 as x from knowledge where slug = ${slug}`;

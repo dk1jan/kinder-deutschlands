@@ -13,7 +13,7 @@
 <div class="page">
 	<a class="back" href="/community"><Icon name="zurueck" size={18} />Community</a>
 	<h1>Meine Abos</h1>
-	<p class="lead">Dein Feed „Für dich“ zeigt Beiträge aus abonnierten Themen und Regionen. Eine Region schließt alle Orte darin ein – „Bremen“ also auch Findorff, Neustadt usw. Ein Abo heißt nicht, dass du dort wohnst; das sieht auch niemand.</p>
+	<p class="lead">Dein Feed „Für dich“ zeigt Beiträge aus abonnierten Themen und Regionen. Eine Region schließt alle Orte darin ein – „Köln“ also auch Ehrenfeld, Nippes usw. Ein Abo heißt nicht, dass du dort wohnst; das sieht auch niemand.</p>
 	{#if form?.error}<Notice kind="error">{form.error}</Notice>{/if}
 
 	<section>

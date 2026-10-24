@@ -473,6 +473,17 @@ try {
 		const h = await fetch(BASE + '/');
 		const body = await h.text();
 		check(/Familienorte in ganz Deutschland/.test(body) && body.includes('Spielplätze'), 'Startseite: Datenübersicht mit echter Zählung (F-029)');
+		// D-084: ganz Deutschland, keine Testphase, keine Quellenzeile unter der Zahlenbox, Unwetterwarnungen als Feature
+		const facts = body.slice(body.indexOf('id="daten-titel"'), body.indexOf('</section>', body.indexOf('id="daten-titel"')));
+		check(body.includes('Für Familien in ganz Deutschland.') && !/Testbetrieb|Bremen und Niedersachsen|Im Aufbau|leeren Ecken|In Arbeit/.test(body), 'Startseite: ganz Deutschland, kein Testbetrieb/Bremen-Start (D-084)');
+		check(facts.length > 0 && !facts.includes('OpenStreetMap') && !facts.includes('/karte/quellen'), 'Startseite: Zahlenbox ohne Quellenzeile (Quellen bleiben unter „Datenquellen“)');
+		check(body.includes('Unwetterwarnungen direkt aufs Handy.') && body.includes('href="/warnungen"'), 'Startseite: Unwetterwarnungen als Feature');
+		const ov = await fetch(BASE + '/api/orte/uebersicht?z=6');
+		const ovj = ov.ok ? await ov.json() : null;
+		check(ovj?.total >= nPlay && Array.isArray(ovj.cells) && ovj.cells.every((c) => c.length === 3), `Karte: Deutschland-Übersicht zählt alle Orte (${ovj?.total})`);
+		const k = await fetch(BASE + '/karte');
+		const kb = await k.text();
+		check(k.status === 200 && kb.includes('Familienkarte'), 'Karte ohne Ort: lädt (Startansicht ganz Deutschland)');
 	}
 	res = await runAndWait('osm-toiletten');
 	check(res.run?.status === 'uebernommen' && (res.run.counts.neu ?? 0) >= 3, `Toiletten importiert (${res.run?.counts?.neu ?? 0})`);
@@ -589,6 +600,19 @@ try {
 	// F-030: „Ganz Deutschland“ ohne Thema/Region geht; Moderation heftet oben an
 	r = await req('/community/neu', { method: 'POST', form: { kind: 'beitrag', title: 'Wir suchen Verstärkung für die Moderation', body: 'Meldet euch gern.', sichtbar: 'de' } });
 	check(r.status === 303 && /^\/community\/b\/[0-9a-f-]{36}$/.test(r.location), `Beitrag „Ganz Deutschland“ ohne Thema/Region (${r.status} ${r.location})`);
+	{
+		// D-084: Moderatoren-Forum – nur das Team liest und schreibt
+		const t = await req('/community/neu', { method: 'POST', form: { kind: 'beitrag', title: 'Smoke-Teamabsprache Sperren', body: 'Wer übernimmt die Meldungen am Wochenende?', sichtbar: 'team' } });
+		check(t.status === 303 && /^\/community\/b\/[0-9a-f-]{36}$/.test(t.location), `Moderatoren-Forum: Beitrag des Teams (${t.status})`);
+		const tl = await req('/community?bereich=team');
+		check(tl.body.includes('Smoke-Teamabsprache Sperren') && tl.body.includes('Mitglieder sehen diesen Bereich nicht'), 'Moderatoren-Forum: Team sieht den Bereich');
+		const am = await A.req(t.location);
+		check(am.status === 404 || !am.body.includes('Wer übernimmt die Meldungen'), 'Moderatoren-Forum: Mitglied kann den Beitrag nicht öffnen');
+		const af = await A.req('/community?bereich=team');
+		check(!af.body.includes('Smoke-Teamabsprache') && !af.body.includes('bereich=team'), 'Moderatoren-Forum: für Mitglieder weder Reiter noch Inhalt');
+		const ap = await A.req('/community/neu', { method: 'POST', form: { kind: 'beitrag', title: 'Ich will ins Team-Forum', body: 'x', sichtbar: 'team' } });
+		check(ap.status === 400, 'Moderatoren-Forum: Mitglied darf dort nicht schreiben');
+	}
 	{
 		const pinPath = r.location;
 		r = await req(pinPath);
@@ -750,6 +774,40 @@ try {
 	check(r.body.includes('Smoke-Elterncafé aus Kalender'), 'Importierter Termin erscheint als Einrichtungstermin');
 	r = await req('/admin');
 	check(r.body.includes('/admin/einrichtungen') && r.body.includes('/admin/hinweise'), 'Verwaltung: Einrichtungen und Hinweise im Menü');
+	check(r.body.includes('/admin/rundnachrichten') && r.body.includes('bereich=team'), 'Verwaltung: Rundnachrichten und Moderatoren-Forum im Menü (D-084)');
+	{
+		// D-084: Rundnachricht an alle → Mitteilung beim Mitglied, Seite nur für Empfänger
+		let b = await req('/admin/rundnachrichten?/vorschau', { form: { title: 'Smoke-Rundnachricht', body: 'Die Karte hakt, wir kümmern uns.', ziel: 'alle' } });
+		check(b.status === 200 && b.body.includes('Empfänger:'), 'Rundnachricht: Empfänger zählen');
+		b = await req('/admin/rundnachrichten?/senden', { form: { title: 'Smoke-Rundnachricht', body: 'Die Karte hakt, wir kümmern uns.', ziel: 'alle' } });
+		check(b.status === 400 && b.body.includes('bestätigen'), 'Rundnachricht: ohne Bestätigung nicht verschickt');
+		b = await req('/admin/rundnachrichten?/senden', { form: { title: 'Smoke-Rundnachricht', body: 'Die Karte hakt, wir kümmern uns.', ziel: 'alle', bestaetigt: 'on' } });
+		check(b.status === 200 && b.body.includes('Verschickt'), 'Rundnachricht an alle verschickt');
+		const [bc] = await sqlT`select id from broadcasts where title = 'Smoke-Rundnachricht'`;
+		const m = await A.req('/profil/mitteilungen');
+		check(m.body.includes('Vom Team: Smoke-Rundnachricht'), 'Rundnachricht: Mitteilung beim Mitglied');
+		const v = await A.req(`/rundnachricht/${bc?.id}`);
+		check(v.status === 200 && v.body.includes('Die Karte hakt, wir kümmern uns.'), 'Rundnachricht: Mitglied liest den Text');
+		const g = await X2.req(`/rundnachricht/${bc?.id}`);
+		check(g.status === 303, 'Rundnachricht: Gäste müssen sich anmelden');
+		const nb = await A.req('/admin/rundnachrichten');
+		check(nb.status === 403 || nb.status === 303, 'Rundnachrichten-Verwaltung: Mitglied ohne Recht gesperrt');
+	}
+	{
+		// D-084: Unwetterwarnungen – Seite für Gäste, Warnung einer Region, Abo für Mitglieder
+		await sqlT`insert into warnings (id, msg_type, severity, level, headline, description, sent, onset, expires)
+			values ('smoke.dwd.1', 'Alert', 'Severe', 3, 'Amtliche UNWETTERWARNUNG vor ORKANBÖEN', 'Smoke-Warntext.', now(), now(), now() + interval '6 hours') on conflict do nothing`;
+		await sqlT`insert into warning_areas (warning_id, kreis_code) values ('smoke.dwd.1', '04011') on conflict do nothing`;
+		let w = await X2.req('/warnungen?region=04011');
+		check(w.status === 200 && w.body.includes('Unwetterwarnungen für deine Region.') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: Gast sieht Warnung seiner Region');
+		check(w.body.includes('Deutscher Wetterdienst') && w.body.includes('CC BY 4.0'), 'Unwetterwarnungen: Quelle und Lizenz genannt');
+		w = await X2.req('/warnungen/smoke.dwd.1');
+		check(w.status === 200 && w.body.includes('Smoke-Warntext.'), 'Unwetterwarnungen: Detailseite');
+		w = await A.req('/warnungen?/abonnieren', { form: { region: '04011', min_level: '2', push: 'on', label: 'Kita' } });
+		check(w.status === 200 && w.body.includes('Abonniert'), 'Unwetterwarnungen: Mitglied abonniert Region');
+		w = await A.req('/warnungen');
+		check(w.body.includes('Kita') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: „Meine Regionen“ mit aktueller Warnung');
+	}
 	r = await X2.req('/');
 	check(r.body.includes('/veranstaltungen/heute') && r.body.includes('/angebote'), 'Startseite: Entdecken-Einstiege');
 

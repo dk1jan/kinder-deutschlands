@@ -45,7 +45,7 @@
 	{:else}
 		<form class="card form" onsubmit={submit}>
 			<label for="g-name">Name der Gruppe</label>
-			<input id="g-name" bind:value={name} required maxlength="80" placeholder="z. B. Krabbelgruppe Findorff" />
+			<input id="g-name" bind:value={name} required maxlength="80" placeholder="z. B. Krabbelgruppe am Stadtpark" />
 			<fieldset>
 				<legend>Kontakte einladen</legend>
 				{#each chat.contacts as c}

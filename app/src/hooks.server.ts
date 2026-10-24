@@ -10,6 +10,7 @@ import { startScheduler } from '$lib/server/import/jobs';
 import { loadAerial } from '$lib/server/aerial';
 import { startChatJobs } from '$lib/server/chat/jobs';
 import { startAngeboteJobs } from '$lib/server/angebote/jobs';
+import { startWarningJobs } from '$lib/server/warnings/jobs';
 import { proxyMatrix } from '$lib/server/chat/proxy';
 
 // Beim Start: Kontolöschungen aus der Löschliste erneut anwenden (wichtig nach einer Wiederherstellung).
@@ -29,6 +30,8 @@ export const init: ServerInit = async () => {
 	startScheduler().catch((e) => console.error('Zeitplan konnte nicht starten:', (e as Error).message));
 	startChatJobs();
 	startAngeboteJobs();
+	// Amtliche Wetterwarnungen (DWD) alle 5 Minuten
+	startWarningJobs();
 };
 
 const THEMES = new Set(['system', 'light', 'dark']);

@@ -94,8 +94,9 @@
 		<label class="check"><input type="checkbox" name="push_chat" checked={data.s.push_chat} /> Neue Chatnachrichten</label>
 		<label class="check"><input type="checkbox" name="push_community" checked={data.s.push_community} /> Community-Mitteilungen (Antworten, Moderation)</label>
 		<label class="check"><input type="checkbox" name="push_reminders" checked={data.s.push_reminders} /> Erinnerungen, die ich an Terminen oder Fristen selbst eingestellt habe</label>
-		<label class="check"><input type="checkbox" name="push_urgent" checked={data.s.push_urgent} /> Wichtige Hinweise für meine Radar-Regionen sofort (nur von der Redaktion als dringend markiert)</label>
+		<label class="check"><input type="checkbox" name="push_urgent" checked={data.s.push_urgent} /> Wichtiges sofort: Rundnachrichten des Teams mit Push und dringende Hinweise der Redaktion für meine Radar-Regionen</label>
 		<label class="check"><input type="checkbox" name="push_market" checked={data.s.push_market} /> Neue Anzeigen zu meinen Marktplatz-Suchaufträgen</label>
+		<p class="muted small">Amtliche Unwetterwarnungen für deine Regionen (mit eigener Stufe und Push) stellst du unter <a href="/warnungen">Unwetterwarnungen</a> ein.</p>
 		<label class="check"><input type="checkbox" name="quiet" bind:checked={quiet} /> Ruhezeit (keine Push-Hinweise)</label>
 		{#if quiet}
 			<div class="times">

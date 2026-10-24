@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Notice from '$lib/components/Notice.svelte';
+	import { LAENDER } from '$lib/laender';
 	let { data, form } = $props();
 	const s = $derived(data.src);
 	const c = $derived(s.config as Record<string, unknown>);
@@ -44,18 +45,18 @@
 		{/if}
 		{#if c.type === 'osm'}
 			<fieldset class="wide"><legend>Gebiete</legend>
-				{#each [['DE-HB', 'Bremen'], ['DE-NI', 'Niedersachsen']] as [v, l]}<label class="check"><input type="checkbox" name="areas" value={v} checked={(c.areas as string[]).includes(v)} disabled={!data.mayEdit} /><span>{l}</span></label>{/each}
+				{#each LAENDER.map((x) => [x.iso, x.name]) as [v, l]}<label class="check"><input type="checkbox" name="areas" value={v} checked={(c.areas as string[]).includes(v)} disabled={!data.mayEdit} /><span>{l}</span></label>{/each}
 			</fieldset>
 		{/if}
 		{#if c.type === 'vg250'}
 			<fieldset class="wide"><legend>Länder</legend>
-				{#each [['03', 'Niedersachsen'], ['04', 'Bremen']] as [v, l]}<label class="check"><input type="checkbox" name="laender" value={v} checked={(c.laender as string[]).includes(v)} disabled={!data.mayEdit} /><span>{l}</span></label>{/each}
+				{#each LAENDER.map((x) => [x.code, x.name]) as [v, l]}<label class="check"><input type="checkbox" name="laender" value={v} checked={(c.laender as string[]).includes(v)} disabled={!data.mayEdit} /><span>{l}</span></label>{/each}
 			</fieldset>
 		{/if}
 		{#if c.type === 'protomaps'}
 			<div class="field"><label for="bbox">Gebiet (West,Süd,Ost,Nord)</label><input id="bbox" name="bbox" value={c.bbox} disabled={!data.mayEdit} /></div>
 			<div class="field"><label for="maxzoom">Höchste Zoomstufe</label><input id="maxzoom" name="maxzoom" type="number" min="10" max="15" value={c.maxzoom} disabled={!data.mayEdit} /></div>
-			<p class="muted wide">Bremen + Niedersachsen bis Zoom 15 ≈ 1,5 GB, bis Zoom 14 ≈ 0,7 GB. Beim Ändern wird beim nächsten Abruf neu geladen.</p>
+			<p class="muted wide">Ganz Deutschland: <code>5.8,47.2,15.1,55.1</code>. Bremen + Niedersachsen bis Zoom 15 waren ≈ 1,5 GB; ganz Deutschland ist ein Vielfaches (vorher freien Platz prüfen). Beim Ändern wird beim nächsten Abruf neu geladen.</p>
 		{/if}
 		<div class="field wide"><label for="contact">Kontakt</label><input id="contact" name="contact" value={s.contact ?? ''} disabled={!data.mayEdit} /></div>
 		<div class="field wide"><label for="notes">Notizen</label><textarea id="notes" name="notes" rows="3" disabled={!data.mayEdit}>{s.notes ?? ''}</textarea></div>

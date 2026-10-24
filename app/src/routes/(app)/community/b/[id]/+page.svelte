@@ -44,6 +44,7 @@
 	<header class="head">
 		<p class="meta">
 			<span class="kind">{KIND[p.kind]}</span>
+			{#if p.team}<span class="land">Moderatoren-Forum · nur Team</span>{/if}
 			{#if p.land}<span class="land">{p.land.invited ? `Eingeladen · ${p.land.name}` : `Nur ${p.land.name}`}</span>{/if}
 			{#if p.solvedComment}<span class="ok">✓ gelöst</span>{/if}
 			{#if p.pinned}<span>angeheftet</span>{/if}

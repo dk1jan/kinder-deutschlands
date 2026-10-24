@@ -15,6 +15,7 @@ import { compressors } from 'hyparquet-compressors';
 import type { Features, Kind } from '$lib/places';
 import type { ImportRecord } from './types';
 import { fetchRetry } from './net';
+import { FAMILY_CAFE_NAMES, FAMILY_STAY_NAMES } from './osm';
 import type { Sql } from '../db';
 
 export const OVERTURE_BASE = 'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com';
@@ -50,6 +51,14 @@ const FREIZEIT = new Set(['arts_and_entertainment', 'sports_and_recreation', 'ac
 const INDOOR_TRUSTED = new Set(['indoor_playcenter', 'trampoline_park']);
 const INDOOR_FUZZY = new Set(['kids_recreation_and_party', 'amusement_park']);
 const AUSFLUG: Record<string, string> = { childrens_museum: 'Kindermuseum', petting_zoo: 'Kinderbauernhof' };
+/** Jan 24.10.: Elterncafés und Familienunterkünfte – nur über eindeutige Namen, Kategorien zählen hier nicht. */
+const HOSTEL = /jugendherberge|jugendg(ä|ae)stehaus|familienherberge/i;
+const STAY_SKIP = /schule|\bkita\b|kindergarten|tagespflege|praxis|restaurant|imbiss|bäckerei|baeckerei/i;
+const CAFE_SKIP = /schule|\bkita\b|kindergarten|tagespflege|brett|würfel|wuerfel|board|gaming|e-?sport|internet/i;
+/** Regelstand: ändert sich die Auswahl, wird der Zwischenspeicher je Ausgabe neu aufgebaut. */
+export const RULES_VERSION = 2;
+/** Grobfilter für den Leseprozess: Kinderwort oder einer der neuen Namen. */
+export const PRE_FILTER = new RegExp(`${KID.source}|eltern|familien|krabbel|baby|mama|mütter|muetter|jugendherberge|jugendg(ä|ae)stehaus|familotel|ferienhof|bauernhof`, 'i');
 
 export interface Rule {
 	kind: Kind;
@@ -63,8 +72,15 @@ export function classify(p: OvPlace, minConf = 0.8): Rule | null {
 	if (p.operating_status && p.operating_status !== 'open') return null;
 	const country = p.addresses?.find((a) => a?.country)?.country;
 	if (country && country !== 'DE') return null;
-	if (BAD.test(name) || OUTDOOR(name)) return null;
 	const conf = p.confidence ?? 0;
+	// Unterkünfte und Elterncafés vor den Indoor-Regeln – deren Ausschlussliste (Hotel, Hostel, Verein) passt hier nicht
+	if ((HOSTEL.test(name) || FAMILY_STAY_NAMES.test(name)) && !STAY_SKIP.test(name)) {
+		const ferienhof = /ferienhof|bauernhof/i.test(name) && !HOSTEL.test(name);
+		if (conf < (ferienhof ? minConf : Math.min(minConf, 0.7))) return null;
+		return { kind: 'unterkunft', einrichtung: HOSTEL.test(name) ? (/familienherberge/i.test(name) ? 'Familienherberge' : 'Jugendherberge') : ferienhof ? 'Ferienhof' : 'Familienhotel' };
+	}
+	if (FAMILY_CAFE_NAMES.test(name) && !CAFE_SKIP.test(name)) return conf >= Math.min(minConf, 0.7) ? { kind: 'familiencafe', einrichtung: null } : null;
+	if (BAD.test(name) || OUTDOOR(name)) return null;
 	const cat = p.taxonomy?.primary ?? p.basic_category ?? '';
 	const root = p.taxonomy?.hierarchy?.[0] ?? '';
 	const trampoline = cat === 'trampoline_park' || /trampolin/i.test(name);
@@ -255,7 +271,7 @@ export async function fetchOverture(o: OvertureOptions = {}): Promise<{ places: 
 	const { release, files } = await latestRelease(o.fetchImpl, o.release);
 	const dir = overtureDir();
 	await mkdir(dir, { recursive: true });
-	const cache = join(dir, `places-${release}-${minConf}.json`);
+	const cache = join(dir, `places-${release}-${minConf}-r${RULES_VERSION}.json`);
 	try {
 		const c = JSON.parse(await readFile(cache, 'utf8')) as { places: OvPlace[]; stats: ReadStats };
 		return { places: c.places, release, stats: c.stats, cached: true };
@@ -285,7 +301,7 @@ async function readInChild(files: { url: string; size: number }[], dir: string, 
 	const job = join(dir, 'auftrag.json');
 	const out = join(dir, 'kandidaten.jsonl');
 	const cats = [...INDOOR_TRUSTED, ...INDOOR_FUZZY, ...Object.keys(AUSFLUG)];
-	await writeFile(job, JSON.stringify({ files, out, bbox: DE_BBOX, pre: KID.source, cats }));
+	await writeFile(job, JSON.stringify({ files, out, bbox: DE_BBOX, pre: PRE_FILTER.source, cats }));
 	const script = process.env.OVERTURE_READER || join(process.cwd(), 'scripts', 'overture-read.mjs');
 	const stdout = await new Promise<string>((resolve, reject) => {
 		const p = spawn(process.execPath, [script, job], { stdio: ['ignore', 'pipe', 'pipe'], signal });
@@ -356,7 +372,7 @@ export async function dropKnown(sql: Sql, sourceKey: string, recs: ImportRecord[
 			select x.ext, p.kind, p.name,
 				ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(x.lon, x.lat), 4326)::geography) as m
 			from jsonb_to_recordset(${sql.json(pts as never)}) as x(ext text, lon float8, lat float8)
-			join places p on p.kind in ('indoorspielplatz', 'ausflugsort', 'schwimmbad', 'familienzentrum')
+			join places p on p.kind in ('indoorspielplatz', 'ausflugsort', 'schwimmbad', 'familienzentrum', 'familiencafe', 'unterkunft')
 				and p.status in ('aktiv', 'pruefung')
 				and ST_DWithin(p.location, ST_SetSRID(ST_MakePoint(x.lon, x.lat), 4326), 0.003)
 				and ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(x.lon, x.lat), 4326)::geography, 200)

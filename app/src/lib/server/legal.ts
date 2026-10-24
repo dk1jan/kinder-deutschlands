@@ -123,8 +123,11 @@ Was du schreibst oder einstellst, ist für den Kreis sichtbar, den die jeweilige
 - Gemeldete Nachrichten erreicht die Moderation nur, wenn du sie beim Melden ausdrücklich mitschickst.
 - Die Suche im Chat findet nur auf deinem Gerät statt.
 
+## Unwetterwarnungen und Rundnachrichten
+Wenn du Unwetterwarnungen abonnierst, speichern wir die gewählten Kreise (höchstens fünf), deinen Namen dafür (z. B. „Kita“), die Mindeststufe, ob du Push möchtest, und welche Warnungen dir schon zugestellt wurden (60 Tage). Die Warnungen holen wir beim Deutschen Wetterdienst ab; deine Abos, dein Standort oder dein Konto werden dabei nicht übertragen. Rundnachrichten des Teams gehen an Mitglieder mit eingetragener Wohnregion in der gewählten Gegend (oder an alle); wir speichern, wer sie bekommen und geöffnet hat. Rechtsgrundlage: Nutzung des Dienstes (Art. 6 Abs. 1 lit. b DSGVO); Push nur mit Einwilligung (lit. a). Abos beendest du jederzeit unter „Unwetterwarnungen“; mit dem Konto wird alles gelöscht.
+
 ## Mitteilungen und Push
-Push-Mitteilungen nur, wenn du sie im Browser erlaubst und in deinen Einstellungen einschaltest. Sie enthalten keine Inhalte (z. B. „Neue Nachricht“). Zur Zustellung nutzt dein Browser den Push-Dienst seines Herstellers (z. B. Apple, Google, Mozilla); dieser erhält eine zufällige Geräteadresse und den verschlüsselten Hinweis, aber keinen Inhalt. Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), jederzeit abschaltbar.
+Push-Mitteilungen nur, wenn du sie im Browser erlaubst und in deinen Einstellungen einschaltest. Hinweise zu Chats und Community enthalten keine Inhalte (z. B. „Neue Nachricht“). Ausnahmen, die du selbst einschaltest: Unwetterwarnungen (Warnstufe, Region oder dein Name dafür, Überschrift der Warnung) und Rundnachrichten des Teams mit Push (Titel). Zur Zustellung nutzt dein Browser den Push-Dienst seines Herstellers (z. B. Apple, Google, Mozilla); dieser erhält eine zufällige Geräteadresse und den verschlüsselten Hinweis, aber keinen Inhalt. Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), jederzeit abschaltbar.
 
 ## Standort
 Dein Standort wird nur im Browser verwendet, wenn du „Mein Standort“ antippst (z. B. für Entfernungen), und nicht gespeichert. Live-Standort teilst du nur bewusst im verschlüsselten Chat, für 15, 30 oder 60 Minuten.

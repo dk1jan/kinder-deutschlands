@@ -63,6 +63,8 @@
 		aerialAttribution?: string;
 		onSelect?: (f: MapFeature | null) => void;
 		onData?: (f: MapFeature[], state: 'ok' | 'zoom' | 'error' | 'truncated') => void;
+		/** Weit herausgezoomt: Anzahl passender Orte in ganz Deutschland (null = gerade keine Übersicht) */
+		onOverview?: (total: number | null) => void;
 		onView?: (v: MapView) => void;
 		onPick?: (lon: number, lat: number) => void;
 		/** Mini-Karte: Klick auf einen Punkt (Index in points) */
@@ -82,6 +84,7 @@
 		aerialAttribution = '',
 		onSelect,
 		onData,
+		onOverview,
 		onView,
 		onPick,
 		onPoint,
@@ -125,6 +128,9 @@
 	let ctrl: AbortController | null = null;
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	const MIN_ZOOM_DATA = 8;
+	let overviewKey = '';
+	let ovCtrl: AbortController | null = null;
+	const gridCell = (z: number) => (z < 5.5 ? 0.6 : z < 6.5 ? 0.3 : z < 7.5 ? 0.15 : 0.08);
 
 	function overlay() {
 		if (!map) return;
@@ -143,6 +149,29 @@
 		});
 		const dark = theme === 'dark';
 		if (mode === 'browse') {
+			// Deutschland-Übersicht (weit herausgezoomt): Kreise mit Anzahl je Rasterfeld
+			map.addSource('uebersicht', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+			map.addLayer({
+				id: 'uebersicht',
+				type: 'circle',
+				source: 'uebersicht',
+				maxzoom: MIN_ZOOM_DATA,
+				paint: {
+					'circle-color': dark ? '#ffc53d' : '#0f2238',
+					'circle-opacity': 0.9,
+					'circle-radius': ['interpolate', ['linear'], ['get', 'n'], 1, 11, 50, 15, 500, 21, 5000, 28, 50000, 34],
+					'circle-stroke-width': 2.5,
+					'circle-stroke-color': dark ? '#0a1626' : '#ffc53d'
+				}
+			});
+			map.addLayer({
+				id: 'uebersicht-n',
+				type: 'symbol',
+				source: 'uebersicht',
+				maxzoom: MIN_ZOOM_DATA,
+				layout: { 'text-field': ['get', 'l'], 'text-font': ['Noto Sans Medium'], 'text-size': 12, 'text-allow-overlap': true },
+				paint: { 'text-color': dark ? '#0f2238' : '#ffffff' }
+			});
 			map.addLayer({
 				id: 'cluster',
 				type: 'circle',
@@ -233,6 +262,28 @@
 		);
 	}
 
+	async function loadOverview(z: number, force: boolean) {
+		const key = `${filters.join(',')}|${features.join(',')}|${gridCell(z)}`;
+		if (!force && key === overviewKey) return;
+		ovCtrl?.abort();
+		ovCtrl = new AbortController();
+		try {
+			const q = new URLSearchParams({ z: z.toFixed(1), k: filters.join(','), m: features.join(',') });
+			const res = await fetch(`/api/orte/uebersicht?${q}`, { signal: ovCtrl.signal });
+			if (!res.ok) throw new Error(String(res.status));
+			const d = (await res.json()) as { cells: [number, number, number][]; total: number };
+			const short = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')}k` : String(n));
+			(map?.getSource('uebersicht') as GeoJSONSource | undefined)?.setData({
+				type: 'FeatureCollection',
+				features: d.cells.map(([lon, lat, n]) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { n, l: short(n) } }))
+			});
+			overviewKey = key;
+			onOverview?.(d.total);
+		} catch (e) {
+			if ((e as Error).name !== 'AbortError') onOverview?.(null);
+		}
+	}
+
 	async function load(force = false) {
 		if (!map || mode !== 'browse') return;
 		const z = map.getZoom();
@@ -241,8 +292,10 @@
 			(map.getSource('orte') as GeoJSONSource | undefined)?.setData(data);
 			loadedKey = '';
 			emitData('zoom');
+			void loadOverview(z, force);
 			return;
 		}
+		onOverview?.(null);
 		const b = map.getBounds();
 		// Großzügig nachladen, damit kleines Verschieben keine neue Anfrage braucht
 		const padX = (b.getEast() - b.getWest()) * 0.35;
@@ -432,6 +485,12 @@
 					}
 				});
 				if (mode === 'browse') {
+					// Übersicht: Antippen zoomt in die Gegend, ab dort erscheinen die einzelnen Orte
+					m.on('click', 'uebersicht', (e) => {
+						const f = e.features?.[0] as MapGeoJSONFeature | undefined;
+						if (!f) return;
+						m.easeTo({ center: (f.geometry as GeoJSON.Point).coordinates as [number, number], zoom: Math.max(MIN_ZOOM_DATA + 1, m.getZoom() + 2) });
+					});
 					m.on('click', 'cluster', async (e) => {
 						const f = e.features?.[0] as MapGeoJSONFeature | undefined;
 						if (!f) return;
@@ -446,7 +505,7 @@
 						onSelect?.({ id: p.id, k: p.k, n: p.n, f: p.f ?? '', lon, lat });
 					});
 					m.on('click', (e) => {
-						const hits = m.queryRenderedFeatures(e.point, { layers: ['orte', 'cluster', 'extra', 'linien'] });
+						const hits = m.queryRenderedFeatures(e.point, { layers: ['orte', 'cluster', 'extra', 'linien', 'uebersicht'] });
 						if (!hits.length) onSelect?.(null);
 					});
 					// F-035: Zusatzpunkte (Einrichtungen, Termine, Marktplatz, Hilfe) antippbar – war nie angeschlossen
@@ -454,7 +513,7 @@
 						const f = e.features?.[0] as MapGeoJSONFeature | undefined;
 						if (f) onExtra?.(String((f.properties as Record<string, string>).id));
 					});
-					for (const l of ['orte', 'cluster', 'extra']) {
+					for (const l of ['orte', 'cluster', 'extra', 'uebersicht']) {
 						m.on('mouseenter', l, () => (m.getCanvas().style.cursor = 'pointer'));
 						m.on('mouseleave', l, () => (m.getCanvas().style.cursor = ''));
 					}

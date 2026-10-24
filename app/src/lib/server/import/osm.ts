@@ -10,7 +10,7 @@ export const OVERPASS_DEFAULT = [
 	'https://overpass.kumi.systems/api/interpreter'
 ];
 
-export type Selector = 'spielplatz' | 'toilette' | 'wickeln' | 'indoor' | 'ausflug' | 'familiencafe' | 'stillen' | 'bibliothek' | 'familienzentrum';
+export type Selector = 'spielplatz' | 'toilette' | 'wickeln' | 'indoor' | 'ausflug' | 'familiencafe' | 'stillen' | 'bibliothek' | 'familienzentrum' | 'unterkunft';
 
 const NOT_PRIVATE = '["access"!~"^(private|no)$"]';
 
@@ -19,6 +19,24 @@ export const INDOOR_NAMES = /indoor.?spiel|spielparadies|kinderland|tobeland|kin
 const INDOOR_SKIP_LEISURE = /^(playground|park|pitch|garden|indoor_play|nature_reserve|stadium|track)$/;
 
 const notPrivate = (t: Record<string, string>) => !/^(private|no)$/.test(t.access ?? '');
+
+/** Altes OSM-Merkmal „diaper“ (vor changing_table) – noch tausendfach in den Daten: yes, room, bench oder Anzahl. */
+export const DIAPER_YES = /^(yes|room|bench|[1-9][0-9]?)$/;
+const hasChanging = (t: Record<string, string>) => t.changing_table === 'yes' || DIAPER_YES.test(t.diaper ?? '');
+
+/**
+ * Elterncafés & Co. über den Namen (Jan 24.10.): „Elterncafé“, „Kindercafé“, „Familien-Café“, „Spielcafé“, „Krabbelcafé“,
+ * „Eltern-Kind-Café“, „Kids Café“ … – nicht an Kitas/Schulen und keine Brettspiel-/Internetcafés.
+ */
+export const FAMILY_CAFE_NAMES = /(eltern|kind|kinder|familien|spiel|krabbel|kids?|baby|mama|mütter|muetter)[ -]*(und[ -]*kind[ -]*)?caf[eé]/i;
+const CAFE_SKIP_NAMES = /brett|würfel|wuerfel|board|gaming|e-?sport|internet|lan-/i;
+const CAFE_SKIP_AMENITY = /^(kindergarten|school|childcare|college|university|place_of_worship)$/;
+
+/** Unterkünfte für Familien (Jan 24.10.): Jugendherbergen, Familien-/Kinderhotels, Ferienhöfe, Campingplätze. */
+export const FAMILY_STAY_NAMES = /familien.?hotel|kinder.?hotel|familotel|baby.?(und.?)?kinder.?hotel|familien.?resort|familien.?ferien|ferienhof|urlaub auf dem (bauern)?hof|bauernhof.?urlaub|familienherberge/i;
+const HOSTEL_DJH = /jugendherberge|jugendg(ä|ae)stehaus|familienherberge/i;
+const STAY_TOURISM = /^(hotel|guest_house|apartment|chalet|hostel|motel)$/;
+const CAMP_SKIP_NAMES = /dauercamp|fkk|naturist/i;
 
 /**
  * Dieselbe Auswahl wie die Overpass-Abfragen, aber auf einzelne Objekte angewandt – für den Abruf aus der
@@ -31,7 +49,7 @@ export function matches(selector: Selector, t: Record<string, string>, type: Osm
 		case 'toilette':
 			return t.amenity === 'toilets' && notPrivate(t);
 		case 'wickeln':
-			return t.changing_table === 'yes' && t.amenity !== 'toilets' && notPrivate(t);
+			return hasChanging(t) && t.amenity !== 'toilets' && notPrivate(t);
 		case 'indoor':
 			if (!notPrivate(t)) return false;
 			if (t.leisure === 'indoor_play' || t.leisure === 'trampoline_park' || (t.leisure === 'playground' && t.indoor === 'yes')) return true;
@@ -48,14 +66,35 @@ export function matches(selector: Selector, t: Record<string, string>, type: Osm
 				(t.leisure === 'sports_centre' && /climbing/.test(t.sport ?? '') && notPrivate(t))
 			);
 		case 'familiencafe':
-			return /^(cafe|restaurant|ice_cream)$/.test(t.amenity ?? '') && /^(yes|designated|limited)$/.test(t.kids_area ?? '') && notPrivate(t);
+			if (!notPrivate(t)) return false;
+			if (/^(cafe|restaurant|ice_cream)$/.test(t.amenity ?? '') && /^(yes|designated|limited)$/.test(t.kids_area ?? '')) return true;
+			return FAMILY_CAFE_NAMES.test(t.name ?? '') && !CAFE_SKIP_NAMES.test(t.name ?? '') && !CAFE_SKIP_AMENITY.test(t.amenity ?? '') && !t.shop;
 		case 'stillen':
 			return /^(yes|room)$/.test(t.baby_feeding ?? '') && notPrivate(t);
 		case 'bibliothek':
 			return t.amenity === 'library' && notPrivate(t);
 		case 'familienzentrum':
 			return t.community_centre === 'family_centre' && notPrivate(t);
+		case 'unterkunft':
+			return stayType(t) !== null;
 	}
+}
+
+/** Art der Familienunterkunft oder null (nicht übernehmen). */
+export function stayType(t: Record<string, string>): string | null {
+	if (!notPrivate(t)) return null;
+	const name = t.name ?? '';
+	if (t.tourism === 'camp_site') {
+		if (t.group_only === 'yes' || t.backcountry === 'yes' || /^(yes|designated|obligatory|customary)$/.test(t.nudism ?? '') || CAMP_SKIP_NAMES.test(name)) return null;
+		return 'Campingplatz';
+	}
+	if (!STAY_TOURISM.test(t.tourism ?? '')) return null;
+	if (HOSTEL_DJH.test(name) || /jugendherberg|\bdjh\b|deutsches jugendherbergswerk/i.test(`${t.operator ?? ''} ${t.brand ?? ''}`.trim()))
+		return /familienherberge/i.test(name) ? 'Familienherberge' : 'Jugendherberge';
+	if (/ferienhof|urlaub auf dem (bauern)?hof|bauernhof.?urlaub/i.test(name)) return 'Ferienhof';
+	if (FAMILY_STAY_NAMES.test(name)) return 'Familienhotel';
+	if (/^(hotel|guest_house|chalet)$/.test(t.tourism ?? '') && /^(yes|designated)$/.test(t.kids_area ?? '')) return 'Familienfreundliches Hotel';
+	return null;
 }
 
 /** Overpass-Abfragen je Auswahl. Spielplätze mit Umriss und Spielgeräten, alles andere als Punkt. */
@@ -69,7 +108,7 @@ export function buildQuery(selector: Selector, iso: string): string {
 		case 'toilette':
 			return `${head}${area}nwr["amenity"="toilets"]${NOT_PRIVATE}(area.a);out center qt;`;
 		case 'wickeln':
-			return `${head}${area}nwr["changing_table"="yes"]["amenity"!="toilets"]${NOT_PRIVATE}(area.a);out center qt;`;
+			return `${head}${area}(nwr["changing_table"="yes"]["amenity"!="toilets"]${NOT_PRIVATE}(area.a);nwr["diaper"~"${DIAPER_YES.source}"]["amenity"!="toilets"]${NOT_PRIVATE}(area.a););out center qt;`;
 		case 'indoor':
 			// F-021: auch Spielplätze „drinnen“, Trampolinhallen und typische Namen an Freizeit-/Ausflugsobjekten
 			return `${head}${area}(nwr["leisure"="indoor_play"]${NOT_PRIVATE}(area.a);nwr["leisure"="playground"]["indoor"="yes"]${NOT_PRIVATE}(area.a);nwr["leisure"="trampoline_park"]${NOT_PRIVATE}(area.a);nwr["leisure"]["leisure"!~"^(playground|park|pitch|garden|indoor_play|nature_reserve|stadium|track)$"]["name"~"${INDOOR_NAMES.source}",i]${NOT_PRIVATE}(area.a);nwr["tourism"="attraction"]["name"~"${INDOOR_NAMES.source}",i]${NOT_PRIVATE}(area.a););out center qt;`;
@@ -77,13 +116,15 @@ export function buildQuery(selector: Selector, iso: string): string {
 			return `${head}${area}(nwr["tourism"="zoo"](area.a);nwr["tourism"="theme_park"](area.a);nwr["leisure"="water_park"](area.a);nwr["leisure"="sports_centre"]["sport"~"swimming"](area.a);nwr["amenity"="public_bath"](area.a);nwr["leisure"="miniature_golf"]${NOT_PRIVATE}(area.a);nwr["leisure"="sports_centre"]["sport"~"climbing"]${NOT_PRIVATE}(area.a););out center qt;`;
 		// F-018: Merkmale laut OSM-Wiki (kids_area, baby_feeding, community_centre=family_centre)
 		case 'familiencafe':
-			return `${head}${area}nwr["amenity"~"^(cafe|restaurant|ice_cream)$"]["kids_area"~"^(yes|designated|limited)$"]${NOT_PRIVATE}(area.a);out center qt;`;
+			return `${head}${area}(nwr["amenity"~"^(cafe|restaurant|ice_cream)$"]["kids_area"~"^(yes|designated|limited)$"]${NOT_PRIVATE}(area.a);nwr["name"~"${FAMILY_CAFE_NAMES.source}",i]["shop"!~"."]${NOT_PRIVATE}(area.a););out center qt;`;
 		case 'stillen':
 			return `${head}${area}nwr["baby_feeding"~"^(yes|room)$"]${NOT_PRIVATE}(area.a);out center qt;`;
 		case 'bibliothek':
 			return `${head}${area}nwr["amenity"="library"]${NOT_PRIVATE}(area.a);out center qt;`;
 		case 'familienzentrum':
 			return `${head}${area}nwr["community_centre"="family_centre"]${NOT_PRIVATE}(area.a);out center qt;`;
+		case 'unterkunft':
+			return `${head}${area}(nwr["tourism"="camp_site"]${NOT_PRIVATE}(area.a);nwr["tourism"~"^(hotel|guest_house|apartment|chalet|hostel|motel)$"]["name"~"jugendherberge|jugendg(ä|ae)stehaus|${FAMILY_STAY_NAMES.source}",i]${NOT_PRIVATE}(area.a);nwr["tourism"="hostel"]["operator"~"jugendherberg|DJH",i](area.a);nwr["tourism"~"^(hotel|guest_house|chalet)$"]["kids_area"~"^(yes|designated)$"](area.a););out center qt;`;
 	}
 }
 
@@ -133,7 +174,7 @@ function common(t: Record<string, string>): Features {
 	const rs = yesNo(t.wheelchair);
 	if (rs !== undefined) f.rollstuhl = rs;
 	if (t.access === 'customers') f.zugang = 'kundschaft';
-	const ct = yesNo(t.changing_table);
+	const ct = yesNo(t.changing_table) ?? (DIAPER_YES.test(t.diaper ?? '') ? true : t.diaper === 'no' ? false : undefined);
 	if (ct !== undefined) f.wickeltisch = ct;
 	if (t['changing_table:location'] && CHANGING_LOCATIONS[t['changing_table:location']]) f.wickeltisch_ort = CHANGING_LOCATIONS[t['changing_table:location']];
 	if (t.fee === 'no') f.kostenlos = true;
@@ -322,7 +363,8 @@ export function toRecords(selector: Selector, elements: OsmElement[]): ImportRec
 				r.features.einrichtung = t.tourism === 'zoo' ? 'Zoo / Tierpark' : t.leisure === 'miniature_golf' ? 'Minigolf' : climbing ? 'Kletterhalle' : 'Freizeitpark';
 		} else if (selector === 'familiencafe') {
 			const f = familyExtras(t, common(t));
-			f.spielecke = true;
+			// Spielecke nur, wenn OSM sie nennt (Treffer über den Namen „Elterncafé“ sagen darüber nichts)
+			if (/^(yes|designated|limited)$/.test(t.kids_area ?? '')) f.spielecke = true;
 			const typ = EINRICHTUNG[t.amenity];
 			if (typ) f.einrichtung = typ;
 			r = base(e, 'familiencafe', f, t.name ?? null);
@@ -337,6 +379,13 @@ export function toRecords(selector: Selector, elements: OsmElement[]): ImportRec
 			r = base(e, 'bibliothek', familyExtras(t, common(t)), t.name ?? null);
 		} else if (selector === 'familienzentrum') {
 			r = base(e, 'familienzentrum', familyExtras(t, common(t)), t.name ?? null);
+		} else if (selector === 'unterkunft') {
+			const typ = stayType(t);
+			if (!typ) continue;
+			const f = familyExtras(t, common(t));
+			f.einrichtung = typ;
+			if (t.playground === 'yes' || t['camp_site:playground'] === 'yes') f.spielplatz_vorort = true;
+			r = base(e, 'unterkunft', f, t.name ?? null);
 		}
 		if (r) out.push(r);
 	}

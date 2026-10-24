@@ -18,19 +18,31 @@ const MAX_AGE_MS = 6 * 24 * 3600 * 1000; // wöchentlich neu, mit etwas Luft
 const MIN_FREE_BYTES = 12 * 1024 ** 3; // Download + Zwischenstände
 
 /**
- * Alles, was irgendeine Quelle braucht – ein einziger Filterlauf über ganz Deutschland.
- * Namen (F-021) als Teilwort-Suche; osmium unterscheidet Groß-/Kleinschreibung, daher beide Schreibweisen.
+ * Namen als Teilwort-Suche (F-021, D-084). Wichtig: osmium wertet Platzhalter (*…*) nur aus, wenn je Ausdruck GENAU EIN Wert
+ * steht – in einer Komma-Liste werden sie stillschweigend nicht gefunden (geprüft mit osmium 1.16, 24.10.2026). Darum ein
+ * Ausdruck je Teilwort. osmium unterscheidet Groß-/Kleinschreibung, daher beide Schreibweisen.
  */
+export const NAME_PARTS = [
+	// Indoorspielplätze (F-021)
+	'*ndoor*', '*NDOOR*', '*paradies*', '*Paradies*', '*inderland*', '*obeland*', '*inderwelt*', '*pielscheune*', '*pielhalle*', '*ndoorpark*', '*pielarena*',
+	// Elterncafés & Co. (FAMILY_CAFE_NAMES, D-084)
+	'*lterncaf*', '*ltern-Caf*', '*ltern Caf*', '*ltern-caf*', '*indercaf*', '*inder-Caf*', '*inder Caf*', '*inder-caf*', '*indcaf*', '*ind-Caf*', '*ind Caf*',
+	'*amiliencaf*', '*amilien-Caf*', '*amilien Caf*', '*pielcaf*', '*piel-Caf*', '*piel Caf*', '*rabbelcaf*', '*rabbel-Caf*', '*rabbel Caf*',
+	'*idscaf*', '*ids-Caf*', '*ids Caf*', '*abycaf*', '*aby-Caf*', '*aby Caf*', '*amacaf*', '*ama-Caf*', '*üttercaf*', '*ütter-Caf*'
+];
+
+/** Alles, was irgendeine Quelle braucht – ein einziger Filterlauf über ganz Deutschland. */
 export const FILTERS = [
 	'n/playground',
 	'nwr/leisure=playground,indoor_play,water_park,miniature_golf,sports_centre,trampoline_park,amusement_arcade',
 	'nwr/amenity=toilets,public_bath,library',
 	'nwr/kids_area',
 	'nwr/changing_table=yes',
-	'nwr/tourism=zoo,theme_park,attraction',
+	'nwr/diaper',
+	'nwr/tourism=zoo,theme_park,attraction,camp_site,hostel,hotel,guest_house,apartment,chalet,motel',
 	'nwr/baby_feeding',
 	'nwr/community_centre=family_centre',
-	'nwr/name=*ndoor*,*NDOOR*,*paradies*,*Paradies*,*inderland*,*obeland*,*inderwelt*,*pielscheune*,*pielhalle*,*ndoorpark*,*pielarena*'
+	...NAME_PARTS.map((p) => `nwr/name=${p}`)
 ];
 
 export function osmDir(): string {

@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
-import { cleanTags, createPost, PostError, userLand, type PostKind } from '$lib/server/community/posts';
+import { cleanTags, createPost, isTeam, PostError, userLand, type PostKind } from '$lib/server/community/posts';
 import { MediaError } from '$lib/server/community/media';
 import { rateLimit } from '$lib/server/ratelimit';
 import { audit } from '$lib/server/audit';
@@ -24,12 +24,13 @@ export const load: PageServerLoad = async (event) => {
 	// Teilen-Menü des Handys (PWA share_target): url/text/title
 	const shared = [q.get('url'), q.get('text')].filter(Boolean).join(' ');
 	const sharedUrl = /https?:\/\/\S+/.exec(shared)?.[0] ?? null;
-	const land = await userLand(sql, user.id);
+	const [land, team] = await Promise.all([userLand(sql, user.id), isTeam(sql, user.id)]);
 	const { getAffiliate } = await import('$lib/server/affiliate');
 	const aff = await getAffiliate(sql);
 	return {
 		affiliate: aff.enabled && !!aff.amazon_tag,
 		land,
+		team,
 		topics,
 		groups,
 		prefill: {
@@ -37,7 +38,8 @@ export const load: PageServerLoad = async (event) => {
 			group: groups.find((g) => g.slug === q.get('gruppe'))?.id ?? '',
 			region: region ?? profileRegion ?? null,
 			place: place ?? null,
-			kind: sharedUrl ? 'link' : (q.get('art') ?? 'frage'),
+			kind: sharedUrl ? 'link' : (q.get('art') ?? (q.get('bereich') === 'team' && team ? 'beitrag' : 'frage')),
+			sichtbar: q.get('bereich') === 'team' && team ? 'team' : q.get('bereich') === 'de' ? 'de' : '',
 			title: (q.get('title') ?? '').slice(0, 160),
 			link: sharedUrl,
 			body: sharedUrl ? (q.get('text') ?? '').replace(sharedUrl, '').trim() : ''
@@ -62,7 +64,7 @@ export const actions: Actions = {
 			link: String(f.get('link') ?? ''),
 			tags: String(f.get('tags') ?? ''),
 			poll: f.getAll('poll').map(String),
-			sichtbar: f.get('sichtbar') === 'de' ? 'de' : 'land'
+			sichtbar: f.get('sichtbar') === 'de' ? 'de' : f.get('sichtbar') === 'team' ? 'team' : 'land'
 		};
 		if (total > 24 * 1024 * 1024) return fail(400, { error: 'Bilder zusammen höchstens 24 MB.', values });
 		const sql = db();
@@ -76,6 +78,7 @@ export const actions: Actions = {
 				groupId: isUuid(values.group) ? values.group : null,
 				placeId: isUuid(String(f.get('place') ?? '')) ? String(f.get('place')) : null,
 				landOnly: values.sichtbar === 'land' && f.has('sichtbar'),
+				team: values.sichtbar === 'team',
 				labels: f.getAll('labels').map(String),
 				tags: cleanTags(values.tags),
 				linkUrl: values.link.trim() || null,

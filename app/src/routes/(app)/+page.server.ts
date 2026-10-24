@@ -4,6 +4,7 @@ import { appUrl } from '$lib/server/config';
 import { mailConfigured } from '$lib/server/mailer';
 import { db } from '$lib/server/db';
 import { placeCounts } from '$lib/server/places';
+import { overview as warnOverview } from '$lib/server/warnings/store';
 
 // Echter QR-Code (führt auf diese Plattform) für die Beispiel-Familien-ID auf der Startseite.
 let cached: string | null = null;
@@ -24,6 +25,20 @@ async function stats() {
 	return statCache;
 }
 
+// Unwetterwarnungen auf der Startseite (Jan 24.10.): was gerade in Deutschland aktiv ist, 2 Minuten zwischengespeichert
+let warnCache: { at: number; v: { severe: number; kreise: number; markant: number } } | null = null;
+async function warnings() {
+	if (warnCache && Date.now() - warnCache.at < 2 * 60 * 1000) return warnCache.v;
+	try {
+		const o = await warnOverview(db());
+		const g = (n: number) => o.byLevel[n] ?? { n: 0, kreise: 0 };
+		warnCache = { at: Date.now(), v: { severe: g(3).n + g(4).n, kreise: g(3).kreise + g(4).kreise, markant: g(2).n } };
+	} catch {
+		warnCache = { at: Date.now(), v: { severe: 0, kreise: 0, markant: 0 } };
+	}
+	return warnCache.v;
+}
+
 export const load: PageServerLoad = async ({ url }) => {
 	if (!cached) {
 		cached = await QRCode.toString(appUrl() + '/', {
@@ -33,6 +48,6 @@ export const load: PageServerLoad = async ({ url }) => {
 			color: { dark: '#0f2238', light: '#00000000' }
 		});
 	}
-	const { counts, stand } = await stats();
-	return { qr: cached, mailOpen: mailConfigured(), deleted: url.searchParams.has('geloescht'), counts, stand };
+	const [{ counts }, warn] = await Promise.all([stats(), warnings()]);
+	return { qr: cached, mailOpen: mailConfigured(), deleted: url.searchParams.has('geloescht'), counts, warn };
 };

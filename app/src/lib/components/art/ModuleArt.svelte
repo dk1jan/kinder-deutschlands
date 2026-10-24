@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Kleine geometrische Szenen für die Bereiche. Strich = currentColor (passt sich der Postkarte an).
-	let { name }: { name: 'karte' | 'treffen' | 'community' | 'radar' | 'markt' | 'nachrichten' } = $props();
+	let { name }: { name: 'karte' | 'treffen' | 'community' | 'radar' | 'markt' | 'nachrichten' | 'warnung' } = $props();
 </script>
 
 <svg viewBox="0 0 200 140" class="art" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
@@ -11,6 +11,13 @@
 		<path d="M150 26 C134 26 126 38 126 48 C126 64 150 84 150 84 C150 84 174 64 174 48 C174 38 166 26 150 26 Z" fill="var(--yellow)" stroke="var(--navy)" />
 		<circle cx="150" cy="48" r="7" fill="var(--navy)" stroke="none" />
 		<path d="M36 74 L36 58 L58 58 L74 82" />
+	{:else if name === 'warnung'}
+		<path d="M44 74 C30 74 22 64 24 54 C26 44 36 40 44 42 C48 28 62 22 76 26 C88 18 108 22 112 38 C126 36 136 46 134 58 C134 68 126 74 116 74 Z" fill="var(--white)" fill-opacity="0.85" />
+		<path d="M78 74 L66 98 H82 L72 124 L102 90 H86 L96 74" fill="var(--yellow)" stroke="var(--navy)" />
+		<path d="M30 92 L26 104 M48 96 L44 108 M120 92 L116 104 M108 104 L104 116" opacity="0.7" />
+		<rect x="140" y="40" width="40" height="72" rx="8" fill="var(--white)" fill-opacity="0.25" />
+		<path d="M152 74 V68 A8 8 0 0 1 168 68 V74 L171 78 H149 Z" fill="var(--yellow)" stroke="var(--navy)" stroke-width="3.5" />
+		<path d="M156 82 A4 4 0 0 0 164 82" stroke-width="3.5" />
 	{:else if name === 'treffen'}
 		<circle cx="100" cy="72" r="46" fill="var(--white)" fill-opacity="0.5" />
 		<path d="M100 72 L100 42 M100 72 L124 84" />

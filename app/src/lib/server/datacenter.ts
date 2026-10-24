@@ -7,6 +7,7 @@ import { assignRegions } from './import/engine';
 import { notifyPlaceFollowers } from './follows';
 import { notify } from './community/posts';
 import { sameName } from './import/overture';
+import { LAND_CODES, LAND_ISOS } from '$lib/laender';
 
 export class DataError extends Error {}
 
@@ -37,8 +38,9 @@ export async function sourceDetail(sql: Sql, key: string) {
 	return { src, runs };
 }
 
-const AREAS = ['DE-HB', 'DE-NI'];
-const LAENDER = ['03', '04'];
+// Alle 16 Länder (vorher nur HB/NI – Speichern hätte bundesweite Quellen auf zwei Länder verkleinert)
+const AREAS = LAND_ISOS;
+const LAENDER = LAND_CODES;
 
 export async function updateSource(sql: Sql, key: string, f: FormData, actorId: string) {
 	const [src] = await sql`select * from data_sources where key = ${key}`;

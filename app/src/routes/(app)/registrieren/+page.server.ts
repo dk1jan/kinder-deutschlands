@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	default: async ({ request, getClientAddress }) => {
-		if (!mailConfigured()) return fail(503, { error: 'Die Registrierung ist noch nicht geöffnet.' });
+		if (!mailConfigured()) return fail(503, { error: 'Die Registrierung ist gerade nicht möglich.' });
 		const ip = getClientAddress();
 		if (!rateLimit(`register:${ip}`, 5, 3_600_000)) {
 			return fail(429, { error: 'Zu viele Registrierungen von diesem Anschluss. Bitte später erneut versuchen.' });

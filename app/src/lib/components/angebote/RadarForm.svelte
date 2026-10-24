@@ -20,7 +20,7 @@
 </script>
 
 <form method="POST" action="?/speichern" class="rf">
-	<div class="field"><label for="name">Name des Profils</label><input id="name" name="name" required maxlength="80" value={v('name')} placeholder="z. B. Bremen-Findorff, Kita & Freizeit" /></div>
+	<div class="field"><label for="name">Name des Profils</label><input id="name" name="name" required maxlength="80" value={v('name')} placeholder="z. B. Unser Viertel, Kita & Freizeit" /></div>
 
 	<fieldset><legend>Regionen <span class="muted">(leer = überall; Unterregionen sind enthalten)</span></legend>
 		{#each regions as r, i}<RegionPicker id="reg-{i}" name="regions" code={r.code} label={r.name} />{/each}

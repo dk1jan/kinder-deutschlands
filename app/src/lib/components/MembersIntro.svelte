@@ -1,16 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	// Ehrlicher Zustand für Bereiche im Bau: was kommt, wann, welches Modul. Keine Attrappen, keine erfundenen Inhalte.
+	// Vorstellung eines Bereichs für Gäste (nur für Mitglieder nutzbar): was es hier gibt. Keine Attrappen, keine erfundenen Inhalte.
 	let {
 		title,
-		module,
 		stage,
 		text,
 		points = [],
 		theme = 'sea',
 		art
-	}: { title: string; module: string; stage: string; text: string; points?: string[]; theme?: 'sea' | 'sky' | 'yellow' | 'red'; art?: Snippet } =
-		$props();
+	}: { title: string; stage: string; text: string; points?: string[]; theme?: 'sea' | 'sky' | 'yellow' | 'red'; art?: Snippet } = $props();
 </script>
 
 <section class="planned" aria-labelledby="planned-title">
@@ -18,16 +16,15 @@
 		{@render art?.()}
 	</div>
 	<div class="container narrow body">
-		<span class="tag">In Arbeit, {stage}</span>
+		<span class="tag">Für Mitglieder · {stage}</span>
 		<h1 id="planned-title">{title}</h1>
 		<p class="lead">{text}</p>
 		{#if points.length}
-			<h2 class="sub">Was hier kommt</h2>
+			<h2 class="sub">Das kannst du hier</h2>
 			<ul class="points">
 				{#each points as p}<li>{p}</li>{/each}
 			</ul>
 		{/if}
-		<p class="module muted">Modul {module}. Den aktuellen Stand gibt es auf der <a href="/">Startseite</a>.</p>
 	</div>
 </section>
 
@@ -94,10 +91,6 @@
 		height: 14px;
 		background: var(--yellow);
 		clip-path: polygon(0 0, 100% 50%, 0 100%);
-	}
-	.module {
-		margin-top: var(--sp-6);
-		font-size: var(--fs-s);
 	}
 	@media (min-width: 900px) {
 		.stage-art {

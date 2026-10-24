@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Planned from '$lib/components/Planned.svelte';
+	import MembersIntro from '$lib/components/MembersIntro.svelte';
 	import ModuleArt from '$lib/components/art/ModuleArt.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import ChatList from '$lib/components/chat/ChatList.svelte';
@@ -10,9 +10,8 @@
 <svelte:head><title>Nachrichten – Kinder Deutschlands</title></svelte:head>
 
 {#if !data.member}
-	<Planned
+	<MembersIntro
 		title="Kontakte und Nachrichten"
-		module="M01, M02, M06"
 		stage="Kontakte, Chats, Anrufe"
 		theme="sea"
 		text="Familien über die Familien-ID finden, Kontaktanfragen annehmen, schreiben und anrufen – ohne Telefonnummer oder E-Mail weiterzugeben."
@@ -23,7 +22,7 @@
 		]}
 	>
 		{#snippet art()}<ModuleArt name="nachrichten" />{/snippet}
-	</Planned>
+	</MembersIntro>
 	<div class="container narrow guest-cta">
 		<a class="btn" href="/anmelden?weiter=%2Fnachrichten">Anmelden</a>
 	</div>

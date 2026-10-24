@@ -39,7 +39,7 @@
 		<form method="POST" action="?/speichern" class="grid">
 			{#if g}<input type="hidden" name="id" value={g.id} />{/if}
 			<div class="field"><label for="name">Name</label><input id="name" name="name" required value={g?.name ?? ''} maxlength="80" /></div>
-			<div class="field"><label for="slug">Kurzname (Adresse)</label><input id="slug" name="slug" required pattern="[a-z0-9-]{'{'}3,60{'}'}" value={g?.slug ?? ''} placeholder="alleinerziehende-bremen" /></div>
+			<div class="field"><label for="slug">Kurzname (Adresse)</label><input id="slug" name="slug" required pattern="[a-z0-9-]{'{'}3,60{'}'}" value={g?.slug ?? ''} placeholder="alleinerziehende" /></div>
 			<div class="field"><label for="kind">Art</label>
 				<select id="kind" name="kind">{#each Object.entries(GROUP_KIND_UI) as [k, v]}<option value={k} selected={(g?.kind ?? 'offen') === k}>{v.label} – {v.text}</option>{/each}</select></div>
 			<div class="field"><label for="topic">Thema</label>

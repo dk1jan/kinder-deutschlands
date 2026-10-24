@@ -142,10 +142,18 @@ async function deliver(sql: Sql, sub: { id: string; endpoint: string; p256dh: st
  * Mitteilung als Push (nie mit Inhalt). Art bestimmt die Einstellung: community (Antworten, Moderation),
  * erinnerung (selbst gesetzte Erinnerungen), radar (Radar-Profil mit Push), force (dringende Hinweise, vorher geprüft).
  */
-export async function pushNotice(sql: Sql, userId: string, link: string | null, opts: { force?: boolean; body?: string; kind?: 'community' | 'erinnerung' | 'radar' | 'markt' } = {}) {
+export async function pushNotice(
+	sql: Sql,
+	userId: string,
+	link: string | null,
+	opts: { force?: boolean; body?: string; kind?: 'community' | 'erinnerung' | 'radar' | 'markt' | 'wichtig' | 'warnung'; ignoreQuiet?: boolean } = {}
+) {
 	const s = await getSettings(sql, userId);
-	const allowed = opts.force || (opts.kind === 'erinnerung' ? s.push_reminders : opts.kind === 'radar' ? true : opts.kind === 'markt' ? s.push_market : s.push_community);
-	if (!allowed || inQuietHours(s, berlinMinutes())) return;
+	// wichtig = Rundnachrichten des Teams mit Push, wie dringende Hinweise (push_urgent); warnung = eigenes Warn-Abo mit Push (vorher geprüft)
+	const allowed =
+		opts.force ||
+		(opts.kind === 'erinnerung' ? s.push_reminders : opts.kind === 'radar' ? true : opts.kind === 'markt' ? s.push_market : opts.kind === 'wichtig' ? s.push_urgent : s.push_community);
+	if (!allowed || (!opts.ignoreQuiet && inQuietHours(s, berlinMinutes()))) return;
 	const subs = await sql`select id, endpoint, p256dh, auth from push_subscriptions where user_id = ${userId}`;
 	for (const sub of subs) await deliver(sql, sub as never, { t: 'mitteilung', title: 'Kinder Deutschlands', body: opts.body ?? 'Neue Mitteilung', url: link || '/profil/mitteilungen', tag: opts.kind ?? 'mitteilung' });
 }

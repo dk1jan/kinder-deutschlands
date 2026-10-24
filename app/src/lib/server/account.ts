@@ -73,6 +73,8 @@ export async function exportAccount(sql: Sql, userId: string) {
 			from invitations i where i.organizer_id = ${userId}`,
 		familie: await sql`select kind, status, created_at, confirmed_at from family_links where ${userId} in (user_a, user_b)`,
 		hinweise_vorgeschlagen: await sql`select kind, title, body, region_code, status, created_at from notices where created_by = ${userId} and source_kind = 'mitglied' and status <> 'entfernt'`,
+		warnungen_abos: await sql`select s.kreis_code, r.name as kreis, s.label, s.min_level, s.push, s.created_at from warning_subscriptions s left join regions r on r.code = s.kreis_code where s.user_id = ${userId}`,
+		rundnachrichten_erhalten: await sql`select b.title, b.created_at, r.read_at from broadcast_recipients r join broadcasts b on b.id = r.broadcast_id where r.user_id = ${userId}`,
 		kinderwagenrouten: await sql`select title, description, distance_m, status, created_at from stroller_routes where created_by = ${userId} and status <> 'entfernt'`,
 		routen_erfahrungen: await sql`select r.title, x.kind, x.text, x.created_at from route_reports x join stroller_routes r on r.id = x.route_id where x.user_id = ${userId}`,
 		einladungen_antworten: await sql`select i.title, i.starts_at, r.name, r.answer, r.kids, r.adults, r.note, r.updated_at from invitation_rsvps r join invitations i on i.id = r.invitation_id where r.user_id = ${userId}`,
@@ -158,6 +160,11 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`update stroller_routes set status = 'entfernt', description = '', created_by = null where created_by = ${userId} and origin = 'mitglied'`;
 		await tx`update stroller_routes set created_by = null where created_by = ${userId}`;
 		await tx`delete from route_reports where user_id = ${userId}`;
+		// Warn-Abos, zugestellte Warnungen und Rundnachrichten (Jan 24.10.)
+		await tx`delete from warning_subscriptions where user_id = ${userId}`;
+		await tx`delete from warning_deliveries where user_id = ${userId}`;
+		await tx`delete from broadcast_recipients where user_id = ${userId}`;
+		await tx`update broadcasts set created_by = null where created_by = ${userId}`;
 		await tx`update approvals set status = 'zurueckgezogen' where requested_by = ${userId} and status = 'offen'`;
 		await tx`update role_assignments set revoked_at = now() where user_id = ${userId} and revoked_at is null`;
 		await tx`update users set status = 'deleted', email = ${'geloescht+' + userId + '@invalid'}, password_hash = '!',

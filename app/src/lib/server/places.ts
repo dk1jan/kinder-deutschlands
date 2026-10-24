@@ -69,6 +69,37 @@ export async function placesInBbox(sql: Sql, b: Bbox, filterKeys: string[], requ
 	};
 }
 
+/** Rastergröße der Deutschland-Übersicht (Grad) je Zoomstufe. */
+export function gridCell(zoom: number): number {
+	return zoom < 5.5 ? 0.6 : zoom < 6.5 ? 0.3 : zoom < 7.5 ? 0.15 : 0.08;
+}
+
+// Übersicht ganz Deutschland (Jan 24.10.): weit herausgezoomt Kreise mit Anzahl statt Einzelpunkten – gleiche Filter wie
+// die Karte. Ergebnis je Filter und Raster 10 Minuten im Speicher (das ganze Land, keine Personen, nur Zählungen von Orten).
+const gridCache = new Map<string, { at: number; v: { cells: [number, number, number][]; total: number } }>();
+export async function placesGrid(sql: Sql, filterKeys: string[], requireFeatures: string[], cell: number) {
+	const keys = [...filterKeys].sort();
+	const feats = requireFeatures.filter((f) => f in FEATURES).sort();
+	const ck = `${keys.join(',')}|${feats.join(',')}|${cell}`;
+	const hit = gridCache.get(ck);
+	if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.v;
+	const { kinds, orFeature } = resolveFilters(keys.length ? keys : KIND_FILTERS.map((f) => f.key));
+	const rows = await sql`
+		select avg(ST_X(p.location))::float8 as lon, avg(ST_Y(p.location))::float8 as lat, count(*)::int as n
+		from places p
+		where p.status = 'aktiv'
+			and (p.kind = any(${kinds}::text[]) ${orFeature.length ? sql`or (${sql.unsafe(orFeature.map((f) => `(p.features->>'${f.replace(/[^a-z_]/g, '')}') = 'true'`).join(' or '))})` : sql``})
+			${feats.length ? sql`and p.features @> ${sql.json(Object.fromEntries(feats.map((f) => [f, true])) as never)}::jsonb` : sql``}
+		group by ST_SnapToGrid(p.location, ${cell}::float8)`;
+	const v = {
+		cells: rows.map((r) => [Math.round(r.lon * 1e4) / 1e4, Math.round(r.lat * 1e4) / 1e4, r.n as number] as [number, number, number]),
+		total: rows.reduce((a, r) => a + (r.n as number), 0)
+	};
+	if (gridCache.size > 200) gridCache.clear();
+	gridCache.set(ck, { at: Date.now(), v });
+	return v;
+}
+
 export async function searchPlaces(sql: Sql, q: string) {
 	const term = q.trim().slice(0, 80);
 	if (term.length < 2) return { places: [], regions: [] };
