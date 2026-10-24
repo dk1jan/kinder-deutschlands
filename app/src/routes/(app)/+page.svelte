@@ -84,7 +84,7 @@
 </script>
 
 <svelte:head>
-	<title>Kinder Deutschlands – Eltern finden Eltern</title>
+	<title>Kinder Deutschlands – Familien finden Familien</title>
 	<meta name="description" content="Geschütztes Familiennetzwerk für Eltern in ganz Deutschland: Kontakt über eine Familien-ID statt Telefonnummer, Familienkarte, Unwetterwarnungen, Treffen und Gruppen." />
 </svelte:head>
 
@@ -93,10 +93,11 @@
 	<div class="container hero-grid">
 		<div class="copy">
 			<span class="tag">Für Familien in ganz Deutschland.</span>
-			<h1 class="display">Eltern finden Eltern.</h1>
+			<h1 class="display">Familien finden Familien.</h1>
 			<p class="lead">
 				Kinder Deutschlands verbindet Familien in deiner Gegend. Mit einer eigenen Familien-ID statt Telefonnummer, einer
 				Karte voller Spielplätze und Familienorte und Gruppen, die geschützt bleiben.
+				Adresse und Telefonnummer bleiben bei dir – du bestimmst, wer was sieht.
 			</p>
 			{#if data.deleted}<Notice kind="ok" title="Konto gelöscht">Deine Daten wurden entfernt. Danke, dass du dabei warst.</Notice>{/if}
 			<div class="cta">

@@ -945,9 +945,9 @@ try {
 	{
 		// F-016: Menü mit drei Gruppen, Kopf zuerst, Übersicht unten
 		const b = r.body;
-		const hero = b.indexOf('Eltern finden Eltern.'), over = b.indexOf('Was es hier alles gibt.');
+		const hero = b.indexOf('Familien finden Familien.'), over = b.indexOf('Was es hier alles gibt.');
 		check(['menu-entdecken', 'menu-community', 'menu-wissen'].every((id) => b.includes(`id="${id}"`)) && b.includes('href="/mehr#wissen"') && b.includes('aria-label="Weitere Bereiche unter Entdecken"'), 'Menü: Aufklapper Entdecken, Community, Wissen');
-		check(hero > 0 && over > hero && /<h1[^>]*>Eltern finden Eltern\.<\/h1>/.test(b), 'Startseite (Gast): Kopf zuerst, Übersicht „Was es hier alles gibt“ darunter');
+		check(hero > 0 && over > hero && /<h1[^>]*>Familien finden Familien\.<\/h1>/.test(b), 'Startseite (Gast): Kopf zuerst, Übersicht „Was es hier alles gibt“ darunter');
 		check(!b.includes('>Startseite<'), 'Menü: kein eigener Punkt „Startseite“ (Entdecken = Startseite)');
 		check(b.includes('aria-labelledby="sheet-t"') && b.includes('Menü schließen'), 'Handy-Menü als Blatt vorhanden');
 	}
@@ -957,7 +957,7 @@ try {
 	check(r.body.includes('href="/marktplatz"') && !r.body.includes('href="/profil" aria-current'), 'Mitglied: Kacheln direkt verlinkt');
 	{
 		const b = r.body;
-		const hero = b.indexOf('Eltern finden Eltern.'), over = b.indexOf('Was es hier alles gibt.');
+		const hero = b.indexOf('Familien finden Familien.'), over = b.indexOf('Was es hier alles gibt.');
 		check(hero > 0 && over > hero && b.indexOf('href="/marktplatz"') > 0, 'Startseite (Mitglied): Kopf zuerst, keine Kacheln mehr ganz oben');
 	}
 

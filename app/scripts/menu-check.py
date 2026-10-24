@@ -7,7 +7,7 @@ Geprüft am Computer (1280 px): Entdecken führt zur Startseite, Pfeil klappt au
 zurück, Tastatur kommt in die Einträge, Maus darüber öffnet, Klick daneben schließt, „Wissen“ klappt auf statt zu
 springen, Eintrag führt zum Bereich und schließt. Am Handy (390 px): „Menü“ öffnet das Blatt mit allen Gruppen,
 Esc / Schließen / Tippen daneben / nach unten wischen schließen, Eintrag navigiert. Gäste: Mitgliederbereiche mit Schloss.
-Startseite: Kopf „Eltern finden Eltern.“ zuerst, Übersicht darunter. Ohne JavaScript: „Menü“ führt zu /mehr.
+Startseite: Kopf „Familien finden Familien.“ zuerst, Übersicht darunter. Ohne JavaScript: „Menü“ führt zu /mehr.
 """
 import hashlib, os, secrets, subprocess, sys, time, urllib.request
 import psycopg2
@@ -55,7 +55,7 @@ try:
         pg = ctx.new_page()
         pg.goto(BASE + '/', wait_until='networkidle')
         top = pg.locator('h1.display').bounding_box()
-        check(top is not None and top['y'] < 400, f"Startseite: Kopf „Eltern finden Eltern.“ oben sichtbar (y={top and round(top['y'])})")
+        check(top is not None and top['y'] < 400, f"Startseite: Kopf „Familien finden Familien.“ oben sichtbar (y={top and round(top['y'])})")
         over = pg.locator('#bereiche').bounding_box()
         check(over is not None and over['y'] > top['y'] + 300, 'Startseite: Übersicht „Was es hier alles gibt“ weiter unten')
         shot(pg, '1-startseite-computer.png')
@@ -92,7 +92,7 @@ try:
         pg.click('a[data-toggle="wissen"]')
         check(pg.url == url0 and pg.locator('#menu-wissen').is_visible(), '„Wissen“ klappt auf statt zu springen')
         lw = pg.locator('#menu-wissen strong').all_inner_texts()
-        check(lw == ['Hinweise & Fristen', 'Lebenslagen-Kompass', 'Familienradar'], f'Wissen: Einträge {lw}')
+        check(lw == ['Unwetterwarnungen', 'Hinweise & Fristen', 'Lebenslagen-Kompass', 'Familienradar'], f'Wissen: Einträge {lw}')
         shot(pg, '4-menue-wissen.png')
         pg.mouse.click(640, 700)
         check(pg.locator('#menu-wissen').is_hidden(), 'Klick daneben schließt')

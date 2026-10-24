@@ -6,7 +6,7 @@
 
 <svelte:head><title>Registrieren – Kinder Deutschlands</title></svelte:head>
 
-<AuthShell title="Konto anlegen" lead="Du bekommst eine eigene Familien-ID und entscheidest selbst, wer was von dir sieht.">
+<AuthShell title="Konto anlegen" lead="Du bekommst eine eigene Familien-ID und entscheidest selbst, wer was von dir sieht. Auch deinen Namen kannst du verbergen.">
 	{#if form?.sent}
 		<Notice kind="ok" title="Fast geschafft">
 			Wir haben eine E-Mail an {form.sent} geschickt. Klicke auf den Link darin, um dein Konto freizuschalten. Keine E-Mail da? Schau im Spam-Ordner nach.

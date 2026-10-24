@@ -2,6 +2,19 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-24 · Ansprache: Sicherheitssatz oben, Namen verbergen, „Familien finden Familien.“ (F-050 Rest, Punkte 1, 2, 5 von Jan freigegeben)
+
+**Was**
+- Startseite, Kopfbereich: neuer Satz „Adresse und Telefonnummer bleiben bei dir – du bestimmst, wer was sieht.“ (stand vorher erst weiter unten).
+- Registrierung: Einleitung ergänzt um „Auch deinen Namen kannst du verbergen.“ (Anzeigename-Sichtbarkeit „Nur ich“ gibt es seit M01).
+- Überschrift der Startseite und Seitentitel: „Eltern finden Eltern.“ → „Familien finden Familien.“ (Väter, Alleinerziehende, Großeltern mitgemeint).
+- **Nicht umgesetzt (von Jan nicht gewählt):** „abonnieren“ → „deine Gegend auswählen“ und „Was tun?“ in der Warnungs-Liste – bleiben als Vorschlag in `FEEDBACK.md` (F-050).
+- Testskripte angepasst: Rauchtest und `menu-check.py` kennen die neue Überschrift; Sollwert „Wissen“-Menü um „Unwetterwarnungen“ ergänzt (war seit D-087 veraltet, kein Produktfehler).
+
+**Warum:** Jans Freigabe der Vorschläge 1, 2 und 5 (24.10.).
+**Module** Querschnitt (Startseite, Registrierung) · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler; Rauchtest 332 Prüfungen grün; `a11y-check.py` ohne schwere Verstöße; `menu-check.py` alle Prüfungen bestanden; Build. **Nicht getestet:** echtes Handy, Screenreader.
+
 ## 2026-10-24 · Sammel-Update: Warnungen verständlich erklärt, Forum-Name öffnet Profil, Feedback in der Fußzeile (F-050 Teil 1, F-051, F-052)
 
 **Was**

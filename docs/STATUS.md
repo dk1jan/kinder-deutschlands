@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 24.10.2026 · Feedback aus der Fußzeile (D-089), Profilkarte per Familien-ID aus dem Forum (D-090), Warnungen verständlich erklärt (F-050 Teil 1); davor Ganz Deutschland (D-084): kein Testphasen-Auftritt, Unterkünfte/Elterncafés/Wickeln, Deutschland-Übersicht der Karte, Moderatoren-Forum (D-085), Rundnachrichten (D-086), Unwetterwarnungen DWD (D-087); davor Domainwechsel (D-083)
+Stand: 24.10.2026 · Ansprache überarbeitet (Sicherheitssatz oben, „Familien finden Familien.“, F-050); Feedback aus der Fußzeile (D-089), Profilkarte per Familien-ID aus dem Forum (D-090), Warnungen verständlich erklärt (F-050 Teil 1); davor Ganz Deutschland (D-084): kein Testphasen-Auftritt, Unterkünfte/Elterncafés/Wickeln, Deutschland-Übersicht der Karte, Moderatoren-Forum (D-085), Rundnachrichten (D-086), Unwetterwarnungen DWD (D-087); davor Domainwechsel (D-083)
 
 Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig geprüft) · **getestet** (automatische Tests bestanden) · **extern blockiert**
 

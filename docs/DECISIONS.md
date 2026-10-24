@@ -300,3 +300,6 @@ Jan wollte (F-037) freigegebene Live-Standorte auf der Karte, damit Familien sic
 - **Entscheidung:** Der Autorenname im Forum (Beitrag, Antworten, Lösung, Beitragsliste) ist ein Link auf `/m/<Familien-ID>`: dieselbe Kontaktkarte wie nach dem QR-Scan (`cardForViewer`), samt Kontaktanfrage. Nur für angemeldete Mitglieder (Gäste → Anmeldung), Abruf 120/Stunde, Anfragen 30/Stunde.
 - **Schutz:** Die Karte folgt den Freigabestufen des Profils. Autorinnen mit **Gruppenpseudonym in geschützten Gruppen** sind nicht anklickbar (Familien-ID wird dort gar nicht erst ausgeliefert, D-063/M04). Gelöschte, gesperrte, blockierte (beide Richtungen) und ungültige IDs ergeben dieselbe neutrale Fehlerseite („nicht (mehr) sichtbar“). Kontaktanfrage zählt als Weg „id“ (keine neue Datenbankart).
 
+## D-091 · Startseiten-Überschrift „Familien finden Familien.“ (24.10.2026)
+- **Entscheidung (Jan):** Die Überschrift „Eltern finden Eltern.“ (D-073) wird zu „Familien finden Familien.“ – Väter, Alleinerziehende und Großeltern sind mitgemeint, passt zur Familien-ID. Der Satz „Adresse und Telefonnummer bleiben bei dir – du bestimmst, wer was sieht.“ steht jetzt im Kopfbereich. Alle übrigen Aussagen zur Startseitenstruktur aus D-073 gelten weiter.
+
