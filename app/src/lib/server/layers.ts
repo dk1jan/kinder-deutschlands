@@ -7,13 +7,15 @@ import type { Bbox } from './places';
 import { listOccurrences } from './angebote/events';
 import { berlinDateKey } from './angebote/recurrence';
 import { EVENT_KINDS, ORG_KINDS } from '$lib/angebote';
+import { visibleShares } from './live';
 
 export const LAYERS = {
 	einrichtungen: { label: 'Einrichtungen', members: false },
 	termine: { label: 'Termine', members: false },
 	routen: { label: 'Kinderwagenrouten', members: false },
 	marktplatz: { label: 'Marktplatz', members: true },
-	hilfe: { label: 'Hilfe', members: true }
+	hilfe: { label: 'Hilfe', members: true },
+	live: { label: 'Live unterwegs', members: true }
 } as const;
 export type LayerKey = keyof typeof LAYERS;
 export const isLayer = (k: string): k is LayerKey => k in LAYERS;
@@ -121,6 +123,12 @@ export async function layerData(sql: Sql, viewerId: string | null, b: Bbox, laye
 			group by h.region_code, r.name, r.center limit ${LIMIT}`;
 		for (const r of rows)
 			points.push({ id: `h:${r.region_code}`, layer: 'hilfe', title: `${r.n} ${r.n === 1 ? 'Eintrag' : 'Einträge'}`, sub: `Familien helfen Familien · ${r.name}`, href: `/hilfe?region=${encodeURIComponent(r.region_code)}`, lon: r.lon, lat: r.lat, count: r.n });
+	}
+
+	// F-037: Live unterwegs – nur Mitglieder, nur freigegebene, nicht abgelaufene, nicht blockierte (siehe live.ts)
+	if (want.includes('live') && viewerId) {
+		for (const x of await visibleShares(sql, viewerId, b))
+			points.push({ id: `v:${x.id}`, layer: 'live', title: x.name, sub: `Live unterwegs · noch ca. ${x.minutesLeft} Min.`, href: `/live/${x.id}`, lon: x.lon, lat: x.lat });
 	}
 
 	return { points, lines, hidden: layers.filter((l) => !want.includes(l)) };

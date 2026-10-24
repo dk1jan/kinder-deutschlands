@@ -52,13 +52,14 @@
 	let urlTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// Zusatzebenen: Einrichtungen, Termine (7 Tage), Kinderwagenrouten, Marktplatz und Hilfe (nur Mitglieder, je Gegend)
-	type LayerKey = 'einrichtungen' | 'termine' | 'routen' | 'marktplatz' | 'hilfe';
+	type LayerKey = 'einrichtungen' | 'termine' | 'routen' | 'marktplatz' | 'hilfe' | 'live';
 	const LAYER_CHIPS: { key: LayerKey; label: string; members: boolean }[] = [
 		{ key: 'einrichtungen', label: 'Einrichtungen', members: false },
 		{ key: 'termine', label: 'Termine (7 Tage)', members: false },
 		{ key: 'routen', label: 'Kinderwagenrouten', members: false },
 		{ key: 'marktplatz', label: 'Marktplatz', members: true },
-		{ key: 'hilfe', label: 'Hilfe', members: true }
+		{ key: 'hilfe', label: 'Hilfe', members: true },
+		{ key: 'live', label: 'Live unterwegs', members: true }
 	];
 	interface XPoint extends ExtraPoint { sub: string; href: string }
 	interface XLine { id: string; title: string; sub: string; href: string; coords: [number, number][] }
@@ -128,6 +129,85 @@
 			}
 		}, now ? 0 : 350);
 	}
+	// F-037: eigene Live-Freigabe (nur solange diese Seite offen ist; Ablauf 30/60 Min; sofort beendbar)
+	let shareAud = $state<'kontakte' | 'mitglieder'>('kontakte');
+	let shareMin = $state(30);
+	let shareUntil = $state<number | null>(null);
+	let shareErr = $state('');
+	let shareBusy = $state(false);
+	let shareLeft = $state(0);
+	let watchId: number | null = null;
+	let lastSent = 0;
+	function applyShare(d: { active: boolean; share: { expiresAt: string } | null }) {
+		shareUntil = d.active && d.share ? new Date(d.share.expiresAt).getTime() : null;
+		if (shareUntil === null) stopWatch();
+	}
+	function stopWatch() {
+		if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+		watchId = null;
+	}
+	function watch() {
+		stopWatch();
+		watchId = navigator.geolocation.watchPosition(
+			async (pos) => {
+				if (Date.now() - lastSent < 25_000) return;
+				lastSent = Date.now();
+				try {
+					const r = await fetch('/api/live', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lon: pos.coords.longitude, lat: pos.coords.latitude }) });
+					if (r.ok) applyShare(await r.json());
+				} catch {
+					/* nächster Versuch beim nächsten Standort */
+				}
+			},
+			() => {},
+			{ enableHighAccuracy: false, maximumAge: 15_000, timeout: 20_000 }
+		);
+	}
+	async function startShare() {
+		shareErr = '';
+		if (!navigator.geolocation) return (shareErr = 'Dein Gerät kann den Standort nicht bestimmen.');
+		shareBusy = true;
+		navigator.geolocation.getCurrentPosition(
+			async (pos) => {
+				try {
+					const r = await fetch('/api/live', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ audience: shareAud, minutes: shareMin, lon: pos.coords.longitude, lat: pos.coords.latitude }) });
+					if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { message?: string }).message ?? 'Teilen hat nicht geklappt.');
+					applyShare(await r.json());
+					lastSent = Date.now();
+					watch();
+					if (!layers.includes('live')) toggleLayer('live');
+					else loadLayers(true);
+				} catch (e) {
+					shareErr = (e as Error).message;
+				} finally {
+					shareBusy = false;
+				}
+			},
+			() => {
+				shareBusy = false;
+				shareErr = 'Standort nicht erlaubt oder nicht verfügbar. Bitte in den Browser-Einstellungen erlauben.';
+			},
+			{ enableHighAccuracy: false, timeout: 15_000 }
+		);
+	}
+	async function stopShare() {
+		stopWatch();
+		shareUntil = null;
+		await fetch('/api/live', { method: 'DELETE' }).catch(() => {});
+		loadLayers(true);
+	}
+	$effect(() => {
+		if (!data.loggedIn) return;
+		// Beim Öffnen: läuft schon eine Freigabe (z. B. zweiter Tab)? Dann Positionsverfolgung hier fortsetzen.
+		fetch('/api/live').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.active) { applyShare(d); watch(); } }).catch(() => {});
+		const t = setInterval(() => {
+			shareLeft = shareUntil ? Math.max(0, Math.ceil((shareUntil - Date.now()) / 60_000)) : 0;
+			if (shareUntil && Date.now() >= shareUntil) { shareUntil = null; stopWatch(); }
+			if (layers.includes('live')) loadLayers(true);
+		}, 30_000);
+		return () => { clearInterval(t); stopWatch(); };
+	});
+	$effect(() => { shareLeft = shareUntil ? Math.max(0, Math.ceil((shareUntil - Date.now()) / 60_000)) : 0; });
 	function pickExtra(id: string) {
 		const p = xPoints.find((x) => x.id === id);
 		if (!p) return;
@@ -381,6 +461,25 @@
 					{/each}
 				</ul>
 				<p class="hint">Marktplatz und Hilfe zeigen nur die Anzahl je Gegend – nie, wo jemand wohnt.</p>
+				{#if data.loggedIn}
+					<h2>Live unterwegs</h2>
+					{#if shareUntil}
+						<p class="hint"><b>Du teilst deinen Standort</b> (ungefähr, Kreis von 200 m) – noch ca. {shareLeft} Min. Das gilt nur, solange diese Seite offen bleibt.</p>
+						<div class="row"><button type="button" class="btn" onclick={stopShare}>Stoppen</button></div>
+					{:else}
+						<div class="seg" role="group" aria-label="Wer sieht dich">
+							<button type="button" aria-pressed={shareAud === 'kontakte'} onclick={() => (shareAud = 'kontakte')}>Meine Kontakte</button>
+							<button type="button" aria-pressed={shareAud === 'mitglieder'} onclick={() => (shareAud = 'mitglieder')}>Alle Mitglieder</button>
+						</div>
+						<div class="seg" role="group" aria-label="Dauer">
+							<button type="button" aria-pressed={shareMin === 30} onclick={() => (shareMin = 30)}>30 Min.</button>
+							<button type="button" aria-pressed={shareMin === 60} onclick={() => (shareMin = 60)}>60 Min.</button>
+						</div>
+						<div class="row"><button type="button" class="btn" disabled={shareBusy} onclick={startShare}>Standort teilen</button></div>
+						<p class="hint">Andere sehen nur deinen Anzeigenamen (je nach deiner Sichtbarkeit) und einen Kreis von etwa 200 m – kein Foto, keine Angaben zu Kindern. Beenden jederzeit mit „Stoppen“, spätestens nach Ablauf.</p>
+					{/if}
+					{#if shareErr}<p class="hint" role="alert">{shareErr}</p>{/if}
+				{/if}
 			</section>
 		{/if}
 		{#if locError}<p class="banner err" role="alert">{locError}</p>{/if}
@@ -391,7 +490,7 @@
 				<p class="kind"><span class="badge" style:background={LAYER_STYLE[xSel.layer as LayerKey].color} style:color="#fff"><Icon name={LAYER_STYLE[xSel.layer as LayerKey].icon} size={16} /></span>{LAYER_CHIPS.find((c) => c.key === xSel?.layer)?.label}</p>
 				<h2>{xSel.title}</h2>
 				<p class="xsub">{xSel.sub}</p>
-				<div class="row"><a class="btn" href={xSel.href}>Ansehen</a></div>
+				<div class="row"><a class="btn" href={xSel.href}>{xSel.layer === 'live' ? 'Kontakt aufnehmen' : 'Ansehen'}</a></div>
 			</section>
 		{/if}
 		{#if selected}

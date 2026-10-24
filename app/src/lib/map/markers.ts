@@ -109,7 +109,8 @@ export const LAYER_STYLE = {
 	termine: { color: '#7b4fa3', ink: '#ffffff', icon: 'uhr' },
 	marktplatz: { color: '#2f7d4f', ink: '#ffffff', icon: 'flagge' },
 	hilfe: { color: '#1a5c9a', ink: '#ffffff', icon: 'gruppe' },
-	routen: { color: '#1f7468', ink: '#ffffff', icon: 'route' }
+	routen: { color: '#1f7468', ink: '#ffffff', icon: 'route' },
+	live: { color: '#d6336c', ink: '#ffffff', icon: 'pin' }
 } as const;
 
 export function addLayerImages(map: MlMap, theme: 'light' | 'dark') {

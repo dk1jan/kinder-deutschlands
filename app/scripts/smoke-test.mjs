@@ -405,6 +405,27 @@ try {
 	r = await B.req(`/k/${qrToken}`);
 	check(r.body.includes('Kita-Antrag') && r.body.includes('Ihr seid verbunden'), 'Als Kontakt sichtbar: freigegebene Details');
 
+	// F-037: Live unterwegs (HTTP)
+	r = await X.req('/api/live');
+	check(r.status === 401, 'Live: Freigabe nur angemeldet');
+	r = await A.req('/api/live', { json: { audience: 'kontakte', minutes: 90, lon: 8.8, lat: 53.07 } });
+	check(r.status === 400, 'Live: nur 30 oder 60 Minuten');
+	r = await A.req('/api/live', { json: { audience: 'kontakte', minutes: 30, lon: 8.80123, lat: 53.07456 } });
+	check(r.status === 200 && JSON.parse(r.body).active === true && (r.headers.get('cache-control') ?? '').includes('no-store'), 'Live: Freigabe gestartet, nicht zwischengespeichert');
+	r = await B.req('/api/karte/ebenen?bbox=8.7,53,8.9,53.2&e=live');
+	const liveB = JSON.parse(r.body).points ?? [];
+	check(liveB.length === 1 && liveB[0].layer === 'live' && liveB[0].title === 'Anna' && !r.body.includes('8.80123') && !r.body.includes('53.07456'), 'Live: Kontakt sieht Kreis-Mitte (gerastert, nicht der genaue Punkt)');
+	r = await X.req('/api/karte/ebenen?bbox=8.7,53,8.9,53.2&e=live');
+	check(JSON.parse(r.body).points.length === 0, 'Live: ohne Anmeldung nichts');
+	r = await B.req(liveB[0]?.href ?? '/live/x');
+	check(r.status === 303 && r.location.startsWith('/nachrichten/familie?id='), 'Live: Kontakt aufnehmen führt zur Kontaktseite');
+	r = await A.req('/api/live', { method: 'DELETE' });
+	check(r.status === 200 && JSON.parse(r.body).active === false, 'Live: Stoppen');
+	r = await B.req('/api/karte/ebenen?bbox=8.7,53,8.9,53.2&e=live');
+	check(JSON.parse(r.body).points.length === 0, 'Live: nach „Stoppen“ sofort weg');
+	r = await B.req(liveB[0]?.href ?? '/live/x');
+	check(r.status === 404, 'Live: Kontaktweg nach „Stoppen“ geschlossen');
+
 	// Widerruf
 	r = await A.req('/profil/qr?/ersetzen', { method: 'POST', form: {} });
 	r = await X.req(`/k/${qrToken}`);

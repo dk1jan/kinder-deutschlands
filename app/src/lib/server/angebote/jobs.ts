@@ -11,6 +11,7 @@ import { purgeInvitations } from '../alltag/invitations';
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
+import { purgeLive } from '../live';
 let ticks = 0;
 
 export async function tickAngebote(full = false) {
@@ -18,6 +19,7 @@ export async function tickAngebote(full = false) {
 	running = true;
 	try {
 		const sql = db();
+		await purgeLive(sql); // F-037: abgelaufene Live-Freigaben jede Minute löschen
 		const r = await sendReminders(sql);
 		if (r) console.log(`[angebote] ${r} Erinnerung(en) verschickt.`);
 		if (full || ticks % 10 === 0) {

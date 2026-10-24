@@ -108,6 +108,7 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 			if (total <= 1) throw new Error('Das letzte Betreiberkonto kann nicht gelöscht werden.');
 		}
 		await tx`delete from user_profiles where user_id = ${userId}`;
+		await tx`delete from live_shares where user_id = ${userId}`;
 		await tx`delete from qr_tokens where user_id = ${userId}`;
 		await tx`delete from contacts where user_a = ${userId} or user_b = ${userId}`;
 		await tx`delete from contact_requests where from_user = ${userId} or to_user = ${userId}`;

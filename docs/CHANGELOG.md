@@ -2,6 +2,19 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-24 · Karte: Ebene „Live unterwegs“ (F-037, D-088)
+
+**Was**
+- Neue Kartenebene **Live unterwegs** (nur Mitglieder): Wer will, teilt den Standort für **30 oder 60 Min.** mit **Meinen Kontakten** oder **allen Mitgliedern** (Panel unter „Ebenen“, „Stoppen“ jederzeit). Andere sehen einen **Kreis von 200 m** mit dem Anzeigenamen (je Profil-Sichtbarkeit, sonst „Eine Familie“), keine Fotos/Kinderangaben. Antippen → „Kontakt aufnehmen“ → normale Kontaktanfrage mit Kurznachricht, danach verschlüsselter Chat.
+- Server rundet auf ein ca. 200-m-Raster (genauer Punkt wird nie gespeichert); Ablauf/Stoppen wirken sofort; minütliches Aufräumen; Löschen des Kontos entfernt die Freigabe. Blockierte (beide Richtungen), gesperrte Konten, eigene Freigabe und Stumm-Geschaltete ausgeschlossen. Nur im Vordergrund (Seite offen); nicht „für alle ohne Konto“; keine Hintergrundortung (Android-App F-026 später).
+- Neu: `lib/server/live.ts`, `/api/live` (GET/POST/DELETE), `/live/[id]` (Weiterleitung mit erneuter Sichtbarkeitsprüfung), Ebene `live` in `layers.ts`, Kreise in `FamilyMap.svelte`, Panel in der Karte, Aufräumen in `tickAngebote`.
+- **Grundsatz D-088:** weicht von D-040 nur für diese Ebene ab (Standort unverschlüsselt auf dem Server, nur gerastert und kurz); Datenschutzerklärung ergänzen und rechtliche Prüfung empfohlen (Aufgabe für Jan).
+
+**Warum:** Familien vernetzen („Ich bin hier, wer ist dort?“), Wunsch von Jan.
+**Module:** M10 (Karte), M06 (Live-Standort), M01 (Profil/Freigaben).
+**DB-Migration:** ja (`0018_live.sql`, Tabelle `live_shares`).
+**Getestet (echter Lauf):** `npm run check` (0 Fehler), `npm test` (28 Dateien, 289 bestanden, 3 übersprungen; neu `live.db.test.ts` mit 10 Tests: Raster, Stufen, Sichtbarkeit des Namens, Blockade, Ablauf/Stoppen, Update, Eingaben/Stumm, Konto löschen), `npm run build`, Rauchtest (9 neue Prüfungen, „Alle Rauchtests bestanden“). **Nicht geprüft:** Darstellung im Browser (Kreis, Panel, echte GPS-Positionen) – bitte auf dem Handy testen.
+
 ## 2026-10-24 · Ganz Deutschland: kein Testphasen-Auftritt, mehr Orte, Moderatoren-Forum, Rundnachrichten, Unwetterwarnungen (D-084 – D-087)
 
 **Was**
