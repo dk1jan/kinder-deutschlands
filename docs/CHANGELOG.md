@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-24 · Sammel-Update: Warnungen verständlich erklärt, Forum-Name öffnet Profil, Feedback in der Fußzeile (F-050 Teil 1, F-051, F-052)
+
+**Was**
+- **F-050 (Teil 1, Erklärtexte):** `/warnungen` hat oben den Kasten „Kurz erklärt“: Was ist der Deutsche Wetterdienst, muss ich etwas installieren (nein; Push über Benachrichtigungen, iPhone mit Home-Bildschirm), was ist NINA (hier noch nicht angebunden, App bleibt sinnvoll). Startseiten-Abschnitt Warnungen nennt den DWD als amtlichen Wetterdienst des Bundes und „du musst nichts installieren“. Die Durchsicht von Startseite und Registrierung auf verständliche, frauenfreundliche Ansprache ist **nicht** umgesetzt – Vorschlagsliste liegt bei Jan zur Freigabe (F-050 bleibt offen).
+- **F-051:** Autorenname im Forum (Beitrag, Antworten, Lösung, Beitragsliste) öffnet die Profilkarte `/m/<Familien-ID>` wie nach dem QR-Scan, mit Kontaktanfrage. Pseudonyme in geschützten Gruppen sowie gelöschte/gesperrte/blockierte Konten sind nicht verlinkt bzw. neutral „nicht (mehr) sichtbar“ (D-090).
+- **F-052:** Fußzeilen-Link „Feedback“ → `/feedback` (nur angemeldet): Fehler melden · Fehlerkorrektur · Allgemeines Feedback, Freitext, Seite wird mitgegeben. Verwaltung → Feedback (Filter, Status offen/in Arbeit/erledigt/verworfen, Antwort; Zähler im Menü), bei erledigt/verworfen Mitteilung an die Person. Rate-Limit 10/Tag, im Datenexport, mit dem Konto gelöscht (D-089).
+
+**Warum:** Jans Sprachnotizen vom 24.10. (Frauen kennen DWD/NINA nicht und haben die Apps nicht; Klick auf Namen tat nichts; Testerinnen brauchen einen einfachen Meldeweg).
+**Module** M20, M03, M24 + Querschnitt · **DB-Migration** ja: `0019_feedback.sql` (Tabelle `feedback`, Recht `feedback.manage` für `moderator_global`, `tech_admin`; bestehende Migrationen unverändert)
+
+**Tests** svelte-check 0 Fehler/0 Warnungen; 298 Unit/DB-Tests grün, 3 übersprungen wie zuvor (neu `tests/feedback.db.test.ts`, 9 Tests: Seitenpfad bereinigt, Eingaben, 10/Tag, Liste/Filter ohne E-Mail, Mitteilung nur bei erledigt/verworfen, Recht, Export + Löschung, Profil-Link/Blockade/gelöschtes Konto); Rauchtest 332 Prüfungen (neu: Erklärtexte, Fußzeile, Forum-Link, Profilkarte Gast/Mitglied/ungültig, kompletter Feedback-Weg inkl. Verwaltung und Mitteilung); Barrierefreiheit `a11y-check.py` (jetzt mit `/feedback`, `/warnungen`, `/admin/feedback`): keine schweren Verstöße; Bildschirmfotos Handy (Erklärkasten, Startseiten-Abschnitt, Feedback-Formular, Profilkarte) angesehen; Build. **Nicht getestet:** echtes Handy, Screenreader, Betrieb mit echten Mitgliedern auf dem Server.
+
 ## 2026-10-24 · Karte: eigener Live-Knopf, Kontakt/Mitglied unterscheidbar (F-049, zu F-037/D-088)
 
 **Was**

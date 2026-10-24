@@ -288,3 +288,15 @@ Jan wollte (F-037) freigegebene Live-Standorte auf der Karte, damit Familien sic
 - **Kontakt:** Antippen → `/live/<Freigabe-Nr.>` prüft erneut die Sichtbarkeit und leitet zur normalen Kontaktanfrage mit Kurznachricht (`/nachrichten/familie`), danach verschlüsselter Chat. Die Familien-ID steht nicht in der Karten-Antwort.
 - **Nicht** in Datenexport, Protokoll oder Verwaltung. Ehrlich: Ein Datenbank-Backup kann die Zeile für die Dauer der Freigabe enthalten.
 - **Zu tun (Jan):** Datenschutzerklärung ergänzen (Standort der Live-Ebene, Rundung, Dauer, Löschung) und die Ebene rechtlich prüfen lassen (Empfehlung), bevor sie breit beworben wird. Ersetzt für diese Ebene die Aussage „keine Personen auf der Karte“ (D-061).
+
+## D-089 · Feedback aus der Fußzeile, nur für Angemeldete (24.10.2026)
+- **Entscheidung:** Link „Feedback“ in der Fußzeile → `/feedback` mit Auswahl **Fehler melden · Fehlerkorrektur (Inhalt ist falsch) · Allgemeines Feedback**, Freitext (5–2000 Zeichen) und der Seite, von der gemeldet wird (nur Pfad, ohne Suchparameter und Sprungmarke). Eingang in Verwaltung → Feedback (Recht `feedback.manage`: Rollen `moderator_global`, `tech_admin`, Admin über „*“).
+- **Warum nur angemeldet:** Spam- und Missbrauchsschutz (10 Meldungen je Person und Tag), und Rückmeldung an die Person ist nur über die Glocke möglich. Gäste werden zur Anmeldung geleitet und kommen zurück.
+- **Datenschutz:** keine Geräte-, Browser- oder IP-Daten gespeichert; Protokoll enthält nur Art und Länge, nicht den Text. Verwaltung sieht den Absender nur als Familien-ID (D-060), nie die E-Mail. Feedback ist Teil des Datenexports und wird mit dem Konto gelöscht. Die Person soll keine Passwörter oder Gesundheitsdetails schreiben (Hinweis im Formular).
+- **Antwort:** „Erledigt“/„Verworfen“ schickt eine Mitteilung (ohne Push) – neutraler Dank, mit Antwort der Verwaltung, falls geschrieben (wie F-036: gleicher Ton in beiden Fällen).
+- **Abgrenzung:** `docs/FEEDBACK.md` bleibt Jans Test-Sammelliste; das Mitglieder-Feedback ersetzt sie nicht. Migration 0019.
+
+## D-090 · Profilkarte per Familien-ID aus dem Forum (24.10.2026)
+- **Entscheidung:** Der Autorenname im Forum (Beitrag, Antworten, Lösung, Beitragsliste) ist ein Link auf `/m/<Familien-ID>`: dieselbe Kontaktkarte wie nach dem QR-Scan (`cardForViewer`), samt Kontaktanfrage. Nur für angemeldete Mitglieder (Gäste → Anmeldung), Abruf 120/Stunde, Anfragen 30/Stunde.
+- **Schutz:** Die Karte folgt den Freigabestufen des Profils. Autorinnen mit **Gruppenpseudonym in geschützten Gruppen** sind nicht anklickbar (Familien-ID wird dort gar nicht erst ausgeliefert, D-063/M04). Gelöschte, gesperrte, blockierte (beide Richtungen) und ungültige IDs ergeben dieselbe neutrale Fehlerseite („nicht (mehr) sichtbar“). Kontaktanfrage zählt als Weg „id“ (keine neue Datenbankart).
+

@@ -153,8 +153,9 @@
 			<p class="eyebrow">Amtlich vom Deutschen Wetterdienst</p>
 			<h2 id="warn-titel">Unwetterwarnungen direkt aufs Handy.</h2>
 			<p class="band-lead">
-				Sturm, Starkregen, Gewitter: Abonniere deine Region – und gleich Kita, Schule oder Großeltern mit. Neue Warnungen kommen als Mitteilung und auf Wunsch als
-				Push. Ohne extra App, für jeden Kreis in Deutschland.
+				Der Deutsche Wetterdienst ist der amtliche Wetterdienst des Bundes. Seine Warnungen vor Sturm, Starkregen oder Gewitter bekommst du hier bei uns – du musst
+				nichts installieren. Wähle deine Region, gern gleich für Kita, Schule oder Großeltern mit. Neue Warnungen kommen als Mitteilung und auf Wunsch aufs Handy,
+				für jeden Kreis in Deutschland.
 			</p>
 			{#if data.warn.severe > 0}
 				<p class="warn-live"><span class="pulse" aria-hidden="true"></span>Gerade aktiv: {data.warn.severe.toLocaleString('de-DE')} {data.warn.severe === 1 ? 'Unwetterwarnung' : 'Unwetterwarnungen'} in {data.warn.kreise === 1 ? '1 Kreis' : `${data.warn.kreise.toLocaleString('de-DE')} Kreisen`}</p>

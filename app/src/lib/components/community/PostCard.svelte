@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import LinkCard from './LinkCard.svelte';
+	import AuthorName from './AuthorName.svelte';
 	import type { ComponentProps } from 'svelte';
 	interface Item {
 		id: string;
@@ -12,7 +13,7 @@
 		group: { slug: string; name: string; kind: string } | null;
 		land?: { code: string; name: string; invited: boolean } | null;
 		team?: boolean;
-		author: { name: string; pseudonym: boolean };
+		author: { name: string; pseudonym: boolean; contactId?: string | null };
 		labels: string[];
 		tags: string[];
 		card: ComponentProps<typeof LinkCard>['card'] | null;
@@ -51,7 +52,7 @@
 	{#if item.excerpt && !item.labels.includes('triggerwarnung')}<p class="ex">{item.excerpt}</p>{/if}
 	{#if item.card}<LinkCard card={item.card} compact />{/if}
 	<p class="foot">
-		<span>{item.author.name}</span>
+		<span><AuthorName author={item.author} /></span>
 		{#if item.group}<a href="/community/g/{item.group.slug}">{item.group.kind === 'geschuetzt' ? '🔒 ' : ''}{item.group.name}</a>{/if}
 		{#if item.topic}<a href="/community?thema={item.topic.key}">{item.topic.name}</a>{/if}
 		{#if item.region}<a href="/community?region={item.region.code}">{item.region.name}</a>{/if}

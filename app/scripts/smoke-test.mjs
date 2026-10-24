@@ -499,6 +499,8 @@ try {
 		check(body.includes('Für Familien in ganz Deutschland.') && !/Testbetrieb|Bremen und Niedersachsen|Im Aufbau|leeren Ecken|In Arbeit/.test(body), 'Startseite: ganz Deutschland, kein Testbetrieb/Bremen-Start (D-084)');
 		check(facts.length > 0 && !facts.includes('OpenStreetMap') && !facts.includes('/karte/quellen'), 'Startseite: Zahlenbox ohne Quellenzeile (Quellen bleiben unter „Datenquellen“)');
 		check(body.includes('Unwetterwarnungen direkt aufs Handy.') && body.includes('href="/warnungen"'), 'Startseite: Unwetterwarnungen als Feature');
+		check(body.includes('Der Deutsche Wetterdienst ist der amtliche Wetterdienst des Bundes.') && body.includes('nichts installieren'), 'Startseite: Warnungen kurz erklärt, nichts installieren (F-050)');
+		check(body.includes('href="/feedback?seite='), 'Fußzeile: Feedback-Link (F-052)');
 		const ov = await fetch(BASE + '/api/orte/uebersicht?z=6');
 		const ovj = ov.ok ? await ov.json() : null;
 		check(ovj?.total >= nPlay && Array.isArray(ovj.cells) && ovj.cells.every((c) => c.length === 3), `Karte: Deutschland-Übersicht zählt alle Orte (${ovj?.total})`);
@@ -660,6 +662,18 @@ try {
 	await C.req('/registrieren/bestaetigen', { method: 'POST', form: { t: vC ?? '' } });
 	r = await C.req(`${postPath}?/antworten`, { method: 'POST', form: { body: 'Die Krabbelgruppe im Bürgerhaus ist toll.' } });
 	check(r.status === 200 && (await A.req(postPath)).body.includes('Krabbelgruppe im Bürgerhaus'), 'Antwort geschrieben und sichtbar');
+	{
+		// F-051: Name im Forum öffnet die Profilkarte (nur Mitglieder), wie nach dem QR-Scan
+		const [ac] = await sqlT`select p.contact_id from user_profiles p join users u on u.id = p.user_id where u.email = 'anna@example.org'`;
+		const pg = await C.req(postPath);
+		check(pg.body.includes(`href="/m/${ac.contact_id}"`), 'Forum: Autorenname ist ein Link zur Profilkarte (F-051)');
+		const card = await C.req(`/m/${ac.contact_id}`);
+		check(card.status === 200 && card.body.includes('Familien-ID'), 'Profilkarte per Familien-ID für Mitglieder (F-051)');
+		const gast = await X2.req(`/m/${ac.contact_id}`);
+		check(gast.status === 303, 'Profilkarte per Familien-ID: Gäste müssen sich anmelden (F-051)');
+		const bad = await C.req('/m/ZZZZZZZZZ');
+		check(bad.status === 404, 'Profilkarte: ungültige ID → 404 (F-051)');
+	}
 	r = await C.req('/community?ansicht=neu&q=Spielgruppe');
 	check(r.body.includes('Welche Spielgruppe in Findorff?'), 'Suche findet den Beitrag');
 	r = await C.req(`${postPath}?/melden`, { method: 'POST', form: { type: 'post', id: postId, reason: 'falsch', message: 'Test-Meldung' } });
@@ -822,12 +836,34 @@ try {
 		let w = await X2.req('/warnungen?region=04011');
 		check(w.status === 200 && w.body.includes('Unwetterwarnungen für deine Region.') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: Gast sieht Warnung seiner Region');
 		check(w.body.includes('Deutscher Wetterdienst') && w.body.includes('CC BY 4.0'), 'Unwetterwarnungen: Quelle und Lizenz genannt');
+		check(w.body.includes('Kurz erklärt') && w.body.includes('Muss ich dafür etwas installieren?') && w.body.includes('Und was ist NINA?'), 'Unwetterwarnungen: Erklärkasten (DWD, nichts installieren, NINA) – F-050');
 		w = await X2.req('/warnungen/smoke.dwd.1');
 		check(w.status === 200 && w.body.includes('Smoke-Warntext.'), 'Unwetterwarnungen: Detailseite');
 		w = await A.req('/warnungen?/abonnieren', { form: { region: '04011', min_level: '2', push: 'on', label: 'Kita' } });
 		check(w.status === 200 && w.body.includes('Abonniert'), 'Unwetterwarnungen: Mitglied abonniert Region');
 		w = await A.req('/warnungen');
 		check(w.body.includes('Kita') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: „Meine Regionen“ mit aktueller Warnung');
+	}
+	{
+		// F-052: Feedback aus der Fußzeile
+		let f = await X2.req('/feedback');
+		check(f.status === 303, 'Feedback: Gäste müssen sich anmelden');
+		f = await A.req('/feedback?seite=/community');
+		check(f.status === 200 && f.body.includes('Fehler melden') && f.body.includes('Allgemeines Feedback') && f.body.includes('value="/community"'), 'Feedback: Formular mit Arten und Seite');
+		f = await A.req('/feedback', { form: { kind: 'fehler', body: 'Smoke: Der Knopf klemmt.', page: '/community?x=1' } });
+		check(f.status === 200 && f.body.includes('Danke!'), 'Feedback: abgeschickt');
+		f = await A.req('/feedback', { form: { kind: 'fehler', body: 'ab', page: '' } });
+		check(f.status === 400 && f.body.includes('mindestens 5 Zeichen'), 'Feedback: zu kurz abgelehnt');
+		const [fb] = await sqlT`select id, page, status from feedback where body like 'Smoke:%'`;
+		check(fb?.page === '/community' && fb?.status === 'offen', 'Feedback: Seite ohne Suchparameter gespeichert, Status offen');
+		f = await req('/admin/feedback');
+		check(f.status === 200 && f.body.includes('Smoke: Der Knopf klemmt.') && f.body.includes('Familien-ID') && !f.body.includes('anna@example.org'), 'Feedback: Verwaltung sieht Eintrag nur mit Familien-ID');
+		f = await A.req('/admin/feedback');
+		check(f.status === 403 || f.status === 303, 'Feedback-Verwaltung: Mitglied ohne Recht gesperrt');
+		f = await req('/admin/feedback?/bearbeiten', { form: { id: fb.id, status: 'erledigt', reply: 'Behoben, danke.' } });
+		check(f.status === 200 && f.body.includes('Gespeichert'), 'Feedback: Verwaltung setzt „Erledigt“');
+		f = await A.req('/profil/mitteilungen');
+		check(f.body.includes('Behoben, danke.'), 'Feedback: Mitglied bekommt Mitteilung mit Antwort');
 	}
 	r = await X2.req('/');
 	check(r.body.includes('/veranstaltungen/heute') && r.body.includes('/angebote'), 'Startseite: Entdecken-Einstiege');

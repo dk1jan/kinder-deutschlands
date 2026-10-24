@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Notice from '$lib/components/Notice.svelte';
 	import Editor from '$lib/components/community/Editor.svelte';
+	import AuthorName from '$lib/components/community/AuthorName.svelte';
 	import LinkCard from '$lib/components/community/LinkCard.svelte';
 	import ReportBox from '$lib/components/community/ReportBox.svelte';
 	import { renderMarkup } from '$lib/markup';
@@ -62,7 +63,7 @@
 		{:else}
 			<h1>{p.title}</h1>
 			<p class="by">
-				<span class="author">{p.author.name}{p.author.pseudonym ? ' (Gruppenname)' : ''}</span>
+				<span class="author"><AuthorName author={p.author} />{p.author.pseudonym ? ' (Gruppenname)' : ''}</span>
 				{#if p.author.region}<span>· {p.author.region}</span>{/if}
 				<span>· {fmt(p.createdAt)}</span>
 				{#if p.editedAt}<span>· bearbeitet</span>{/if}
@@ -186,7 +187,7 @@
 		<section class="solution">
 			<h2>✓ Lösung</h2>
 			<div class="prose">{@html renderMarkup(solved.body, { affiliateTag: data.affiliateTag })}</div>
-			<p class="by">{solved.author.name}</p>
+			<p class="by"><AuthorName author={solved.author} /></p>
 		</section>
 	{/if}
 
@@ -194,7 +195,7 @@
 		<h2 id="antworten">{p.comments.filter((c) => c.status === 'sichtbar').length} {p.comments.length === 1 ? 'Antwort' : 'Antworten'}</h2>
 		{#each p.comments as c (c.id)}
 			<div class="comment" id="a-{c.id}" class:solved={c.id === p.solvedComment} class:hidden={c.status !== 'sichtbar'}>
-				<p class="by"><span class="author">{c.author.name}</span>{#if c.author.region}<span>· {c.author.region}</span>{/if}<span>· {fmt(c.createdAt)}</span>{#if c.editedAt}<span>· bearbeitet</span>{/if}
+				<p class="by"><span class="author"><AuthorName author={c.author} /></span>{#if c.author.region}<span>· {c.author.region}</span>{/if}<span>· {fmt(c.createdAt)}</span>{#if c.editedAt}<span>· bearbeitet</span>{/if}
 					{#if c.status !== 'sichtbar'}<span class="warn">· {c.status === 'pruefung' ? 'in Prüfung' : c.status}</span>{/if}
 				</p>
 				{#if c.modNote && c.status === 'sichtbar'}<p class="modnote small">Hinweis der Moderation: {c.modNote}</p>{/if}

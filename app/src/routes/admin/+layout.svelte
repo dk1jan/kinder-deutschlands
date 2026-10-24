@@ -13,6 +13,7 @@
 			{ href: '/admin/statistik', label: 'Statistik', icon: 'daten', show: data.may.stats },
 			{ href: '/admin/moderation', label: 'Moderation', icon: 'flagge', show: data.may.moderation },
 			{ href: '/community?bereich=team', label: 'Moderatoren-Forum', icon: 'community', show: data.may.team },
+			{ href: '/admin/feedback', label: data.openFeedback ? `Feedback (${data.openFeedback})` : 'Feedback', icon: 'hinweis', show: data.may.feedback },
 			{ href: '/admin/rundnachrichten', label: 'Rundnachrichten', icon: 'megafon', show: data.may.broadcast },
 			{ href: '/admin/gruppen', label: 'Gruppen', icon: 'community', show: data.may.groups },
 			{ href: '/admin/wissen', label: 'Wissen', icon: 'protokoll', show: data.may.knowledge },

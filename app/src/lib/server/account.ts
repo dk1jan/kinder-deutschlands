@@ -39,6 +39,7 @@ export async function exportAccount(sql: Sql, userId: string) {
 	const abos = await sql`select kind, key, created_at from subscriptions where user_id = ${userId}`;
 	const bewertungen = await sql`select place_id, stars, body, status, updated_at from place_reviews where user_id = ${userId}`;
 	const einschraenkungen = await sql`select kind, reason, until, created_at, lifted_at from user_restrictions where user_id = ${userId}`;
+	const rueckmeldungen = await sql`select kind, body, page, status, reply, created_at from feedback where user_id = ${userId} order by created_at desc`;
 	const mitteilungen = await sql`select kind, text, created_at, read_at from notifications where user_id = ${userId} order by created_at desc limit 500`;
 	return {
 		erstellt: new Date().toISOString(),
@@ -56,6 +57,7 @@ export async function exportAccount(sql: Sql, userId: string) {
 		orte_merkliste: merkliste,
 		orte_vorschlaege: vorschlaege,
 		orte_meldungen: meldungen,
+		feedback: rueckmeldungen,
 		community_beitraege: beitraege,
 		community_antworten: antworten,
 		community_gruppen: gruppen,
@@ -135,6 +137,7 @@ export async function deleteAccount(sql: Sql, userId: string, opts: { fromLog?: 
 		await tx`delete from poll_votes where user_id = ${userId}`;
 		await tx`delete from helpful_marks where user_id = ${userId}`;
 		await tx`delete from notifications where user_id = ${userId}`;
+		await tx`delete from feedback where user_id = ${userId}`;
 		await tx`update mod_cases set reporter_id = null, message = null where reporter_id = ${userId} and status = 'erledigt'`;
 		mediaIds.push(...(await tx`update media set status = 'entfernt' where owner_id = ${userId} returning id`).map((r) => r.id as string));
 		// Chat: Push-Abos, Einstellungen, Beitrittstickets weg; Direktchats enden

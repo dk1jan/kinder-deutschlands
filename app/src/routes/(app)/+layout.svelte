@@ -200,6 +200,7 @@
 				<a href="/datenschutz">Datenschutz</a>
 				<a href="/partnerlinks">Partnerlinks</a>
 				<a href="/karte/quellen">Datenquellen</a>
+				<a href="/feedback?seite={encodeURIComponent(page.url.pathname)}" data-sveltekit-noscroll>Feedback</a>
 			</nav>
 		</footer>
 	{/if}

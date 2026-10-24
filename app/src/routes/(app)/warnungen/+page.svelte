@@ -46,6 +46,21 @@
 	{#if form?.error}<Notice kind="error">{form.error}</Notice>{/if}
 	{#if form?.ok}<Notice kind="ok">{form.ok}</Notice>{/if}
 
+	<section class="explain" aria-labelledby="erklaert">
+		<h2 id="erklaert">Kurz erklärt</h2>
+		<dl>
+			<dt>Was ist der Deutsche Wetterdienst?</dt>
+			<dd>Der amtliche Wetterdienst des Bundes. Er gibt die offiziellen Warnungen vor Unwetter heraus, zum Beispiel vor Sturm, Gewitter, Starkregen, Glatteis oder Hitze.</dd>
+			<dt>Muss ich dafür etwas installieren?</dt>
+			<dd>
+				Nein. Die Warnungen erscheinen hier bei Kinder Deutschlands – du brauchst keine Wetter-App und keine Warn-App. Du wählst nur deine Gegend. Aufs Handy kommen sie, wenn du
+				<a href="/profil/benachrichtigungen">Benachrichtigungen einschaltest</a>. Auf dem iPhone legst du dafür Kinder Deutschlands auf den Home-Bildschirm.
+			</dd>
+			<dt>Und was ist NINA?</dt>
+			<dd>NINA ist die Warn-App des Bundes für Gefahren wie Großbrand, Gefahrstoffe oder Evakuierung. Diese Meldungen zeigen wir hier noch nicht – dafür ist die App weiterhin sinnvoll (mehr unten).</dd>
+		</dl>
+	</section>
+
 	{#if data.member}
 		<section aria-labelledby="mine">
 			<h2 id="mine">Meine Regionen</h2>
@@ -137,6 +152,23 @@
 </div>
 
 <style>
+	.explain {
+		background: var(--surface);
+		border-radius: var(--radius-m);
+		padding: var(--sp-4);
+		margin-bottom: var(--sp-5);
+	}
+	.explain h2 {
+		margin-top: 0;
+	}
+	.explain dt {
+		font-weight: 700;
+		margin-top: var(--sp-3);
+	}
+	.explain dd {
+		margin: var(--sp-1) 0 0;
+		max-width: 60ch;
+	}
 	.head {
 		background: var(--band);
 		color: var(--on-band);
