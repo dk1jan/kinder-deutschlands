@@ -10,6 +10,7 @@ import { isUuid } from '$lib/server/angebote/common';
 import { cancelEvent, getEvent, removeEvent, restoreOccurrence, setAttendance, whoComes } from '$lib/server/angebote/events';
 import { WEATHER_STATUS, setWeatherStatus, terminWetter } from '$lib/server/angebote/wetter';
 import { ATTRIBUTION as DWD_ATTRIBUTION } from '$lib/server/warnings/store';
+import { REGEN_ATTRIBUTION } from '$lib/server/regen';
 import { REMINDERS, isSaved, setReminder, toggleSaved } from '$lib/server/angebote/saved';
 import { tileState } from '$lib/server/import/tiles';
 import { eventChat, eventChatTicket } from '$lib/server/angebote/eventchat';
@@ -40,7 +41,7 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		sel && !sel.cancelled && d.event.status === 'aktiv' ? await terminWetter(sql, params.id, sel.date, sel.start, sel.end, d.event.allDay).catch(() => null) : null;
 	return {
 		...d,
-		wetter: wetter ? { ...wetter, attribution: DWD_ATTRIBUTION, options: WEATHER_STATUS } : null,
+		wetter: wetter ? { ...wetter, attribution: DWD_ATTRIBUTION, regenAttribution: REGEN_ATTRIBUTION, options: WEATHER_STATUS } : null,
 		occurrences: d.occurrences.map((o) => ({ date: o.date, start: o.start.toISOString(), end: o.end?.toISOString() ?? null, cancelled: o.cancelled })),
 		selected: sel ? { date: sel.date, start: sel.start.toISOString(), end: sel.end?.toISOString() ?? null, cancelled: sel.cancelled || d.event.status === 'abgesagt' } : null,
 		saved: saved ? { remindAt: saved.remindAt?.toISOString() ?? null } : null,

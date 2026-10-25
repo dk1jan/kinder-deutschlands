@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-25 · Regen in den nächsten 2 Stunden (F-057 Teil 1, D-095)
+
+**Was**
+- **Quelle:** Regenradar RV des DWD (5-Minuten-Schritte, 1 km, 2 Stunden Vorhersage) über Bright Sky (`/radar`), nur vom Server, Punkt auf ~1 km gerundet, 5 Minuten zwischengespeichert, höchstens 400 Abrufe pro Stunde; bei Ausfall kein Hinweis statt Fehler. `BRIGHTSKY_URL` erlaubt eine eigene Instanz.
+- **Terminseite:** Bei Terminen in den nächsten 2 Stunden (nicht bei „drinnen“), die Regen im Terminfenster erwarten: „Regen erwartet – Mäßiger Regen ab ca. 15:20 Uhr erwartet, bis ca. 15:50 Uhr. Der Veranstalter entscheidet …“, mit Quelle und Änderungsvermerk.
+- **Karte:** Am Kartenmittelpunkt (ab Zoom 9) steht „Regen in der Nähe: …“ im Hinweiskasten; der Knopf „Lieber drinnen“ erscheint jetzt auch bei Regen ohne Warnung (Kasten dann mit blauem statt rotem Rand).
+- **Mitteilung:** Im 5-Minuten-Zeitplan: Termine, die in den nächsten 75 Minuten beginnen (oder laufen), mit „Ich komme“/„Interessiert“, ohne Warnung und ohne Entscheidung des Veranstalters, bei Regenbeginn innerhalb der nächsten Stunde → einmal Mitteilung an Mitkommende und Veranstalter (Push nur mit „Erinnerungen“, ohne Titel). Höchstens eine Wetter-Mitteilung je Person und Termin (gemeinsam mit der Warn-Mitteilung).
+- **Datenschutzerklärung (Entwurf):** neuer Abschnitt „Regen und Wetter bei Terminen“. **Betrieb:** `DEPLOYMENT.md` (ausgehend api.brightsky.dev:443, `BRIGHTSKY_URL`, Log `[regen]`/`[wetter]`).
+**Warum** Jan: „Regen ist ein richtiges Thema“; Auswahl „go a“ (Bright Sky) nach Quellenprüfung. **Nicht in diesem Auftrag:** Radar als Kartenebene, Tageskachel, Vorhersage über Tage, Wochenende, Hitze/UV/Pollen.
+**Module** M12 Veranstaltungen, M20 Regionale Hinweise/Warnungen, Karte, Datenschutz · **DB-Migration** nein
+**Tests** svelte-check 0 Fehler; Unit/DB-Tests (neu `regen.unit.test.ts` 11 Tests: Stufen, Auswertung, Ende nach zwei trockenen Scheiben, Zeitfenster, Antwort lesen, Abruf mit Rundung/Zwischenspeicher/Ausfall/außerhalb Deutschlands/eigene Instanz; `wetter.db.test.ts` +3: Mitteilung einmal, still bei trocken/zu spät/drinnen/morgen/entschieden, Ausfall und Termin ohne Ort); Rauchtest mit Radar-Nachbau (Terminseite, Schnittstelle, ungültiger Punkt); Browsertest `karte-drinnen-check.py` (Regensatz mit Quelle, „Lieber drinnen“ bei Regen allein; Computer + Handy); axe ohne schwere Verstöße; Bildschirmfoto angesehen. **Nicht getestet:** echter Abruf bei api.brightsky.dev (aus der Arbeitsumgebung nicht erreichbar; Form der Antwort per Stichprobe über den Browser-Abruf geprüft), Push aufs echte Handy, Einheit der Werte (0,01 mm je 5 Min. laut Bright-Sky-Doku, nicht gegengeprüft).
+
 ## 2026-10-25 · Wetter bei Veranstaltungen und Karte „Lieber drinnen“ (F-056, D-094)
 
 **Was**

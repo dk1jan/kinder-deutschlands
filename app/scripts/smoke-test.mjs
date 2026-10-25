@@ -39,6 +39,7 @@ const env = {
 	PROTOMAPS_BUILD_BASE: 'http://127.0.0.1:3998/build/',
 	PMTILES_BIN: '/tmp/kd-smoke-pmtiles',
 	LGLN_WMS_URL: 'http://127.0.0.1:3998/lgln',
+	BRIGHTSKY_URL: 'http://127.0.0.1:3998',
 	IMPORT_ALLOW_LOCAL: '1',
 	RETRY_WAIT_MS: '50',
 	OVERPASS_PAUSE_MS: '0'
@@ -69,6 +70,12 @@ const mock = createServer((rq, rs) => {
 		}
 		if (u.pathname === '/vg250') return send(fx(`${u.searchParams.get('typeNames').replace('vg250:', '')}.json`));
 		if (u.pathname === '/lgln') { rs.writeHead(200, { 'content-type': 'image/jpeg' }); return rs.end(Buffer.alloc(4000, 7)); }
+		if (u.pathname === '/radar') {
+			// F-057: Regenradar-Nachbau (Form wie Bright Sky /radar): 25 Zeitscheiben à 5 Minuten, Regen von +70 bis +130 Minuten
+			const t0 = Math.floor(Date.now() / 300_000) * 300_000;
+			const radar = Array.from({ length: 25 }, (_, i) => ({ timestamp: new Date(t0 + i * 300_000).toISOString(), source: 'RADARCOMP::RV::smoke', precipitation_5: [[0, i * 5 >= 70 && i * 5 < 130 ? 30 : 0, 0], [0, 0, 0], [null, 0, 0]] }));
+			return send(JSON.stringify({ radar, geometry: { type: 'Polygon', coordinates: [] }, bbox: [1, 2, 3, 4], latlon_position: { x: 0.5, y: 0.5 } }));
+		}
 		if (u.pathname === '/kalender.ics') return send(icsFeed, 'text/calendar');
 		if (u.pathname === '/builds.json') return send(JSON.stringify([{ key: '20261017.pmtiles' }, { key: '20261018.pmtiles' }]));
 		rs.writeHead(404); rs.end();
@@ -855,7 +862,7 @@ try {
 		check(w.body.includes('Kita') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: „Meine Regionen“ mit aktueller Warnung');
 		// F-056: Wetter bei Veranstaltungen – Hinweis am Termin, Entscheidung des Veranstalters, Warnung am Kartenpunkt
 		{
-			const soon = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(Date.now() + 2 * 3600_000)).replace(' ', 'T');
+			const soon = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(Date.now() + 60 * 60_000)).replace(' ', 'T');
 			let r = await C.req('/veranstaltungen/neu', { form: { owner: 'ich', title: 'Smoke-Wetterfest', kind: 'fest', start: soon, region_code: fdf.code, visibility: 'mitglieder' } });
 			const wxEv = r.location.split('?')[0];
 			check(r.status === 303 && /^\/veranstaltungen\/[0-9a-f-]{36}$/.test(wxEv), `Wetter: Termin in Kürze angelegt (${r.status})`);
@@ -877,6 +884,13 @@ try {
 			const nix = JSON.parse((await X2.req('/api/warnungen/hier?lon=13.4&lat=48.1')).body);
 			check(nix.n === 0 && nix.top === null, 'Karte: keine Warnung an anderem Punkt');
 			check((await X2.req('/api/warnungen/hier?lon=0&lat=0')).status === 400, 'Karte: ungültiger Punkt abgelehnt');
+			// F-057: Regen in den nächsten 2 Stunden (Radar-Nachbau)
+			r = await C.req(wxEv);
+			check(r.body.includes('Regen erwartet') && /Regen ab ca\. \d\d:\d\d Uhr erwartet/.test(r.body) && r.body.includes('Regenradar: Deutscher Wetterdienst'), 'Regen: Terminseite zeigt Regen mit Quelle (F-057)');
+			const rg = await X2.req('/api/wetter/regen?lon=8.85&lat=53.03');
+			const rj = JSON.parse(rg.body);
+			check(rg.status === 200 && /Regen ab ca\. \d\d:\d\d Uhr erwartet/.test(rj.text ?? '') && rj.peak === 2 && rj.source.includes('Bright Sky'), 'Regen: Schnittstelle liefert Satz, Stufe und Quelle');
+			check((await X2.req('/api/wetter/regen?lon=0&lat=0')).status === 400, 'Regen: ungültiger Punkt abgelehnt');
 		}
 	}
 	{

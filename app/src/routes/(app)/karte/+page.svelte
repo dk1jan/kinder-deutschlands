@@ -13,20 +13,24 @@
 	// F-056: Wetterwarnung (DWD, Stufe 2+) am Kartenmittelpunkt → „Lieber drinnen“
 	let wx = $state<{ n: number; top: { id: string; label: string; headline: string } | null } | null>(null);
 	let wxTimer: ReturnType<typeof setTimeout> | null = null;
+	let rain = $state<{ text: string | null; source: string } | null>(null);
 	let wxKey = '';
 	const drinnenOn = $derived(filters.length === DRINNEN_KEYS.length && DRINNEN_KEYS.every((k) => filters.includes(k)));
 	function checkWx(c: [number, number], zoom: number) {
 		if (wxTimer) clearTimeout(wxTimer);
 		if (zoom < 7) {
 			wx = null;
+			rain = null;
 			return;
 		}
 		wxTimer = setTimeout(async () => {
 			const key = `${c[0].toFixed(2)}:${c[1].toFixed(2)}`;
 			if (key === wxKey) return;
 			wxKey = key;
-			const r = await fetch(`/api/warnungen/hier?lon=${c[0].toFixed(2)}&lat=${c[1].toFixed(2)}`).catch(() => null);
+			const q = `lon=${c[0].toFixed(2)}&lat=${c[1].toFixed(2)}`;
+			const [r, g] = await Promise.all([fetch(`/api/warnungen/hier?${q}`).catch(() => null), zoom >= 9 ? fetch(`/api/wetter/regen?${q}`).catch(() => null) : Promise.resolve(null)]);
 			wx = r?.ok ? await r.json() : null;
+			rain = g?.ok ? await g.json() : null;
 		}, 800);
 	}
 	$effect(() => {
@@ -370,9 +374,14 @@
 			{/if}
 		</div>
 
-		{#if wx && wx.n > 0 && wx.top}
-			<div class="wx" role="status">
-				<p><Icon name="hinweis" size={18} /><span><strong>{wx.top.label}</strong> hier: <a href="/warnungen/{encodeURIComponent(wx.top.id)}">{wx.top.headline}</a>{wx.n > 1 ? ` (+${wx.n - 1})` : ''}</span></p>
+		{#if (wx && wx.n > 0 && wx.top) || rain?.text}
+			<div class="wx" class:rainonly={!(wx && wx.n > 0 && wx.top)} role="status">
+				{#if wx && wx.n > 0 && wx.top}
+					<p><Icon name="hinweis" size={18} /><span><strong>{wx.top.label}</strong> hier: <a href="/warnungen/{encodeURIComponent(wx.top.id)}">{wx.top.headline}</a>{wx.n > 1 ? ` (+${wx.n - 1})` : ''}</span></p>
+				{/if}
+				{#if rain?.text}
+					<p class="rain"><Icon name="hinweis" size={18} /><span><strong>Regen in der Nähe:</strong> {rain.text} <small class="muted">{rain.source}</small></span></p>
+				{/if}
 				{#if drinnenOn}
 					<button type="button" class="btn small secondary" onclick={() => (filters = [])}>Alle Orte zeigen</button>
 				{:else}
@@ -690,6 +699,9 @@
 		background: var(--surface);
 		border-left: 5px solid #d63d31;
 		font-size: var(--fs-s);
+	}
+	.wx.rainonly {
+		border-left-color: var(--navy);
 	}
 	.wx p {
 		display: flex;

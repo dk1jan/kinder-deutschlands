@@ -7,6 +7,7 @@ import { audit } from '../audit';
 import { LEVEL_LABEL } from '../warnings/cap';
 import { canEdit, notifyAttendees, pgDate } from './events';
 import { expand } from './recurrence';
+import { regenAt, rainIn, regenText, regenTime, REGEN_LABEL, type Regen } from '../regen';
 
 export const WEATHER_STATUS = { findet_statt: 'Findet trotz Warnung statt', drinnen: 'Nach drinnen verlegt' } as const;
 export type WeatherStatus = keyof typeof WEATHER_STATUS;
@@ -37,6 +38,25 @@ export async function kreisOfEvent(sql: Sql, eventId: string): Promise<string | 
 	return (r?.kreis as string | null) ?? null;
 }
 
+/** Punkt des Termins (Ort, sonst Mitte der Region) und ob er laut Eintrag drinnen stattfindet. */
+export async function eventPoint(sql: Sql, eventId: string): Promise<{ lat: number; lon: number; indoor: boolean } | null> {
+	const [r] = await sql`select coalesce(ST_Y(e.location), ST_Y(g.center)) as lat, coalesce(ST_X(e.location), ST_X(g.center)) as lon, e.setting
+		from events e left join regions g on g.code = e.region_code where e.id = ${eventId}`;
+	return r && r.lat != null && r.lon != null ? { lat: Number(r.lat), lon: Number(r.lon), indoor: r.setting === 'drinnen' } : null;
+}
+
+export type RegenFn = (lat: number, lon: number) => Promise<Regen | null>;
+/** Regen im Fenster des Termins, nur bei Terminen in den nächsten 2 Stunden und nicht bei „drinnen“. */
+export async function regenForEvent(sql: Sql, eventId: string, w: { from: Date; to: Date }, regen: RegenFn = regenAt, now = new Date()) {
+	if (w.from.getTime() > now.getTime() + 115 * 60_000 || w.to.getTime() < now.getTime()) return null;
+	const pt = await eventPoint(sql, eventId);
+	if (!pt || pt.indoor) return null;
+	const r = await regen(pt.lat, pt.lon);
+	if (!r) return null;
+	const hit = rainIn(r, new Date(Math.max(now.getTime(), w.from.getTime())), w.to);
+	return hit ? { at: hit.at, level: hit.level, label: REGEN_LABEL[hit.level], time: regenTime(hit.at), text: regenText(r) } : null;
+}
+
 /** Aktive Wetterwarnungen (ab Stufe 2) im Kreis, die das Zeitfenster berühren. */
 export async function warningsFor(sql: Sql, kreis: string, from: Date, to: Date): Promise<TerminWarnung[]> {
 	const rows = await sql`select w.id, w.level, w.headline, w.expires
@@ -53,11 +73,11 @@ export async function statusOf(sql: Sql, eventId: string, occurrence: string) {
 }
 
 /** Für die Terminseite: Warnungen zur Terminzeit und Entscheidung des Veranstalters. */
-export async function terminWetter(sql: Sql, eventId: string, occurrence: string, start: Date, end: Date | null, allDay: boolean) {
+export async function terminWetter(sql: Sql, eventId: string, occurrence: string, start: Date, end: Date | null, allDay: boolean, regen: RegenFn = regenAt) {
 	const kreis = await kreisOfEvent(sql, eventId);
 	const w = windowOf(start, end, allDay);
-	const [warnings, status] = await Promise.all([kreis ? warningsFor(sql, kreis, w.from, w.to) : [], statusOf(sql, eventId, occurrence)]);
-	return { warnings, status };
+	const [warnings, status, rain] = await Promise.all([kreis ? warningsFor(sql, kreis, w.from, w.to) : [], statusOf(sql, eventId, occurrence), Promise.race([regenForEvent(sql, eventId, w, regen), new Promise<null>((r) => setTimeout(() => r(null), 3000))]).catch(() => null)]);
+	return { warnings, status, regen: rain };
 }
 
 /** Veranstalter: Entscheidung zu einem Termin setzen oder (status = null) zurücknehmen. Mitkommende werden benachrichtigt. */
@@ -90,7 +110,7 @@ export async function setWeatherStatus(sql: Sql, userId: string, eventId: string
  * entschieden, bleibt es still. Chat-Treffen sind Ende-zu-Ende-verschlüsselt (kein Ort, keine Teilnehmerliste auf dem Server)
  * und hier bewusst nicht erfasst.
  */
-export async function tickEventWeather(sql: Sql): Promise<number> {
+export async function tickEventWeather(sql: Sql, deps: { regen?: RegenFn } = {}): Promise<number> {
 	const evs = await sql`select e.id, e.title, e.created_by, e.starts_at, e.ends_at, e.all_day, e.rrule, e.exdates
 		from events e where e.status = 'aktiv' and exists (
 			select 1 from event_attendance a where a.event_id = e.id and a.occurrence between current_date - 1 and current_date + 2)`;
@@ -106,17 +126,27 @@ export async function tickEventWeather(sql: Sql): Promise<number> {
 			if (w.to.getTime() < now.getTime()) continue;
 			if (await statusOf(sql, e.id as string, o.date)) continue;
 			const warns = await warningsFor(sql, kreis, w.from, w.to);
-			if (!warns.length) continue;
-			const top = warns[0];
+			// Ohne Warnung: Regen in der nächsten Stunde (F-057) – nur wenn der Termin bald beginnt oder läuft
+			const top: { id: string; label: string; headline: string } | null = warns[0] ?? null;
+			let rain: { time: string; label: string } | null = null;
+			if (!top) {
+				if (o.start.getTime() - now.getTime() > 75 * 60_000) continue;
+				const r = await regenForEvent(sql, e.id as string, w, deps.regen ?? regenAt, now).catch(() => null);
+				if (!r || new Date(r.at).getTime() - now.getTime() > 60 * 60_000) continue;
+				rain = { time: r.time, label: r.label };
+			}
 			const rows = await sql`select user_id from event_attendance where event_id = ${e.id as string} and occurrence = ${o.date}`;
 			const who = new Set<string>(rows.map((r) => r.user_id as string));
 			if (e.created_by) who.add(e.created_by as string);
 			for (const uid of who) {
-				const [ins] = await sql`insert into event_weather_alerts (event_id, occurrence, user_id, warning_id) values (${e.id as string}, ${o.date}, ${uid}, ${top.id})
+				const [ins] = await sql`insert into event_weather_alerts (event_id, occurrence, user_id, warning_id) values (${e.id as string}, ${o.date}, ${uid}, ${top ? top.id : 'regen'})
 					on conflict do nothing returning 1 as x`;
 				if (!ins) continue;
 				const owner = uid === e.created_by;
-				const text = `${top.label} zur Terminzeit: „${e.title}“ am ${fmtDay(o.date)} – ${top.headline}. ${owner ? 'Du kannst auf der Terminseite festhalten, ob es stattfindet.' : 'Prüfe, ob der Termin stattfindet.'}`;
+				const tail = owner ? 'Du kannst auf der Terminseite festhalten, ob es stattfindet.' : 'Prüfe, ob der Termin stattfindet.';
+				const text = top
+					? `${top.label} zur Terminzeit: „${e.title}“ am ${fmtDay(o.date)} – ${top.headline}. ${tail}`
+					: `Regen erwartet: „${e.title}“ am ${fmtDay(o.date)} – ${rain!.label} ab ca. ${rain!.time} Uhr. ${tail}`;
 				await notify(sql, uid, 'termin', text, `/veranstaltungen/${e.id}?am=${o.date}`, { pushKind: 'erinnerung' });
 				sent++;
 			}

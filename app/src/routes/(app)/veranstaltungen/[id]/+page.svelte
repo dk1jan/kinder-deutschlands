@@ -89,6 +89,10 @@
 			</Notice>
 			<p class="muted small wx-src">{data.wetter.attribution}</p>
 		{/if}
+		{#if data.wetter?.regen?.text}
+			<Notice kind="info" title="Regen erwartet">{' '}{data.wetter.regen.text} Der Veranstalter entscheidet, ob der Termin stattfindet.</Notice>
+			<p class="muted small wx-src">{data.wetter.regenAttribution}</p>
+		{/if}
 
 		{#if sel}
 			<p class="when"><Icon name="uhr" size={22} /> <strong>{when(sel.start, sel.end, e.allDay, true)}</strong></p>

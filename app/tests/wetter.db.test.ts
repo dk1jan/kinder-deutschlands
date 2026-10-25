@@ -15,6 +15,7 @@ d('Wetter bei Veranstaltungen (F-056)', async () => {
 	const P = await import('../src/lib/server/places');
 	const { berlinParts } = await import('../src/lib/server/angebote/recurrence');
 	const { PostError } = await import('../src/lib/server/community/posts');
+	const R = await import('../src/lib/server/regen');
 	const sql = postgres(url ?? '', { max: 4, onnotice: () => {} });
 	const u: Record<string, string> = {};
 	const key = (t: Date) => `${berlinParts(t).y}-${String(berlinParts(t).m).padStart(2, '0')}-${String(berlinParts(t).d).padStart(2, '0')}`;
@@ -158,5 +159,66 @@ d('Wetter bei Veranstaltungen (F-056)', async () => {
 		expect(P.resolveFilters(['baeder']).kinds).toEqual(['schwimmbad']);
 		expect(P.resolveFilters([...DRINNEN_KEYS]).kinds.sort()).toEqual(['bibliothek', 'familienzentrum', 'indoorspielplatz', 'schwimmbad']);
 		expect(P.resolveFilters(['unbekannt']).kinds).toEqual([]);
+	});
+	// ---------- F-057: Regen ----------
+	const rainFrom = (minFromNow: number | null) => async () => {
+		const t = Date.now();
+		return R.summarize(Array.from({ length: 25 }, (_, i) => ({ at: new Date(t + i * 5 * 60_000), v: minFromNow !== null && i * 5 >= minFromNow && i * 5 < minFromNow + 30 ? 30 : 0 })));
+	};
+	// direkt anlegen: createEvent begrenzt auf 10 Termine je Tag und Person
+	const mkEvent = async (title: string, inMin: number, extra: { setting?: string } = {}) => {
+		const st = new Date(Date.now() + inMin * 60_000);
+		const [e] = await sql`insert into events (title, kind, origin, created_by, starts_at, ends_at, region_code, location, setting, visibility, status)
+			values (${title}, 'fest', 'mitglied', ${u.anna}, ${st}, ${new Date(st.getTime() + 3600_000)}, 'Z9002:g:1', ST_SetSRID(ST_MakePoint(8.8, 52.9), 4326), ${extra.setting ?? 'draussen'}, 'mitglieder', 'aktiv') returning id`;
+		await E.setAttendance(sql, u.ben, e.id, key(st), 'komme_mit', false);
+		return { id: e.id as string, st };
+	};
+	const only = (ids: string[]) => sql`update events set status = case when id = any(${ids}) then 'aktiv' else 'archiviert' end`;
+
+	it('Regen: Termin in 30 Minuten, Regen beginnt in 20 → einmal Mitteilung an Mitkommende und Veranstalter', async () => {
+		const { id, st } = await mkEvent('Spielplatztreff', 30);
+		const t = await Wx.terminWetter(sql, id, key(st), st, new Date(st.getTime() + 3600_000), false, rainFrom(20));
+		expect(t.regen?.label).toBe('mäßiger Regen');
+		expect(t.regen?.text).toMatch(/Mäßiger Regen ab ca\. \d\d:\d\d Uhr/);
+		const before = (await notes(u.ben, '%Regen erwartet%Spielplatztreff%')).length;
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(20) })).toBe(2);
+		const n = await notes(u.ben, '%Regen erwartet%Spielplatztreff%');
+		expect(n.length).toBe(before + 1);
+		expect(n.at(-1)!.text).toMatch(/mäßiger Regen ab ca\. \d\d:\d\d Uhr\. Prüfe, ob der Termin stattfindet\./);
+		expect((await notes(u.anna, '%Regen erwartet%Spielplatztreff%'))[0].text).toContain('Du kannst auf der Terminseite festhalten');
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(20) })).toBe(0); // nicht noch einmal
+	});
+
+	it('Regen: kein Regen, Regen erst nach über einer Stunde, Termin drinnen, Termin erst morgen, Entscheidung getroffen → still', async () => {
+		await sql`delete from event_weather_alerts`;
+		const dry = await mkEvent('Trocken', 30);
+		const late = await mkEvent('Spät', 30);
+		const inside = await mkEvent('Drinnen-Fest', 30, { setting: 'drinnen' });
+		const tomorrow = await mkEvent('Morgen-Fest', 20 * 60);
+		const decided = await mkEvent('Entschieden', 30);
+		await Wx.setWeatherStatus(sql, u.anna, decided.id, key(decided.st), 'findet_statt', '');
+		await sql`delete from event_weather_alerts`;
+		await only([dry.id]);
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(null) })).toBe(0);
+		await only([late.id]);
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(70) })).toBe(0); // beginnt erst in 70 Minuten
+		await only([inside.id]);
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(10) })).toBe(0);
+		await only([tomorrow.id]);
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(10) })).toBe(0);
+		await only([decided.id]);
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(10) })).toBe(0);
+		await only([late.id]);
+		expect(await Wx.tickEventWeather(sql, { regen: rainFrom(50) })).toBe(2); // Gegenprobe: beginnt in 50 Minuten → Mitteilung
+	});
+
+	it('Regen: Ausfall der Quelle stört die Terminseite und den Zeitplan nicht; Termine ohne Ort bleiben ohne Regenhinweis', async () => {
+		const down = async () => null;
+		const { id, st } = await mkEvent('Ohne Radar', 30);
+		expect((await Wx.terminWetter(sql, id, key(st), st, new Date(st.getTime() + 3600_000), false, down)).regen).toBeNull();
+		await sql`update events set location = null, region_code = null where id = ${id}`;
+		expect((await Wx.terminWetter(sql, id, key(st), st, new Date(st.getTime() + 3600_000), false, rainFrom(10))).regen).toBeNull();
+		const far = await mkEvent('In fünf Stunden', 300);
+		expect((await Wx.terminWetter(sql, far.id, key(far.st), far.st, new Date(far.st.getTime() + 3600_000), false, rainFrom(10))).regen).toBeNull(); // über 2 Stunden hin
 	});
 });
