@@ -2,7 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
-## 2026-10-25 · Warnungen des Bevölkerungsschutzes (NINA) und klickbare Warnkarte (F-053, D-092)
+## 2026-10-25 · NINA entfernt, Warnkarte nur noch mit Wetterwarnungen (F-054, D-093)
+
+**Was**
+- **NINA/Bevölkerungsschutz komplett von der Seite genommen:** Abruf (`nina.ts`, Takt in `jobs.ts`, `ingestNina`), Mitteilung/Push für diese Meldungen, Zähler „Meldungen Bevölkerungsschutz“, Startseiten-Satz, Erklärpunkt „Und was ist NINA?“, Abschnitt „Bevölkerungsschutz“ mit BBK-Quellenangabe, lila Kartenebene und Legende, Detailseiten-Text (BBK/NINA, Kontakt), Kartenquelle „BBK/NINA“. Kein Verweis auf NINA oder warnung.bund.de mehr auf der Seite. Der Hinweis „bei Gefahr gelten die Durchsagen der Behörden, Cell Broadcast/Radio/Sirenen eingeschaltet lassen“ bleibt, ohne Namensnennung.
+- **Bleibt:** DWD-Warnungen wie bisher und die klickbare Warnkarte (jetzt nur Wetter ab Stufe 2); die Seite heißt weiter „Warnungen“.
+- **Daten:** Migration `0021_nina_entfernen.sql` löscht übernommene NINA-Meldungen samt Gebieten, Zustellvermerken und den zugehörigen Mitteilungen in der Glocke, entfernt den Zustand `warnungen_nina`, lässt als Anbieter nur noch „dwd“ zu und entfernt die NINA-Spalten `source`, `version`, `contact`. Die Fläche (`geom`) bleibt für die Karte. Migration 0020 bleibt unverändert (Verlauf).
+- Betrieb: Umgebungsvariablen `NINA_URL`/`NINA_WAIT_MS` entfallen (nur Tests), Abschnitt NINA aus `DEPLOYMENT.md` entfernt.
+**Warum** Jan (25.10.): „Nina von der Seite“ – nach der Rückfrage zur fehlenden BBK-Vereinbarung soll NINA ganz raus, statt anzufragen.
+**Module** M20 Regionale Hinweise/Warnungen, Startseite · **DB-Migration** ja (`0021_nina_entfernen.sql`)
+**Tests** *Lokal gelaufen:* svelte-check 0 Fehler, Unit-Tests 150 bestanden (DB-Tests übersprungen, keine Datenbank hier), Build. *Angepasst, aber erst in CI prüfbar (PostGIS nötig):* `nina.db.test.ts` ersetzt durch `warnkarte.db.test.ts` (Karte nur Wetter ab Stufe 2, beendete/abgelaufene raus, Überblick ohne NINA-Zähler, Anbieter „nina“ nicht mehr möglich), Rauchtest (Karte, GeoJSON, „kein NINA/BBK mehr auf der Seite“), `warnkarte-check.py` (Fläche einer Wetterwarnung antippen, Computer + Handy). Die Migration 0021 selbst läuft in CI auf leerer Datenbank; ein Lauf mit vorhandenen NINA-Zeilen wurde nicht getestet – auf dem Server löscht sie die bisher übernommenen Meldungen.
+
+## 2026-10-25 · Warnungen des Bevölkerungsschutzes (NINA) und klickbare Warnkarte (F-053, D-092) – NINA-Teil am selben Tag wieder entfernt (siehe oben)
 
 **Was**
 - **NINA eingebunden:** Meldungen aus MoWaS (Behörden, Feuerwehr, Katastrophenschutz), KATWARN, BIWAPP, Hochwasser (LHP) und Polizei kommen alle 5 Minuten über die NINA-Schnittstelle `warnung.bund.de/api31` (ohne Schlüssel). DWD bleibt direkt vom DWD. Neue Meldungen und neue Fassungen werden geladen (CAP als JSON + Gebiet als GeoJSON), HTML-Reste in Text umgewandelt, Kreise über den amtlichen Regionalschlüssel (`warnVerwaltungsbereiche`), sonst über die Fläche.

@@ -26,15 +26,15 @@ async function stats() {
 }
 
 // Unwetterwarnungen auf der Startseite (Jan 24.10.): was gerade in Deutschland aktiv ist, 2 Minuten zwischengespeichert
-let warnCache: { at: number; v: { severe: number; kreise: number; markant: number; nina: number } } | null = null;
+let warnCache: { at: number; v: { severe: number; kreise: number; markant: number } } | null = null;
 async function warnings() {
 	if (warnCache && Date.now() - warnCache.at < 2 * 60 * 1000) return warnCache.v;
 	try {
 		const o = await warnOverview(db());
 		const g = (n: number) => o.byLevel[n] ?? { n: 0, kreise: 0 };
-		warnCache = { at: Date.now(), v: { severe: g(3).n + g(4).n, kreise: g(3).kreise + g(4).kreise, markant: g(2).n, nina: o.nina } };
+		warnCache = { at: Date.now(), v: { severe: g(3).n + g(4).n, kreise: g(3).kreise + g(4).kreise, markant: g(2).n } };
 	} catch {
-		warnCache = { at: Date.now(), v: { severe: 0, kreise: 0, markant: 0, nina: 0 } };
+		warnCache = { at: Date.now(), v: { severe: 0, kreise: 0, markant: 0 } };
 	}
 	return warnCache.v;
 }

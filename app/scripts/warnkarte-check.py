@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Browsertest F-053: Warnkarte auf /warnungen – Fläche einer NINA-Meldung antippen zeigt die Meldung mit Link.
-Läuft NACH dem Rauchtest (nutzt dessen Datenbank mit „smoke.nina.1“ bei Bremen):
+"""Browsertest F-053: Warnkarte auf /warnungen – Fläche einer Wetterwarnung antippen zeigt die Warnung mit Link.
+Läuft NACH dem Rauchtest (nutzt dessen Datenbank mit „smoke.dwd.1“ bei Bremen):
     TEST_DATABASE_URL=postgres://… python3 scripts/warnkarte-check.py [Ordner/Präfix für Bildschirmfotos]"""
 import os, sys, subprocess, time, urllib.request
 from playwright.sync_api import sync_playwright
@@ -27,8 +27,8 @@ try:
             x, y = box['x'] + pt['x'], box['y'] + pt['y']
             pg.mouse.click(x, y) if not touch else pg.touchscreen.tap(x, y)
             pg.wait_for_timeout(700)
-            ok = pg.locator('.wm .card a:has-text("Smoke: Trinkwasser abkochen")').count() > 0
-            print(('OK   ' if ok else 'FEHL ') + 'Fläche antippen zeigt NINA-Meldung', 'Handy' if touch else 'Computer')
+            ok = pg.locator('.wm .card a:has-text("UNWETTERWARNUNG vor ORKANBÖEN")').count() > 0
+            print(('OK   ' if ok else 'FEHL ') + 'Fläche antippen zeigt Wetterwarnung', 'Handy' if touch else 'Computer')
             fails += 0 if ok else 1
             if len(sys.argv) > 1: pg.locator('.wm').screenshot(path=f"{sys.argv[1]}-{'handy' if touch else 'pc'}.png")
             ctx.close()

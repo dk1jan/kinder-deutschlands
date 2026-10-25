@@ -151,19 +151,18 @@
 <section class="warnband" aria-labelledby="warn-titel">
 	<div class="container warn-grid">
 		<div>
-			<p class="eyebrow">Deutscher Wetterdienst und Bevölkerungsschutz (NINA)</p>
+			<p class="eyebrow">Deutscher Wetterdienst</p>
 			<h2 id="warn-titel">Warnungen direkt aufs Handy.</h2>
 			<p class="band-lead">
 				Der Deutsche Wetterdienst ist der amtliche Wetterdienst des Bundes. Seine Warnungen vor Sturm, Starkregen oder Gewitter bekommst du hier bei uns – du musst
 				nichts installieren. Wähle deine Region, gern gleich für Kita, Schule oder Großeltern mit. Neue Warnungen kommen als Mitteilung und auf Wunsch aufs Handy,
-				für jeden Kreis in Deutschland. Dazu kommen Warnungen von Behörden, Feuerwehr und Polizei aus NINA, etwa bei Großbrand, Hochwasser oder Trinkwasser.
+				für jeden Kreis in Deutschland.
 			</p>
 			{#if data.warn.severe > 0}
 				<p class="warn-live"><span class="pulse" aria-hidden="true"></span>Gerade aktiv: {data.warn.severe.toLocaleString('de-DE')} {data.warn.severe === 1 ? 'Unwetterwarnung' : 'Unwetterwarnungen'} in {data.warn.kreise === 1 ? '1 Kreis' : `${data.warn.kreise.toLocaleString('de-DE')} Kreisen`}</p>
 			{:else if data.warn.markant > 0}
 				<p class="warn-live calm">Gerade aktiv: {data.warn.markant.toLocaleString('de-DE')} {data.warn.markant === 1 ? 'markante Wetterwarnung' : 'markante Wetterwarnungen'}</p>
 			{/if}
-			{#if data.warn.nina > 0}<p class="warn-live calm">Bevölkerungsschutz: {data.warn.nina.toLocaleString('de-DE')} {data.warn.nina === 1 ? 'aktive Meldung' : 'aktive Meldungen'} in Deutschland</p>{/if}
 			<div class="cta">
 				<a class="btn signal" href="/warnungen">{data.user ? 'Warnungen einrichten' : 'Warnungen ansehen'}</a>
 			</div>

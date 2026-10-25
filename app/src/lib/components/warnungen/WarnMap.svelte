@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Warnkarte (F-053): aktive Warnungen als Flächen – Wetter (DWD, ab Stufe 2) und Bevölkerungsschutz (NINA).
+	// Warnkarte (F-053): aktive Wetterwarnungen (DWD, ab Stufe 2) als Flächen.
 	// Antippen einer Fläche zeigt alle Warnungen an dieser Stelle mit Link zur Meldung. Farbe nie allein: Liste mit Wort.
 	import { onMount } from 'svelte';
 	import type { Map as MlMap, MapMouseEvent } from 'maplibre-gl';
@@ -10,21 +10,18 @@
 	let { tiles }: { tiles: boolean } = $props();
 	interface Hit {
 		id: string;
-		p: string;
 		l: number;
 		t: string;
 		k: string;
-		q: string;
 		a: string;
 		b: string | null;
 	}
 	let el: HTMLDivElement;
 	let hits = $state<Hit[]>([]);
 	let loadState = $state<'laden' | 'ok' | 'fehler'>('laden');
-	let count = $state({ dwd: 0, nina: 0 });
 
-	// Wetter: Stufenfarben wie in der Liste; Bevölkerungsschutz: violett, damit es sich klar vom Wetter abhebt
-	const COLOR = ['match', ['get', 'p'], 'nina', '#7b3fa0', ['match', ['get', 'l'], 4, '#7a1f6f', 3, '#d63d31', 2, '#f07f1d', '#f5c400']] as const;
+	// Stufenfarben wie in der Liste
+	const COLOR = ['match', ['get', 'l'], 4, '#7a1f6f', 3, '#d63d31', 2, '#f07f1d', '#f5c400'] as const;
 	const fmt = (d: string | null) => (d ? new Date(d).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' }) : null);
 
 	onMount(() => {
@@ -78,18 +75,17 @@
 				const res = await fetch('/api/warnungen/karte');
 				if (!res.ok) throw new Error(String(res.status));
 				const data = (await res.json()) as { features: { properties: Hit }[] };
-				count = { dwd: data.features.filter((f) => f.properties.p === 'dwd').length, nina: data.features.filter((f) => f.properties.p === 'nina').length };
 				const add = () => {
 					if (m.getSource('warn')) return;
-					m.addSource('warn', { type: 'geojson', data: data as never, attribution: 'Warnungen: DWD (CC BY 4.0), BBK/NINA' });
-					m.addLayer({ id: 'warn-fill', type: 'fill', source: 'warn', paint: { 'fill-color': COLOR as never, 'fill-opacity': ['case', ['==', ['get', 'p'], 'nina'], 0.45, 0.35] } });
-					m.addLayer({ id: 'warn-line', type: 'line', source: 'warn', paint: { 'line-color': COLOR as never, 'line-width': ['case', ['==', ['get', 'p'], 'nina'], 2.5, 1] } });
+					m.addSource('warn', { type: 'geojson', data: data as never, attribution: 'Warnungen: DWD (CC BY 4.0)' });
+					m.addLayer({ id: 'warn-fill', type: 'fill', source: 'warn', paint: { 'fill-color': COLOR as never, 'fill-opacity': 0.35 } });
+					m.addLayer({ id: 'warn-line', type: 'line', source: 'warn', paint: { 'line-color': COLOR as never, 'line-width': 1 } });
 					m.on('click', 'warn-fill', (e: MapMouseEvent & { features?: { properties: Record<string, unknown> }[] }) => {
 						const seen = new Set<string>();
 						hits = (e.features ?? [])
 							.map((f) => f.properties as unknown as Hit)
 							.filter((h) => (seen.has(h.id) ? false : (seen.add(h.id), true)))
-							.sort((a, b) => (a.p === b.p ? b.l - a.l : a.p === 'nina' ? -1 : 1));
+							.sort((a, b) => b.l - a.l);
 					});
 					m.on('click', (e) => {
 						if (!m.queryRenderedFeatures(e.point, { layers: ['warn-fill'] }).length) hits = [];
@@ -118,8 +114,8 @@
 			<button type="button" class="x" onclick={() => (hits = [])} aria-label="Schließen"><Icon name="schliessen" size={18} /></button>
 			<ul>
 				{#each hits.slice(0, 6) as h (h.id)}
-					<li class:nina={h.p === 'nina'} style:--c={h.p === 'nina' ? '#7b3fa0' : (['#f5c400', '#f5c400', '#f07f1d', '#d63d31', '#7a1f6f'][h.l] ?? '#f5c400')}>
-						<small>{h.q} · {h.p === 'nina' ? h.k : `Stufe ${h.l} · ${h.k}`}</small>
+					<li style:--c={['#f5c400', '#f5c400', '#f07f1d', '#d63d31', '#7a1f6f'][h.l] ?? '#f5c400'}>
+						<small>Stufe {h.l} · {h.k}</small>
 						<a href="/warnungen/{encodeURIComponent(h.id)}"><strong>{h.t}</strong></a>
 						{#if h.a || h.b}<small class="muted">{[h.a, h.b ? `bis ${fmt(h.b)}` : null].filter(Boolean).join(' · ')}</small>{/if}
 					</li>
@@ -131,8 +127,7 @@
 	<p class="key">
 		{#if loadState === 'fehler'}Die Karte konnte nicht geladen werden – die Liste unten gilt weiter.
 		{:else}
-			<span class="sw" style:background="#7b3fa0"></span>Bevölkerungsschutz ({count.nina})
-			<span class="sw" style:background="#f07f1d"></span>Wetter Stufe 2
+						<span class="sw" style:background="#f07f1d"></span>Stufe 2
 			<span class="sw" style:background="#d63d31"></span>Stufe 3
 			<span class="sw" style:background="#7a1f6f"></span>Stufe 4
 			<span class="muted">· Fläche antippen für Details</span>

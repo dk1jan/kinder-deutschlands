@@ -4,7 +4,7 @@ import { db } from '$lib/server/db';
 import { rateLimit } from '$lib/server/ratelimit';
 import { mapData } from '$lib/server/warnings/store';
 
-// Warnkarte (F-053): aktive Warnungen (DWD ab Stufe 2, Bevölkerungsschutz alle) als Flächen. Öffentlich wie /warnungen.
+// Warnkarte (F-053): aktive Wetterwarnungen (DWD ab Stufe 2) als Flächen. Öffentlich wie /warnungen.
 let cache: { at: number; body: unknown } | null = null;
 export const GET: RequestHandler = async ({ getClientAddress }) => {
 	if (!rateLimit(`warnkarte:${getClientAddress()}`, 60, 60_000)) error(429, 'Zu viele Anfragen.');

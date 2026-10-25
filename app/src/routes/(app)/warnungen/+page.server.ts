@@ -3,14 +3,14 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireMember } from '$lib/server/guard';
 import { activeFor, kreisFor, MAX_SUBSCRIPTIONS, overview, subscribe, subscriptions, unsubscribe, WarnError } from '$lib/server/warnings/store';
-import { ninaState, warnState } from '$lib/server/warnings/jobs';
+import { warnState } from '$lib/server/warnings/jobs';
 import { tileState } from '$lib/server/import/tiles';
 
 // Amtliche Wetterwarnungen (DWD): öffentlich ansehen je Kreis; Mitglieder abonnieren bis zu 5 Regionen (Mitteilung + Push nach Wahl).
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const sql = db();
 	const member = !!locals.user && !!locals.session?.mfaVerified;
-	const [ov, state, nina, tiles] = await Promise.all([overview(sql), warnState(sql), ninaState(sql), tileState(sql).catch(() => null)]);
+	const [ov, state, tiles] = await Promise.all([overview(sql), warnState(sql), tileState(sql).catch(() => null)]);
 	const code = url.searchParams.get('region');
 	const shown = code && code.length <= 40 ? await kreisFor(sql, code) : null;
 	const shownWarnings = shown ? await activeFor(sql, shown.code) : [];
@@ -38,8 +38,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		home,
 		pushDevices,
 		max: MAX_SUBSCRIPTIONS,
-		tiles: !!tiles?.present,
-		ninaStand: nina.last_ok ? new Date(nina.last_ok) : null
+		tiles: !!tiles?.present
 	};
 };
 
