@@ -11,6 +11,8 @@
 		areaDesc: string | null;
 		onset: Date | string | null;
 		expires: Date | string | null;
+		provider?: string;
+		sourceLabel?: string;
 	}
 	let { w, full = false }: { w: W; full?: boolean } = $props();
 	const fmt = (d: Date | string | null) =>
@@ -18,8 +20,8 @@
 	const span = $derived([fmt(w.onset) ? `ab ${fmt(w.onset)}` : null, fmt(w.expires) ? `bis ${fmt(w.expires)}` : null].filter(Boolean).join(' · '));
 </script>
 
-<article class="w lvl{w.level}">
-	<p class="badge"><Icon name="warnung" size={18} /><span>Stufe {w.level} · {w.levelLabel}</span></p>
+<article class="w lvl{w.level}" class:nina={w.provider === 'nina'}>
+	<p class="badge"><Icon name="warnung" size={18} /><span>{#if w.provider === 'nina'}{w.sourceLabel} · {w.levelLabel}{:else}Stufe {w.level} · {w.levelLabel}{/if}</span></p>
 	<h3>{#if full}{w.headline}{:else}<a href="/warnungen/{encodeURIComponent(w.id)}">{w.headline}</a>{/if}</h3>
 	{#if span}<p class="when">{span}</p>{/if}
 	{#if w.description}
@@ -61,6 +63,10 @@
 	}
 	.lvl4 {
 		--lvl: #8e1f7a;
+		--lvl-ink: #ffffff;
+	}
+	.w.nina {
+		--lvl: #7b3fa0;
 		--lvl-ink: #ffffff;
 	}
 	.badge {

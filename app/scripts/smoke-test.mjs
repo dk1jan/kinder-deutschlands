@@ -498,7 +498,7 @@ try {
 		const facts = body.slice(body.indexOf('id="daten-titel"'), body.indexOf('</section>', body.indexOf('id="daten-titel"')));
 		check(body.includes('Für Familien in ganz Deutschland.') && !/Testbetrieb|Bremen und Niedersachsen|Im Aufbau|leeren Ecken|In Arbeit/.test(body), 'Startseite: ganz Deutschland, kein Testbetrieb/Bremen-Start (D-084)');
 		check(facts.length > 0 && !facts.includes('OpenStreetMap') && !facts.includes('/karte/quellen'), 'Startseite: Zahlenbox ohne Quellenzeile (Quellen bleiben unter „Datenquellen“)');
-		check(body.includes('Unwetterwarnungen direkt aufs Handy.') && body.includes('href="/warnungen"'), 'Startseite: Unwetterwarnungen als Feature');
+		check(body.includes('Warnungen direkt aufs Handy.') && body.includes('href="/warnungen"'), 'Startseite: Unwetterwarnungen als Feature');
 		check(body.includes('Der Deutsche Wetterdienst ist der amtliche Wetterdienst des Bundes.') && body.includes('nichts installieren'), 'Startseite: Warnungen kurz erklärt, nichts installieren (F-050)');
 		check(body.includes('href="/feedback?seite='), 'Fußzeile: Feedback-Link (F-052)');
 		const ov = await fetch(BASE + '/api/orte/uebersicht?z=6');
@@ -834,9 +834,25 @@ try {
 			values ('smoke.dwd.1', 'Alert', 'Severe', 3, 'Amtliche UNWETTERWARNUNG vor ORKANBÖEN', 'Smoke-Warntext.', now(), now(), now() + interval '6 hours') on conflict do nothing`;
 		await sqlT`insert into warning_areas (warning_id, kreis_code) values ('smoke.dwd.1', '04011') on conflict do nothing`;
 		let w = await X2.req('/warnungen?region=04011');
-		check(w.status === 200 && w.body.includes('Unwetterwarnungen für deine Region.') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: Gast sieht Warnung seiner Region');
+		check(w.status === 200 && w.body.includes('Warnungen für deine Region.') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: Gast sieht Warnung seiner Region');
 		check(w.body.includes('Deutscher Wetterdienst') && w.body.includes('CC BY 4.0'), 'Unwetterwarnungen: Quelle und Lizenz genannt');
 		check(w.body.includes('Kurz erklärt') && w.body.includes('Muss ich dafür etwas installieren?') && w.body.includes('Und was ist NINA?'), 'Unwetterwarnungen: Erklärkasten (DWD, nichts installieren, NINA) – F-050');
+		// F-053: Bevölkerungsschutz (NINA) mit Fläche, Karte als GeoJSON, Quelle BBK
+		await sqlT`insert into warnings (id, provider, source, version, msg_type, event, severity, level, headline, description, sender_name, sent, geom) values
+			('smoke.nina.1', 'nina', 'mowas', 1, 'Alert', 'Gefahreninformation', 'Minor', 1, 'Smoke: Trinkwasser abkochen', 'Bitte Wasser abkochen.', 'Leitstelle Smoke', now(),
+			ST_Multi(ST_GeomFromText('POLYGON((8.7 53.0, 8.9 53.0, 8.9 53.1, 8.7 53.0))', 4326))) on conflict do nothing`;
+		await sqlT`insert into warning_areas (warning_id, kreis_code) values ('smoke.nina.1', '04011') on conflict do nothing`;
+		w = await X2.req('/warnungen?region=04011');
+		check(w.body.includes('Smoke: Trinkwasser abkochen') && w.body.includes('Bevölkerungsschutz (MoWaS) · Gefahreninformation') && w.body.includes('aria-label="Karte der aktuellen Warnungen"'),
+			'Warnungen: NINA-Meldung mit Quelle in der Liste, Karte auf der Seite (F-053)');
+		w = await X2.req('/api/warnungen/karte');
+		{
+			const fc = JSON.parse(w.body);
+			const f = fc.features.find((x) => x.properties.id === 'smoke.nina.1');
+			check(w.status === 200 && fc.type === 'FeatureCollection' && f?.geometry?.type === 'MultiPolygon' && f.properties.p === 'nina', 'Warnkarte: Flächen als GeoJSON (F-053)');
+		}
+		w = await X2.req('/warnungen/smoke.nina.1');
+		check(w.status === 200 && w.body.includes('NINA/warnung.bund.de') && w.body.includes('Leitstelle Smoke'), 'Warnungen: NINA-Detailseite nennt BBK/NINA und Absender');
 		w = await X2.req('/warnungen/smoke.dwd.1');
 		check(w.status === 200 && w.body.includes('Smoke-Warntext.'), 'Unwetterwarnungen: Detailseite');
 		w = await A.req('/warnungen?/abonnieren', { form: { region: '04011', min_level: '2', push: 'on', label: 'Kita' } });

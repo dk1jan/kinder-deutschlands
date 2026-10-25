@@ -83,6 +83,7 @@ Abhängigkeit: Hintergrund-Ortung hängt an der Android-App (F-026, Entscheidung
 
 | ID | Ergebnis | Verweis |
 |---|---|---|
+| F-053 | erledigt: NINA-Warnungen (MoWaS, KATWARN, BIWAPP, Hochwasser, Polizei) mit Mitteilung/Push und klickbare Warnkarte auf `/warnungen` (D-092, ohne BBK-Vereinbarung auf Jans Entscheidung) | CHANGELOG 25.10. NINA |
 | F-052 | erledigt: Fußzeilen-Link „Feedback“ → `/feedback` (nur angemeldet): Fehler melden · Fehlerkorrektur · Allgemeines Feedback, Seite wird mitgegeben; Verwaltung → Feedback mit Status/Antwort/Mitteilung; 10/Tag, Export, Löschung (D-089, Migration 0019). Echte Nutzung durch Testerinnen: offen | CHANGELOG 24.10. Sammel-Update |
 | F-051 | erledigt: Autorenname im Forum öffnet die Profilkarte `/m/<Familien-ID>` wie nach dem QR-Scan; Pseudonyme in geschützten Gruppen nicht verlinkt (D-090) | CHANGELOG 24.10. Sammel-Update |
 | F-043 | erledigt: Bremen/Testphase raus – Startseite ohne „Im Aufbau, Start in Bremen und Niedersachsen“, „Testbetrieb“, „Was hier entsteht … Schritt für Schritt“, „In Arbeit/Jetzt da“; Gäste-Nachrichten ohne „In Arbeit/Modul M01…“; Bremen-Beispiele ersetzt; Karte startet mit ganz Deutschland (D-084) | CHANGELOG 24.10. Ganz Deutschland |

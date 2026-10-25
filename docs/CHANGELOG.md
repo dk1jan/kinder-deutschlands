@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-25 · Warnungen des Bevölkerungsschutzes (NINA) und klickbare Warnkarte (F-053, D-092)
+
+**Was**
+- **NINA eingebunden:** Meldungen aus MoWaS (Behörden, Feuerwehr, Katastrophenschutz), KATWARN, BIWAPP, Hochwasser (LHP) und Polizei kommen alle 5 Minuten über die NINA-Schnittstelle `warnung.bund.de/api31` (ohne Schlüssel). DWD bleibt direkt vom DWD. Neue Meldungen und neue Fassungen werden geladen (CAP als JSON + Gebiet als GeoJSON), HTML-Reste in Text umgewandelt, Kreise über den amtlichen Regionalschlüssel (`warnVerwaltungsbereiche`), sonst über die Fläche.
+- **Mitteilung und Push** wie beim DWD an die Abonnenten des Kreises – beim Bevölkerungsschutz **unabhängig von der gewählten Mindeststufe** (selten, betrifft direkt; „Trinkwasser abkochen“ ist nur Stufe 1). Neue Fassung mit gleicher Stufe still, höhere Stufe meldet erneut. Erster Lauf übernimmt nur. Fällt eine Quelle aus, werden ihre Meldungen nicht beendet.
+- **Warnkarte** auf `/warnungen`: alle aktiven Warnungen als Flächen – Bevölkerungsschutz lila, Wetter ab Stufe 2 in Stufenfarben (Stufe 1 würde die Karte flächig färben). Fläche antippen → Kärtchen mit allen Warnungen an dieser Stelle, Quelle, Art, Gebiet, „bis“, Link zur Meldung. Legende mit Wort (nicht nur Farbe). Neue Schnittstelle `/api/warnungen/karte` (GeoJSON, 1 Min. zwischengespeichert).
+- Liste/Detail: Quelle („Bevölkerungsschutz (MoWaS) · Gefahreninformation“), Absender, Kontakt, Hinweis „Quelle: BBK, NINA/warnung.bund.de – Text der warnenden Behörde unverändert, ohne Gewähr. Bei Gefahr gelten die Durchsagen der Behörden.“ Seite heißt jetzt „Warnungen“; Zähler „Meldungen Bevölkerungsschutz“; Startseiten-Abschnitt „Warnungen direkt aufs Handy.“ mit NINA-Satz und Zähler.
+- Fläche je Warnung (`warnings.geom`, auf ~200 m vereinfacht): NINA aus dem Gebiet, DWD aus den Polygonen der Meldung, sonst aus den betroffenen Kreisen; laufende DWD-Warnungen bekommen ihre Fläche einmalig aus den Kreisen.
+**Warum** Jan: „Kannst du die NINA-API statt nur NINA mit einbinden?“ → „go B“ (einbinden und sofort an, mit Quellenangabe, ohne BBK-Vereinbarung – Risiko vorher genannt) und „für DWD bitte auch eine klickbare Karte“.
+**Module** M20 Regionale Hinweise/Warnungen, Startseite · **DB-Migration** ja (`0020_nina.sql`: Anbieter „nina“, Spalten source/version/contact/geom, Fläche für laufende DWD-Warnungen)
+**Tests** svelte-check; 309 Unit/DB-Tests (neu `nina.db.test.ts`, Format nachgebaut nach einer echten MoWaS-Meldung vom 25.10.: HTML→Text, deutscher Block, Regionalschlüssel, Gebiet; erster Lauf still; neue Meldung an alle Abonnenten auch bei „nur Stufe 4“, Push nach Wahl; Kreis über Fläche; neue Fassung gleiche Stufe still/höhere Stufe meldet; ausgefallene Quelle beendet nichts; alles ausgefallen → Fehler; Kartendaten Wetter ab Stufe 2 + NINA, Zählung getrennt); Rauchtest bestanden (neu: NINA-Meldung in Liste mit Quelle, Karte auf der Seite, GeoJSON-Schnittstelle, Detailseite mit BBK/NINA und Absender); **neuer Browsertest `scripts/warnkarte-check.py`** (Computer + Handy: Fläche antippen zeigt die Meldung); Barrierefreiheit ohne schwere Verstöße (Quellenangabe der Karte startet zugeklappt, Links unterstrichen); Bildschirmfotos angesehen. **Nicht getestet:** echter Abruf bei warnung.bund.de vom Server aus (aus der Arbeitsumgebung nur Stichproben über den Browser-Abruf), Push aufs echte Handy.
+
 ## 2026-10-24 · Ansprache: Sicherheitssatz oben, Namen verbergen, „Familien finden Familien.“ (F-050 Rest, Punkte 1, 2, 5 von Jan freigegeben)
 
 **Was**

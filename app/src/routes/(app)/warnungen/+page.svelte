@@ -3,6 +3,7 @@
 	import Notice from '$lib/components/Notice.svelte';
 	import RegionPicker from '$lib/components/RegionPicker.svelte';
 	import WarningCard from '$lib/components/warnungen/WarningCard.svelte';
+	import WarnMap from '$lib/components/warnungen/WarnMap.svelte';
 	let { data, form } = $props();
 	const LEVELS = [
 		{ n: 1, label: 'Wetterwarnung', text: 'z. B. Frost, Glätte, Windböen – häufig' },
@@ -18,22 +19,23 @@
 </script>
 
 <svelte:head>
-	<title>Unwetterwarnungen – Kinder Deutschlands</title>
-	<meta name="description" content="Amtliche Unwetterwarnungen des Deutschen Wetterdienstes für jeden Kreis in Deutschland – als Mitteilung und Push aufs Handy." />
+	<title>Warnungen – Kinder Deutschlands</title>
+	<meta name="description" content="Unwetterwarnungen des Deutschen Wetterdienstes und Warnungen des Bevölkerungsschutzes (NINA) für jeden Kreis in Deutschland – mit Karte, als Mitteilung und Push aufs Handy." />
 </svelte:head>
 
 <section class="head">
 	<div class="container narrowed">
-		<p class="eyebrow"><Icon name="warnung" size={18} /> Amtlich · Deutscher Wetterdienst</p>
-		<h1>Unwetterwarnungen für deine Region.</h1>
+		<p class="eyebrow"><Icon name="warnung" size={18} /> Wetterdienst und Bevölkerungsschutz</p>
+		<h1>Warnungen für deine Region.</h1>
 		<p class="lead">
-			Wir holen die amtlichen Warnungen des Deutschen Wetterdienstes alle paar Minuten ab – für jeden Kreis in Deutschland. Abonniere deine Gegend, dann
+			Wir holen alle paar Minuten die Unwetterwarnungen des Deutschen Wetterdienstes und die Warnungen des Bevölkerungsschutzes (NINA) ab – für jeden Kreis in Deutschland. Abonniere deine Gegend, dann
 			bekommst du neue Warnungen als Mitteilung und auf Wunsch als Push aufs Handy. Auch für Kita, Schule oder Oma.
 		</p>
 		<ul class="live" aria-label="Gerade aktiv in Deutschland">
 			<li class="l34"><strong>{severe.toLocaleString('de-DE')}</strong><span>{severe === 1 ? 'Unwetterwarnung' : 'Unwetterwarnungen'}{severe ? ` ${inK(kreiseSevere)}` : ''}</span></li>
 			<li class="l2"><strong>{lv(2).toLocaleString('de-DE')}</strong><span>{lv(2) === 1 ? 'markante Warnung' : 'markante Warnungen'}</span></li>
 			<li class="l1"><strong>{lv(1).toLocaleString('de-DE')}</strong><span>{lv(1) === 1 ? 'Wetterwarnung' : 'Wetterwarnungen'}</span></li>
+			<li class="lnina"><strong>{data.overview.nina.toLocaleString('de-DE')}</strong><span>{data.overview.nina === 1 ? 'Meldung' : 'Meldungen'} Bevölkerungsschutz</span></li>
 		</ul>
 		<p class="stand">Gerade aktiv in ganz Deutschland · Stand {fmt(data.stand)}</p>
 	</div>
@@ -57,8 +59,13 @@
 				<a href="/profil/benachrichtigungen">Benachrichtigungen einschaltest</a>. Auf dem iPhone legst du dafür Kinder Deutschlands auf den Home-Bildschirm.
 			</dd>
 			<dt>Und was ist NINA?</dt>
-			<dd>NINA ist die Warn-App des Bundes für Gefahren wie Großbrand, Gefahrstoffe oder Evakuierung. Diese Meldungen zeigen wir hier noch nicht – dafür ist die App weiterhin sinnvoll (mehr unten).</dd>
+			<dd>NINA ist die Warn-App des Bundes für Gefahren wie Großbrand, Gefahrstoffe, Trinkwasser, Hochwasser oder Evakuierung. Diese Meldungen von Behörden, Feuerwehr und Polizei zeigen wir hier jetzt mit an (lila auf der Karte). Sirenen, Radio und Handy-Warnung (Cell Broadcast) bleiben trotzdem wichtig.</dd>
 		</dl>
+	</section>
+
+	<section aria-labelledby="karte-t">
+		<h2 id="karte-t">Karte</h2>
+		<WarnMap tiles={data.tiles} />
 	</section>
 
 	{#if data.member}
@@ -141,12 +148,14 @@
 	<aside class="nina">
 		<h2>Bevölkerungsschutz</h2>
 		<p>
-			Warnungen von Feuerwehr, Polizei und Katastrophenschutz (z. B. Großbrand, Gefahrstoffe, Evakuierung) kommen über die Warn-App
-			<a href="https://warnung.bund.de" rel="noopener" target="_blank">NINA</a>, Cell Broadcast, Radio und Sirenen – bitte dort auch eingeschaltet lassen.
+			Warnungen von Feuerwehr, Polizei und Katastrophenschutz (z. B. Großbrand, Gefahrstoffe, Evakuierung) übernehmen wir aus
+			<a href="https://warnung.bund.de" rel="noopener" target="_blank">NINA</a> (MoWaS, KATWARN, BIWAPP, Hochwasser, Polizei). Bei Gefahr gilt immer die Durchsage der Behörden –
+			Cell Broadcast, Radio und Sirenen bitte eingeschaltet lassen.
 		</p>
 		<p class="muted small">
-			Quelle der Wetterwarnungen: Deutscher Wetterdienst (DWD), opendata.dwd.de, Lizenz CC BY 4.0. Warntexte unverändert übernommen. Push-Hinweise können sich verzögern – maßgeblich ist
-			<a href="https://www.wettergefahren.de" rel="noopener" target="_blank">wettergefahren.de</a>.
+			Quelle der Wetterwarnungen: Deutscher Wetterdienst (DWD), opendata.dwd.de, Lizenz CC BY 4.0. Quelle der Warnungen des Bevölkerungsschutzes: Bundesamt für Bevölkerungsschutz und
+			Katastrophenhilfe (BBK), NINA/warnung.bund.de – Meldungen der warnenden Behörden. Texte unverändert übernommen, ohne Gewähr. Push-Hinweise können sich verzögern – maßgeblich sind
+			<a href="https://www.wettergefahren.de" rel="noopener" target="_blank">wettergefahren.de</a> und <a href="https://warnung.bund.de" rel="noopener" target="_blank">warnung.bund.de</a>.
 		</p>
 	</aside>
 </div>
@@ -229,6 +238,9 @@
 	}
 	.l1 {
 		--c: #f2c500;
+	}
+	.lnina {
+		--c: #b07ad0;
 	}
 	.stand {
 		margin: 0;

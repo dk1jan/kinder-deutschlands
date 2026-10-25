@@ -6,12 +6,13 @@
 	const w = $derived(data.w);
 </script>
 
-<svelte:head><title>{w.headline} – Unwetterwarnungen</title></svelte:head>
+<svelte:head><title>{w.headline} – Warnungen</title></svelte:head>
 
 <div class="page">
-	<a class="back" href="/warnungen"><Icon name="zurueck" size={18} />Unwetterwarnungen</a>
+	<a class="back" href="/warnungen"><Icon name="zurueck" size={18} />Warnungen</a>
 	{#if w.ended}<Notice kind="info" title="Nicht mehr gültig">Diese Warnung ist abgelaufen oder wurde aufgehoben.</Notice>{/if}
 	<WarningCard {w} full />
+	{#if w.contact}<section><h2>Kontakt</h2><p class="kreise pre">{w.contact}</p></section>{/if}
 	{#if w.kreise.length}
 		<section>
 			<h2>Betroffene Kreise ({w.kreise.length})</h2>
@@ -21,8 +22,15 @@
 		<section><h2>Gebiet</h2><p class="kreise">{w.areaDesc}</p></section>
 	{/if}
 	<p class="muted small">
-		Ausgegeben {new Date(w.sent).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' })} vom Deutschen Wetterdienst. Quelle: DWD, opendata.dwd.de, Lizenz CC BY 4.0, Text unverändert.
-		{#if w.web && /^https?:\/\//.test(w.web)}<a href={w.web} rel="noopener" target="_blank">Mehr beim DWD</a>{/if}
+		{#if w.provider === 'nina'}
+			Ausgegeben {new Date(w.sent).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' })}{w.senderName ? ` von: ${w.senderName}` : ''} über {w.sourceLabel}.
+			Quelle: Bundesamt für Bevölkerungsschutz und Katastrophenhilfe (BBK), NINA/warnung.bund.de – Text der warnenden Behörde unverändert, ohne Gewähr. Bei Gefahr gelten die Durchsagen der Behörden.
+			{#if w.web && /^https?:\/\//.test(w.web)}<a href={w.web} rel="noopener" target="_blank">Mehr bei der Behörde</a> ·{/if}
+			<a href="https://warnung.bund.de" rel="noopener" target="_blank">warnung.bund.de</a>
+		{:else}
+			Ausgegeben {new Date(w.sent).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' })} vom Deutschen Wetterdienst. Quelle: DWD, opendata.dwd.de, Lizenz CC BY 4.0, Text unverändert.
+			{#if w.web && /^https?:\/\//.test(w.web)}<a href={w.web} rel="noopener" target="_blank">Mehr beim DWD</a>{/if}
+		{/if}
 	</p>
 </div>
 
@@ -47,6 +55,9 @@
 	.kreise {
 		margin: 0;
 		line-height: 1.6;
+	}
+	.pre {
+		white-space: pre-line;
 	}
 	.small {
 		font-size: var(--fs-s);

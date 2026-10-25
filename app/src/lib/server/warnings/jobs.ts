@@ -2,7 +2,8 @@
 // Eigener Takt, unabhängig von langen Datenimporten. WARN_JOBS=off schaltet ab, WARN_JOBS=on erzwingt (Tests).
 import { db, type Sql } from '../db';
 import { fetchListing, fetchSnapshot, latestFile } from './dwd';
-import { ingest, purgeWarnings, type IngestResult } from './store';
+import { ingest, ingestNina, purgeWarnings, type IngestResult } from './store';
+import { fetchAlert, fetchList, NINA_SOURCES, type NinaSource } from './nina';
 
 interface State {
 	file: string | null;
@@ -50,10 +51,69 @@ export async function tickWarnings(sql: Sql = db(), fetchImpl: typeof fetch = fe
 	}
 }
 
+// ---------- Bevölkerungsschutz (NINA, F-053) ----------
+
+interface NinaState {
+	seeded: boolean;
+	last_ok: string | null;
+	last_error: string | null;
+	last_counts: IngestResult | null;
+}
+export async function ninaState(sql: Sql): Promise<NinaState> {
+	const [r] = await sql`select value from settings where key = 'warnungen_nina'`;
+	return { seeded: false, last_ok: null, last_error: null, last_counts: null, ...((r?.value as Partial<NinaState>) ?? {}) };
+}
+let ninaRunning = false;
+
+/** Ein Durchlauf über alle NINA-Quellen. Eine ausgefallene Quelle beendet keine ihrer Warnungen. */
+export async function tickNina(sql: Sql = db(), fetchImpl: typeof fetch = fetch): Promise<IngestResult | 'läuft'> {
+	if (ninaRunning) return 'läuft';
+	ninaRunning = true;
+	const state = await ninaState(sql);
+	try {
+		const list: { source: NinaSource; id: string; version: number }[] = [];
+		const ok: NinaSource[] = [];
+		const errors: string[] = [];
+		for (const source of Object.keys(NINA_SOURCES) as NinaSource[]) {
+			try {
+				for (const it of await fetchList(source, fetchImpl)) list.push({ source, id: it.id, version: it.version });
+				ok.push(source);
+			} catch (e) {
+				errors.push(`${source}: ${(e as Error).message}`.slice(0, 120));
+			}
+		}
+		if (!ok.length) throw new Error(`NINA nicht erreichbar (${errors.join('; ')})`);
+		const items = new Map(list.map((x) => [x.id, x]));
+		const r = await ingestNina(
+			sql,
+			[...items.values()],
+			async (source, id) => {
+				const it = items.get(id)!;
+				return fetchAlert(source, { id, version: it.version, severity: 'Unknown', type: 'Alert', startDate: null, title: '' }, fetchImpl);
+			},
+			ok,
+			{ notifyNew: state.seeded }
+		);
+		await sql`insert into settings (key, value) values ('warnungen_nina', ${sql.json({ seeded: true, last_ok: new Date().toISOString(), last_error: errors.join('; ') || null, last_counts: r } as never)})
+			on conflict (key) do update set value = excluded.value, updated_at = now()`;
+		if (r.neu || r.beendet || r.mitteilungen) console.log(`[warnungen] NINA: ${r.aktiv} aktiv, ${r.neu} neu, ${r.beendet} beendet, ${r.mitteilungen} Mitteilung(en).`);
+		return r;
+	} catch (e) {
+		const msg = (e as Error).message.slice(0, 300);
+		console.error('[warnungen] NINA', msg);
+		await sql`insert into settings (key, value) values ('warnungen_nina', ${sql.json({ ...state, last_error: msg } as never)})
+			on conflict (key) do update set value = excluded.value, updated_at = now()`.catch(() => {});
+		throw e;
+	} finally {
+		ninaRunning = false;
+	}
+}
+
 export function startWarningJobs() {
 	const flag = process.env.WARN_JOBS;
 	if (timer || flag === 'off' || (process.env.SCHEDULER === 'off' && flag !== 'on')) return;
 	const ms = Number(process.env.WARN_JOBS_MS) || 5 * 60_000;
-	setTimeout(() => void tickWarnings().catch(() => {}), 20_000);
-	timer = setInterval(() => void tickWarnings().catch(() => {}), ms);
+	const both = () => void tickWarnings().catch(() => {}).finally(() => void tickNina().catch(() => {}));
+	setTimeout(both, 20_000);
+	timer = setInterval(both, ms);
 }

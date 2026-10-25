@@ -4,6 +4,7 @@
 import type { Sql } from '../db';
 import { notify } from '../community/posts';
 import { kreisFromWarncell, levelOf, LEVEL_LABEL, type CapAlert } from './cap';
+import { NINA_SOURCES, webUrl, type NinaAlert, type NinaSource } from './nina';
 
 export const ATTRIBUTION = 'Quelle: Deutscher Wetterdienst (DWD), opendata.dwd.de, Lizenz CC BY 4.0 – Warntexte unverändert übernommen';
 export const MAX_SUBSCRIPTIONS = 5;
@@ -21,7 +22,13 @@ export async function kreiseOf(sql: Sql, a: CapAlert): Promise<string[]> {
 	const out = new Set<string>();
 	for (const ar of a.areas) {
 		const wkts = ar.polygons.filter((r) => r.length >= 4 && r.length <= 5000).map((r) => `POLYGON((${r.map(([x, y]) => `${x} ${y}`).join(',')}))`);
-		const cells = [...new Set((ar.geocodes.WARNCELLID ?? []).map(kreisFromWarncell).filter((x): x is string => !!x))];
+		// DWD: Warnzelle; NINA: amtlicher Regionalschlüssel (die ersten 5 Stellen sind der Kreis)
+		const cells = [
+			...new Set([
+				...(ar.geocodes.WARNCELLID ?? []).map(kreisFromWarncell),
+				...(ar.geocodes.ARS ?? []).map((v) => (/^\d{5}/.test(v) ? v.slice(0, 5) : null))
+			].filter((x): x is string => !!x))
+		];
 		let hit: string[] = [];
 		if (cells.length) {
 			const rows = await sql`select r.code from regions r where r.code = any(${cells}) and r.level = 'kreis'
@@ -77,6 +84,7 @@ export async function ingest(sql: Sql, alerts: CapAlert[], opts: { notifyNew: bo
 					${ts(a.sent) ?? new Date()}, ${ts(a.onset) ?? ts(a.effective)}, ${ts(a.expires)}, ${a.references},
 					${a.areas.map((x) => x.desc).filter(Boolean).join(', ').slice(0, 2000) || null})`;
 			for (const k of kreise) await t`insert into warning_areas (warning_id, kreis_code) values (${a.identifier}, ${k}) on conflict do nothing`;
+			await setGeom(t, a.identifier, a.areas.flatMap((x) => x.polygons).map((r) => ({ type: 'Polygon', coordinates: [r] })));
 		});
 		res.neu++;
 		fresh.push({ a, level, kreise });
@@ -95,13 +103,111 @@ export async function ingest(sql: Sql, alerts: CapAlert[], opts: { notifyNew: bo
 	return res;
 }
 
-/** Mitteilung (und ggf. Push) an Abonnenten der betroffenen Kreise ab ihrer Mindeststufe. */
-async function deliver(sql: Sql, a: CapAlert, level: number, kreise: string[]): Promise<number> {
+/**
+ * Fläche der Warnung für die Karte: aus dem Warngebiet (GeoJSON-Geometrien), sonst aus den betroffenen Kreisen.
+ * Vereinfacht (~200 m), damit die Karte ganz Deutschland schnell zeigt.
+ */
+async function setGeom(sql: Sql, id: string, geometries: unknown[]) {
+	const gj = geometries.filter(Boolean).slice(0, 200).map((g) => JSON.stringify(g)).filter((g) => g.length < 2_000_000);
+	if (gj.length) {
+		const r = await sql`update warnings set geom = (
+				select ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SimplifyPreserveTopology(ST_Union(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(g), 4326))), 0.002)), 3))
+				from unnest(${gj}::text[]) as g)
+			where id = ${id}`.catch(() => null);
+		const [ok] = await sql`select geom is not null and not ST_IsEmpty(geom) as ok from warnings where id = ${id}`;
+		if (r && ok?.ok) return;
+	}
+	await sql`update warnings w set geom = (
+			select ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SimplifyPreserveTopology(ST_Union(r.geom), 0.002)), 3))
+			from warning_areas a join regions r on r.code = a.kreis_code and r.geom is not null where a.warning_id = w.id)
+		where w.id = ${id}`.catch(() => null);
+}
+
+/**
+ * Bevölkerungsschutz (NINA) übernehmen. Gleiche Kennung kann in neuer Fassung kommen (version): Text/Gebiet erneuern,
+ * Mitteilung nur, wenn die Stufe steigt. Beendet wird nur, was aus einer erfolgreich abgerufenen Quelle verschwunden ist.
+ */
+export async function ingestNina(
+	sql: Sql,
+	list: { source: NinaSource; id: string; version: number }[],
+	load: (source: NinaSource, id: string) => Promise<NinaAlert | null>,
+	okSources: NinaSource[],
+	opts: { notifyNew: boolean }
+): Promise<IngestResult> {
+	const res: IngestResult = { neu: 0, aktiv: 0, beendet: 0, mitteilungen: 0 };
+	const ids: string[] = [];
+	const fresh: { a: NinaAlert; level: number; kreise: string[]; raised: boolean }[] = [];
+	for (const it of list) {
+		ids.push(it.id);
+		const [have] = await sql`select version, level from warnings where id = ${it.id}`;
+		if (have && (have.version ?? 0) >= it.version) {
+			await sql`update warnings set last_seen = now(), ended_at = null where id = ${it.id}`;
+			continue;
+		}
+		const a = await load(it.source, it.id).catch((e) => {
+			console.warn(`[warnungen] NINA ${it.id}: ${(e as Error).message}`);
+			return null;
+		});
+		if (!a || a.status !== 'Actual' || a.msgType === 'Cancel') continue;
+		const exp = ts(a.expires);
+		if (exp && exp.getTime() < Date.now()) continue;
+		const level = Math.max(levelOf(a.severity), 1);
+		const kreise = await kreiseOf(sql, a);
+		await sql.begin(async (tx) => {
+			const t = tx as unknown as Sql;
+			const sev = ['Minor', 'Moderate', 'Severe', 'Extreme'].includes(a.severity) ? a.severity : 'Unknown';
+			await t`insert into warnings (id, provider, source, version, msg_type, event, event_group, severity, level, urgency, headline, description, instruction,
+					sender_name, web, contact, sent, onset, expires, refs, area_desc)
+				values (${a.identifier}, 'nina', ${a.source}, ${a.version}, ${a.msgType}, ${a.event}, null, ${sev}, ${level}, ${a.urgency},
+					${a.headline.slice(0, 300)}, ${a.description?.slice(0, 6000) ?? null}, ${a.instruction?.slice(0, 6000) ?? null}, ${a.senderName?.slice(0, 200) ?? null},
+					${webUrl(a.web)}, ${a.contact?.slice(0, 500) ?? null}, ${ts(a.sent) ?? new Date()}, ${ts(a.onset) ?? ts(a.effective)}, ${exp}, ${a.references},
+					${a.areas.map((x) => x.desc).filter(Boolean).join(', ').slice(0, 2000) || null})
+				on conflict (id) do update set version = excluded.version, msg_type = excluded.msg_type, event = excluded.event, severity = excluded.severity,
+					level = excluded.level, urgency = excluded.urgency, headline = excluded.headline, description = excluded.description,
+					instruction = excluded.instruction, sender_name = excluded.sender_name, web = excluded.web, contact = excluded.contact, sent = excluded.sent,
+					onset = excluded.onset, expires = excluded.expires, refs = excluded.refs, area_desc = excluded.area_desc, last_seen = now(), ended_at = null`;
+			await t`delete from warning_areas where warning_id = ${a.identifier}`;
+			for (const k of kreise) await t`insert into warning_areas (warning_id, kreis_code) values (${a.identifier}, ${k}) on conflict do nothing`;
+			await setGeom(t, a.identifier, a.geometries);
+		});
+		if (!have) res.neu++;
+		const raised = !!have && level > (have.level as number);
+		// Neue Fassung mit höherer Stufe: noch einmal zustellen
+		if (raised) await sql`delete from warning_deliveries where warning_id = ${a.identifier}`;
+		if (!have || raised) fresh.push({ a, level, kreise, raised });
+	}
+	res.aktiv = ids.length;
+	if (okSources.length) {
+		const ended = await sql`update warnings set ended_at = now() where provider = 'nina' and ended_at is null and source = any(${okSources})
+			and not (id = any(${ids})) returning id`;
+		res.beendet = ended.length;
+	}
+	if (opts.notifyNew) for (const f of fresh) res.mitteilungen += await deliver(sql, f.a, f.level, f.kreise, true);
+	else if (fresh.length) {
+		await sql`insert into warning_deliveries (warning_id, user_id)
+			select a.warning_id, s.user_id from warning_areas a join warning_subscriptions s on s.kreis_code = a.kreis_code
+			where a.warning_id = any(${fresh.map((f) => f.a.identifier)}) on conflict do nothing`;
+	}
+	return res;
+}
+
+/** Bezeichnung einer Warnung: Wetter nach DWD-Stufe, Bevölkerungsschutz nach Meldungsart der Behörde. */
+export function labelOf(provider: string, level: number, event: string | null): string {
+	if (provider === 'nina') return event?.trim() || 'Warnung';
+	return LEVEL_LABEL[level] ?? 'Hinweis';
+}
+
+/**
+ * Mitteilung (und ggf. Push) an Abonnenten der betroffenen Kreise ab ihrer Mindeststufe.
+ * Bevölkerungsschutz (allLevels): an alle Abonnenten des Kreises – solche Meldungen sind selten und betreffen direkt
+ * (z. B. „Trinkwasser abkochen“ ist nur Stufe 1).
+ */
+async function deliver(sql: Sql, a: CapAlert, level: number, kreise: string[], allLevels = false): Promise<number> {
 	if (!kreise.length || level < 1) return 0;
 	const subs = await sql`
 		select s.user_id, bool_or(s.push) as push, min(coalesce(s.label, r.name)) as where_name
 		from warning_subscriptions s join users u on u.id = s.user_id and u.status = 'active' left join regions r on r.code = s.kreis_code
-		where s.kreis_code = any(${kreise}) and s.min_level <= ${level}
+		where s.kreis_code = any(${kreise}) and (${allLevels} or s.min_level <= ${level})
 		group by s.user_id`;
 	let n = 0;
 	for (const s of subs) {
@@ -113,7 +219,7 @@ async function deliver(sql: Sql, a: CapAlert, level: number, kreise: string[]): 
 		const [ins] = await sql`insert into warning_deliveries (warning_id, user_id) values (${a.identifier}, ${s.user_id}) on conflict do nothing returning 1 as x`;
 		if (!ins) continue;
 		if (prev?.lvl != null && prev.lvl >= level) continue;
-		const label = LEVEL_LABEL[level] ?? 'Warnung';
+		const label = allLevels ? labelOf('nina', level, a.event) : (LEVEL_LABEL[level] ?? 'Warnung');
 		const text = `${label} für ${s.where_name}: ${a.headline}`;
 		const link = `/warnungen/${encodeURIComponent(a.identifier)}`;
 		await notify(sql, s.user_id as string, 'warnung', text, link, { noPush: true });
@@ -149,12 +255,17 @@ export interface WarningView {
 	sent: Date;
 	web: string | null;
 	ended: boolean;
+	provider: 'dwd' | 'nina';
+	source: string | null;
+	sourceLabel: string;
+	senderName: string | null;
+	contact: string | null;
 }
 
 const view = (w: Record<string, unknown>): WarningView => ({
 	id: w.id as string,
 	level: w.level as number,
-	levelLabel: LEVEL_LABEL[w.level as number] ?? 'Hinweis',
+	levelLabel: labelOf(w.provider as string, w.level as number, w.event as string | null),
 	event: w.event as string | null,
 	headline: w.headline as string,
 	description: w.description as string | null,
@@ -164,7 +275,12 @@ const view = (w: Record<string, unknown>): WarningView => ({
 	expires: w.expires as Date | null,
 	sent: w.sent as Date,
 	web: w.web as string | null,
-	ended: !!w.ended_at || (!!w.expires && (w.expires as Date).getTime() < Date.now())
+	ended: !!w.ended_at || (!!w.expires && (w.expires as Date).getTime() < Date.now()),
+	provider: (w.provider as 'dwd' | 'nina') ?? 'dwd',
+	source: (w.source as string | null) ?? null,
+	sourceLabel: w.provider === 'nina' ? (NINA_SOURCES[w.source as NinaSource] ?? 'Bevölkerungsschutz') : 'Deutscher Wetterdienst',
+	senderName: (w.sender_name as string | null) ?? null,
+	contact: (w.contact as string | null) ?? null
 });
 
 const ACTIVE = (sql: Sql) => sql`w.ended_at is null and (w.expires is null or w.expires > now())`;
@@ -186,11 +302,40 @@ export async function getWarning(sql: Sql, id: string) {
 /** Überblick für Startseite und Warnseite: aktive Warnungen nach Stufe, Kreise je Stufe. */
 export async function overview(sql: Sql) {
 	const rows = await sql`select w.level, count(distinct w.id)::int as n, count(distinct a.kreis_code)::int as kreise
-		from warnings w left join warning_areas a on a.warning_id = w.id where ${ACTIVE(sql)} group by w.level`;
-	const [last] = await sql`select max(last_seen) as t from warnings`;
+		from warnings w left join warning_areas a on a.warning_id = w.id where w.provider = 'dwd' and ${ACTIVE(sql)} group by w.level`;
+	const [last] = await sql`select max(last_seen) as t from warnings where provider = 'dwd'`;
+	const [nina] = await sql`select count(*)::int as n from warnings w where w.provider = 'nina' and ${ACTIVE(sql)}`;
 	const byLevel: Record<number, { n: number; kreise: number }> = {};
 	for (const r of rows) byLevel[r.level as number] = { n: r.n as number, kreise: r.kreise as number };
-	return { byLevel, stand: (last?.t as Date | null) ?? null };
+	return { byLevel, stand: (last?.t as Date | null) ?? null, nina: (nina?.n as number) ?? 0 };
+}
+
+/**
+ * Karte (F-053): alle aktiven Warnungen mit Fläche als GeoJSON. Wetter nur ab Stufe 2 (Stufe 1 – Frost, Böen – würde
+ * die Karte flächig gelb färben), Bevölkerungsschutz immer. Höhere Stufe liegt oben.
+ */
+export async function mapData(sql: Sql) {
+	const rows = await sql`select w.id, w.provider, w.source, w.level, w.event, w.headline, w.area_desc, w.onset, w.expires,
+			ST_AsGeoJSON(w.geom, 4)::json as g
+		from warnings w where ${ACTIVE(sql)} and w.geom is not null and (w.provider = 'nina' or w.level >= 2)
+		order by w.level, w.provider desc limit 1500`;
+	return {
+		type: 'FeatureCollection' as const,
+		features: rows.map((r) => ({
+			type: 'Feature' as const,
+			geometry: r.g as unknown,
+			properties: {
+				id: r.id as string,
+				p: r.provider as string,
+				l: r.level as number,
+				t: (r.headline as string).slice(0, 160),
+				k: labelOf(r.provider as string, r.level as number, r.event as string | null),
+				q: r.provider === 'nina' ? (NINA_SOURCES[r.source as NinaSource] ?? 'Bevölkerungsschutz') : 'DWD',
+				a: ((r.area_desc as string | null) ?? '').slice(0, 160),
+				b: r.expires ? (r.expires as Date).toISOString() : null
+			}
+		}))
+	};
 }
 
 /** Kreis zu einer gewählten Region (Stadtteil/Gemeinde/Kreis; Hamburg/Berlin auch als Land). */
