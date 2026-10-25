@@ -85,6 +85,8 @@ Abhängigkeit: Hintergrund-Ortung hängt an der Android-App (F-026, Entscheidung
 |---|---|---|
 | F-054 | erledigt (Code; DB-Tests und Rauchtest in CI): NINA wieder von der Seite genommen – Abruf, Anzeige, Texte, Karte-Ebene, Tests raus, Migration 0021 löscht übernommene Meldungen; keine Anfrage beim BBK (D-093) | CHANGELOG 25.10. NINA entfernt |
 | F-053 | erledigt: klickbare Warnkarte auf `/warnungen` (Wetter ab Stufe 2). Der NINA-Teil (D-092) ist mit F-054 wieder entfernt | CHANGELOG 25.10. |
+| F-053 | erledigt: NINA-Warnungen (MoWaS, KATWARN, BIWAPP, Hochwasser, Polizei) mit Mitteilung/Push und klickbare Warnkarte auf `/warnungen` (D-092, ohne BBK-Vereinbarung auf Jans Entscheidung) | CHANGELOG 25.10. NINA |
+| F-055 | erledigt: Startseite – Wetterwarnungs-Block unter „Schreiben und anrufen“ verschoben (Jan 25.10.) | CHANGELOG 25.10. Startseite |
 | F-052 | erledigt: Fußzeilen-Link „Feedback“ → `/feedback` (nur angemeldet): Fehler melden · Fehlerkorrektur · Allgemeines Feedback, Seite wird mitgegeben; Verwaltung → Feedback mit Status/Antwort/Mitteilung; 10/Tag, Export, Löschung (D-089, Migration 0019). Echte Nutzung durch Testerinnen: offen | CHANGELOG 24.10. Sammel-Update |
 | F-051 | erledigt: Autorenname im Forum öffnet die Profilkarte `/m/<Familien-ID>` wie nach dem QR-Scan; Pseudonyme in geschützten Gruppen nicht verlinkt (D-090) | CHANGELOG 24.10. Sammel-Update |
 | F-043 | erledigt: Bremen/Testphase raus – Startseite ohne „Im Aufbau, Start in Bremen und Niedersachsen“, „Testbetrieb“, „Was hier entsteht … Schritt für Schritt“, „In Arbeit/Jetzt da“; Gäste-Nachrichten ohne „In Arbeit/Modul M01…“; Bremen-Beispiele ersetzt; Karte startet mit ganz Deutschland (D-084) | CHANGELOG 24.10. Ganz Deutschland |

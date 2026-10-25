@@ -2,6 +2,12 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-25 · Startseite: Wetterwarnungs-Block nach unten (F-055)
+
+**Was** Der Block „Warnungen direkt aufs Handy.“ steht jetzt unter der Karte „Schreiben und anrufen“ (vor „Familienorte in ganz Deutschland“) statt oben direkt unter der Familien-ID.
+**Warum** Jan: Es wirkte, als wäre die Wetterwarnung der Hauptpunkt der Seite. Reine Umordnung, Inhalt und Zähler unverändert.
+**Module** Startseite, M20 · **DB-Migration** nein · **Tests** svelte-check, 305 Unit/DB-Tests, Build
+
 ## 2026-10-25 · NINA entfernt, Warnkarte nur noch mit Wetterwarnungen (F-054, D-093)
 
 **Was**
