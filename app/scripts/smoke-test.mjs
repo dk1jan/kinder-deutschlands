@@ -863,6 +863,8 @@ try {
 		check(w.body.includes('Wetter und Warnungen – Kinder Deutschlands') && w.body.includes('Regen in den nächsten 2 Stunden'), 'Wetter und Warnungen: eine Seite mit Regen-Block (F-059)');
 		w = await A.req('/profil');
 		check(w.body.includes('href="/warnungen"') && w.body.includes('Wetter und Warnungen'), 'Mein Konto: Kachel „Wetter und Warnungen“ (F-059)');
+		w = await A.req('/profil/benachrichtigungen');
+		check(w.body.includes('name="push_weather"') && /name="push_weather"[^>]*checked/.test(w.body), 'Benachrichtigungen: Schalter „Wetter bei Terminen“ (Standard an, F-059)');
 		// F-056: Wetter bei Veranstaltungen – Hinweis am Termin, Entscheidung des Veranstalters, Warnung am Kartenpunkt
 		{
 			const soon = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(Date.now() + 60 * 60_000)).replace(' ', 'T');

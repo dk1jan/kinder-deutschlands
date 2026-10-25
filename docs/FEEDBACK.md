@@ -83,7 +83,7 @@ Abhängigkeit: Hintergrund-Ortung hängt an der Android-App (F-026, Entscheidung
 
 ## Erledigt / verworfen
 
-- **F-059** (25.10.) Wetter und Warnungen auf einer Seite, Kachel unter Mein Konto – erledigt, siehe CHANGELOG. Eigener Schalter für Wetter-Mitteilungen bei Terminen bewusst nicht gebaut (folgt „Erinnerungen“); auf Wunsch nachziehen.
+- **F-059** (25.10.) Wetter und Warnungen auf einer Seite, Kachel unter Mein Konto – erledigt, siehe CHANGELOG. Dazu Push-Schalter „Wetter bei Terminen“ (Migration 0023).
 
 | ID | Ergebnis | Verweis |
 |---|---|---|

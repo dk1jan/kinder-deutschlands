@@ -72,7 +72,7 @@
 		{:else}
 			<p class="muted">Wähle unten eine Region, dann siehst du hier, ob es in den nächsten 2 Stunden regnet.</p>
 		{/if}
-		<p class="muted small">Bei Veranstaltungen zeigen wir Warnung und Regen zur Terminzeit selbst an. Mitkommende und Veranstalter bekommen dazu eine Mitteilung; der Push folgt deiner Einstellung „Erinnerungen“ unter <a href="/profil/benachrichtigungen">Benachrichtigungen</a>. Auf der <a href="/karte">Karte</a> hilft „Lieber drinnen“.</p>
+		<p class="muted small">Bei Veranstaltungen zeigen wir Warnung und Regen zur Terminzeit selbst an. Mitkommende und Veranstalter bekommen dazu eine Mitteilung; den Push stellst du unter <a href="/profil/benachrichtigungen">Benachrichtigungen</a> ein. Auf der <a href="/karte">Karte</a> hilft „Lieber drinnen“.</p>
 	</section>
 
 	<section aria-labelledby="karte-t">

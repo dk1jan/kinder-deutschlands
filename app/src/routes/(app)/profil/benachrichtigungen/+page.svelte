@@ -96,6 +96,7 @@
 		<label class="check"><input type="checkbox" name="push_reminders" checked={data.s.push_reminders} /> Erinnerungen, die ich an Terminen oder Fristen selbst eingestellt habe</label>
 		<label class="check"><input type="checkbox" name="push_urgent" checked={data.s.push_urgent} /> Wichtiges sofort: Rundnachrichten des Teams mit Push und dringende Hinweise der Redaktion für meine Radar-Regionen</label>
 		<label class="check"><input type="checkbox" name="push_market" checked={data.s.push_market} /> Neue Anzeigen zu meinen Marktplatz-Suchaufträgen</label>
+		<label class="check"><input type="checkbox" name="push_weather" checked={data.s.push_weather} /> Wetter bei Terminen, zu denen ich komme oder die ich veranstalte (Warnung oder Regen zur Terminzeit)</label>
 		<p class="muted small">Amtliche Unwetterwarnungen für deine Regionen (mit eigener Stufe und Push) stellst du unter <a href="/warnungen">Wetter und Warnungen</a> ein.</p>
 		<label class="check"><input type="checkbox" name="quiet" bind:checked={quiet} /> Ruhezeit (keine Push-Hinweise)</label>
 		{#if quiet}

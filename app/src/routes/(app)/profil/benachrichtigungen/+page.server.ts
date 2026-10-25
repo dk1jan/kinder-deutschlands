@@ -34,6 +34,7 @@ export const actions: Actions = {
 			push_reminders: f.get('push_reminders') === 'on',
 			push_urgent: f.get('push_urgent') === 'on',
 			push_market: f.get('push_market') === 'on',
+			push_weather: f.get('push_weather') === 'on',
 			quiet_from: from,
 			quiet_to: to,
 			read_receipts: f.get('read_receipts') === 'on',

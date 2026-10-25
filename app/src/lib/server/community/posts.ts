@@ -111,7 +111,7 @@ async function autoCases(sql: Sql, type: 'post' | 'comment' | 'review', id: stri
 	}
 }
 
-export async function notify(sql: Sql, userId: string | null, kind: string, text: string, link: string | null, opts: { pushKind?: 'community' | 'erinnerung' | 'radar' | 'markt'; pushBody?: string; noPush?: boolean } = {}) {
+export async function notify(sql: Sql, userId: string | null, kind: string, text: string, link: string | null, opts: { pushKind?: 'community' | 'erinnerung' | 'radar' | 'markt' | 'wetter'; pushBody?: string; noPush?: boolean } = {}) {
 	if (!userId) return;
 	await sql`insert into notifications (user_id, kind, text, link) values (${userId}, ${kind}, ${text.slice(0, 300)}, ${link})`;
 	// Push (falls gewünscht) ohne Inhalt, Fehler beim Senden stören den eigentlichen Vorgang nicht

@@ -147,7 +147,7 @@ export async function tickEventWeather(sql: Sql, deps: { regen?: RegenFn } = {})
 				const text = top
 					? `${top.label} zur Terminzeit: „${e.title}“ am ${fmtDay(o.date)} – ${top.headline}. ${tail}`
 					: `Regen erwartet: „${e.title}“ am ${fmtDay(o.date)} – ${rain!.label} ab ca. ${rain!.time} Uhr. ${tail}`;
-				await notify(sql, uid, 'termin', text, `/veranstaltungen/${e.id}?am=${o.date}`, { pushKind: 'erinnerung' });
+				await notify(sql, uid, 'termin', text, `/veranstaltungen/${e.id}?am=${o.date}`, { pushKind: 'wetter' });
 				sent++;
 			}
 		}
