@@ -31,6 +31,11 @@ export const KIND_FILTERS: { key: string; label: string; kinds: Kind[]; feature?
 	{ key: 'unterkunft', label: 'Unterkünfte', kinds: ['unterkunft'] }
 ];
 
+/** Nicht als eigener Chip sichtbar, aber als Filterschlüssel erlaubt (F-056: „Lieber drinnen“ bei Unwetter). */
+export const HIDDEN_FILTERS: { key: string; kinds: Kind[] }[] = [{ key: 'baeder', kinds: ['schwimmbad'] }];
+/** „Lieber drinnen“: Indoorspielplätze, Bibliotheken, Bäder, Familienzentren. */
+export const DRINNEN_KEYS = ['drinnen', 'bibliothek', 'baeder', 'familienzentrum'] as const;
+
 export type FeatureGroup = 'ausstattung' | 'spielgeraete' | 'zugang' | 'service';
 export interface FeatureDef {
 	label: string;

@@ -249,7 +249,7 @@ export async function removeEvent(sql: Sql, userId: string, id: string) {
 	await audit(sql, { actorId: userId, action: 'event.removed', targetType: 'event', targetId: id });
 }
 
-async function notifyAttendees(sql: Sql, eventId: string, occurrence: string | null, text: string, exceptUserId: string) {
+export async function notifyAttendees(sql: Sql, eventId: string, occurrence: string | null, text: string, exceptUserId: string) {
 	const rows = await sql`select distinct user_id from event_attendance where event_id = ${eventId} ${occurrence ? sql`and occurrence = ${occurrence}` : sql`and occurrence >= current_date`}
 		union select user_id from saved_items where kind = 'event' and item_id = ${eventId}`;
 	for (const r of rows) if (r.user_id !== exceptUserId) await notify(sql, r.user_id, 'termin', text, `/veranstaltungen/${eventId}${occurrence ? `?am=${occurrence}` : ''}`);

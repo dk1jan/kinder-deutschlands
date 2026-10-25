@@ -245,6 +245,15 @@ export async function mapData(sql: Sql) {
 	};
 }
 
+/** Karte (F-056): Wetterwarnungen ab Stufe 2 an einem Punkt (Fläche der Warnung enthält den Punkt). */
+export async function warningsAt(sql: Sql, lon: number, lat: number) {
+	const rows = await sql`select w.id, w.level, w.headline from warnings w
+		where w.provider = 'dwd' and ${ACTIVE(sql)} and w.level >= 2 and w.geom is not null
+			and ST_Intersects(w.geom, ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326))
+		order by w.level desc, w.onset nulls first limit 20`;
+	return rows.map((r) => ({ id: r.id as string, level: r.level as number, label: labelOf(r.level as number), headline: (r.headline as string).slice(0, 160) }));
+}
+
 /** Kreis zu einer gewählten Region (Stadtteil/Gemeinde/Kreis; Hamburg/Berlin auch als Land). */
 export async function kreisFor(sql: Sql, code: string): Promise<{ code: string; name: string } | null> {
 	const [r] = await sql`select k.code, k.name from regions k where k.code = kd_kreis_of(${code})`;

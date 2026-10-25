@@ -1,7 +1,7 @@
 // Orte lesen und von Mitgliedern ergänzen (M10/M11/M13). Öffentliche Daten – private Angaben kommen hier nicht vor.
 import type { Sql } from './db';
 import { notifyPlaceFollowers } from './follows';
-import { displayName, isKind, KINDS, KIND_FILTERS, FEATURES, type Kind } from '$lib/places';
+import { displayName, isKind, KINDS, KIND_FILTERS, HIDDEN_FILTERS, FEATURES, type Kind } from '$lib/places';
 
 export interface Bbox {
 	w: number;
@@ -27,7 +27,10 @@ export function resolveFilters(keys: string[]): { kinds: Kind[]; orFeature: stri
 	const orFeature = new Set<string>();
 	for (const k of keys) {
 		const f = KIND_FILTERS.find((x) => x.key === k);
-		if (!f) continue;
+		if (!f) {
+			HIDDEN_FILTERS.find((x) => x.key === k)?.kinds.forEach((x) => kinds.add(x));
+			continue;
+		}
 		f.kinds.forEach((x) => kinds.add(x));
 		if (f.feature) orFeature.add(f.feature);
 	}

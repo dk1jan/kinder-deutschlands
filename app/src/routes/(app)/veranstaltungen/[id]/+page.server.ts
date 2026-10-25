@@ -8,6 +8,8 @@ import { PostError } from '$lib/server/community/posts';
 import { report } from '$lib/server/community/moderation';
 import { isUuid } from '$lib/server/angebote/common';
 import { cancelEvent, getEvent, removeEvent, restoreOccurrence, setAttendance, whoComes } from '$lib/server/angebote/events';
+import { WEATHER_STATUS, setWeatherStatus, terminWetter } from '$lib/server/angebote/wetter';
+import { ATTRIBUTION as DWD_ATTRIBUTION } from '$lib/server/warnings/store';
 import { REMINDERS, isSaved, setReminder, toggleSaved } from '$lib/server/angebote/saved';
 import { tileState } from '$lib/server/import/tiles';
 import { eventChat, eventChatTicket } from '$lib/server/angebote/eventchat';
@@ -33,8 +35,12 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		d.event.lat !== null ? tileState(sql).catch(() => null) : null,
 		viewer && occurrence && chatEnabled() ? eventChat(sql, params.id, occurrence) : null
 	]);
+	// F-056: Wetterwarnung zur Terminzeit (DWD ab Stufe 2) und Entscheidung des Veranstalters
+	const wetter =
+		sel && !sel.cancelled && d.event.status === 'aktiv' ? await terminWetter(sql, params.id, sel.date, sel.start, sel.end, d.event.allDay).catch(() => null) : null;
 	return {
 		...d,
+		wetter: wetter ? { ...wetter, attribution: DWD_ATTRIBUTION, options: WEATHER_STATUS } : null,
 		occurrences: d.occurrences.map((o) => ({ date: o.date, start: o.start.toISOString(), end: o.end?.toISOString() ?? null, cancelled: o.cancelled })),
 		selected: sel ? { date: sel.date, start: sel.start.toISOString(), end: sel.end?.toISOString() ?? null, cancelled: sel.cancelled || d.event.status === 'abgesagt' } : null,
 		saved: saved ? { remindAt: saved.remindAt?.toISOString() ?? null } : null,
@@ -119,6 +125,18 @@ export const actions: Actions = {
 		return guarded(async () => {
 			await cancelEvent(db(), user.id, event.params.id, f.get('scope') === 'tag' ? occ(f) : null, cleanText(f.get('note'), 300) ?? '');
 			return { cancelled: true };
+		});
+	},
+	wetter: async (event) => {
+		const user = requireMember(event);
+		if (!isUuid(event.params.id)) error(404);
+		const f = await event.request.formData();
+		const o = occ(f);
+		if (!o) return fail(400, { error: 'Ungültiges Datum.' });
+		const st = String(f.get('status') ?? '');
+		return guarded(async () => {
+			await setWeatherStatus(db(), user.id, event.params.id, o, st === 'findet_statt' || st === 'drinnen' ? st : null, cleanText(f.get('note'), 200) ?? '');
+			return { weather: st === 'findet_statt' || st === 'drinnen' ? 'gesetzt' : 'zurueck' };
 		});
 	},
 	wiederherstellen: async (event) => {

@@ -8,6 +8,7 @@ import { remindReconfirm } from './offers';
 import { checkSearches, expireListings } from '../alltag/market';
 import { expireHelp } from '../alltag/help';
 import { purgeInvitations } from '../alltag/invitations';
+import { tickEventWeather } from './wetter';
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
@@ -32,6 +33,10 @@ export async function tickAngebote(full = false) {
 			if (m) console.log(`[markt] ${m} Suchauftrag/-aufträge mit neuen Anzeigen.`);
 			const p = await purgeInvitations(sql);
 			if (p) console.log(`[einladungen] ${p} vergangene Einladung(en) gelöscht.`);
+		}
+		if (full || ticks % 5 === 0) {
+			const w = await tickEventWeather(sql); // F-056: Wetterwarnung zur Terminzeit
+			if (w) console.log(`[wetter] ${w} Mitteilung(en) zu Terminen mit Wetterwarnung.`);
 		}
 		ticks++;
 	} catch (e) {

@@ -78,6 +78,18 @@
 			<Notice kind="info" title="Archiviert">Dieser Termin ist nicht mehr in der Quelle enthalten.</Notice>
 		{/if}
 
+		{#if data.wetter?.status}
+			<Notice kind={data.wetter.status.status === 'drinnen' ? 'info' : 'ok'} title={data.wetter.status.label}>{data.wetter.status.note ? ` – ${data.wetter.status.note}` : ''}</Notice>
+		{/if}
+		{#if data.wetter?.warnings.length}
+			{@const w0 = data.wetter.warnings[0]}
+			<Notice kind="warn" title="Wetterwarnung zur Terminzeit">
+				{' '}{w0.label}: <a href="/warnungen/{encodeURIComponent(w0.id)}">{w0.headline}</a>{data.wetter.warnings.length > 1 ? ` (und ${data.wetter.warnings.length - 1} weitere)` : ''}.
+				Der Veranstalter entscheidet, ob der Termin stattfindet. Bei Gefahr gelten die Durchsagen der Behörden.
+			</Notice>
+			<p class="muted small wx-src">{data.wetter.attribution}</p>
+		{/if}
+
 		{#if sel}
 			<p class="when"><Icon name="uhr" size={22} /> <strong>{when(sel.start, sel.end, e.allDay, true)}</strong></p>
 		{/if}
@@ -89,6 +101,7 @@
 
 		{#if form && 'error' in form && form.error}<Notice kind="error">{form.error}</Notice>{/if}
 		{#if form && 'reported' in form}<Notice kind="ok">Danke, die Moderation schaut es sich an.</Notice>{/if}
+		{#if form && 'weather' in form}<Notice kind="ok">{form.weather === 'gesetzt' ? 'Gespeichert. Wer den Termin gemerkt oder zugesagt hat, wird benachrichtigt.' : 'Entscheidung zurückgenommen.'}</Notice>{/if}
 		{#if form && 'cancelled' in form}<Notice kind="ok">Abgesagt. Wer den Termin gemerkt oder zugesagt hat, wird benachrichtigt.</Notice>{/if}
 
 		<div class="actions">
@@ -222,6 +235,20 @@
 				<h2>Verwalten</h2>
 				<p><a class="btn small" href="/veranstaltungen/{e.id}/bearbeiten">Bearbeiten</a></p>
 				{#if e.visibility === 'privat' && e.shareToken}<p class="muted small">Privater Termin: nur mit dem Link über „Teilen“ sichtbar.</p>{/if}
+				{#if e.status !== 'abgesagt' && sel && !sel.cancelled}
+					<details id="wetter-entscheidung" open={!!data.wetter?.warnings.length}>
+						<summary>Wetter-Entscheidung für {dateShort(sel.start)}</summary>
+						<form method="POST" action="?/wetter" class="stack">
+							<input type="hidden" name="am" value={sel.date} />
+							<label class="check"><input type="radio" name="status" value="drinnen" checked={data.wetter?.status?.status === 'drinnen'} /> <span>Findet drinnen statt</span></label>
+							<label class="check"><input type="radio" name="status" value="findet_statt" checked={data.wetter?.status?.status === 'findet_statt'} /> <span>Findet trotz Wetter statt</span></label>
+							<label class="check"><input type="radio" name="status" value="" checked={!data.wetter?.status} /> <span>Keine Entscheidung (zurücknehmen)</span></label>
+							<input name="note" maxlength="200" placeholder="Hinweis (optional, z. B. „Treffpunkt: Halle 2“)" aria-label="Hinweis" value={data.wetter?.status?.note ?? ''} />
+							<button class="btn small secondary">Speichern und Mitkommende informieren</button>
+						</form>
+						<p class="muted small">Absagen geht darunter.</p>
+					</details>
+				{/if}
 				{#if e.status !== 'abgesagt'}
 					<details>
 						<summary>Absagen</summary>
@@ -446,5 +473,8 @@
 	}
 	.err {
 		color: var(--danger);
+	}
+	.wx-src {
+		margin: 0 0 var(--sp-2);
 	}
 </style>

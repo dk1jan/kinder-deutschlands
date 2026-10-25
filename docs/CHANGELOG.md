@@ -2,6 +2,18 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-25 · Wetter bei Veranstaltungen und Karte „Lieber drinnen“ (F-056, D-094)
+
+**Was**
+- **Terminseite:** Gilt im Kreis des Termins zur Terminzeit eine DWD-Warnung ab Stufe 2, steht oben „Wetterwarnung zur Terminzeit“ mit Link zur Warnung, Quellenangabe und dem Satz „Der Veranstalter entscheidet, ob der Termin stattfindet. Bei Gefahr gelten die Durchsagen der Behörden.“
+- **Veranstalter:** neuer Abschnitt „Wetter-Entscheidung für <Tag>“ (Verwalten): „Findet drinnen statt“ / „Findet trotz Wetter statt“ / zurücknehmen, mit Hinweis (z. B. „Treffpunkt Halle 2“). Gilt je Tag (auch bei Serien); Mitkommende und Merker bekommen eine Mitteilung. Absagen bleibt wie bisher.
+- **Mitteilung bei neuer Warnung:** Zeitplan (alle 5 Minuten): Termine der nächsten 48 Stunden mit „Ich komme“/„Interessiert“ → einmal je Person und Termin Mitteilung (Push nur mit „Erinnerungen“, ohne Titel), ebenso an den Veranstalter mit Hinweis auf die Entscheidung. Hat der Veranstalter entschieden, bleibt es still.
+- **Karte:** Am Kartenmittelpunkt (ab Zoom 7) wird geprüft, ob dort eine Warnung ab Stufe 2 gilt → Hinweis „Unwetterwarnung hier: …“ mit Knopf **„Lieber drinnen“** (Filter Drinnen spielen, Bibliotheken, Familienzentren, Bäder) bzw. „Alle Orte zeigen“. Neue Schnittstelle `/api/warnungen/hier` (öffentlich, 1 Min. zwischengespeichert, Punkt auf ~1 km gerundet, nicht gespeichert).
+- **Nicht erfasst:** Chat-Treffen (Ende-zu-Ende-verschlüsselt, Server kennt weder Treffpunkt noch Teilnehmende). Für Termine der Art „Treffen“ unter Veranstaltungen gilt alles oben.
+**Warum** Jan: Wetter einbinden, „Regen ist ein richtiges Thema“; „go“ auf F-056 (Teil A). Regenvorhersage/Radar (F-057) und Geburtstags-Vorlage (F-058) bleiben offen.
+**Module** M12 Veranstaltungen, M20 Regionale Hinweise/Warnungen, Karte · **DB-Migration** ja (`0022_wetter_termin.sql`: `event_weather`, `event_weather_alerts`)
+**Tests** svelte-check 0 Fehler; 313 Unit/DB-Tests (neu `wetter.db.test.ts`, 8 Tests: ohne Warnung still; Stufe 1/anderer Kreis/beendet/zu früh/zu spät zählt nicht; Warnung ab Stufe 2 → Hinweis und genau eine Mitteilung je Person, nicht doppelt; Entscheidung nur mit Recht, Mitkommende dürfen nicht, falsches Datum, Rücknahme, Protokoll; entschieden/abgesagt → still; anderer Kreis; Warnung am Punkt; Filter „baeder“); Rauchtest bestanden (neu: Terminseite mit Warnung, Entscheidung speichern, Fremde abgewiesen, Gäste sehen Mitglieder-Termin nicht, `/api/warnungen/hier` mit Treffer/ohne/ungültig); Browsertest `scripts/karte-drinnen-check.py` (Computer + Handy: Hinweis, Link, „Lieber drinnen“ setzt Filter inkl. Bäder, „Alle Orte zeigen“, ohne Warnung kein Hinweis); axe ohne schwere Verstöße (neu: Karte mit Hinweis); Bildschirmfotos angesehen. **Nicht getestet:** echte DWD-Warnungen zu echten Terminen, Push aufs echte Handy.
+
 ## 2026-10-25 · Startseite: Wetterwarnungs-Block nach unten (F-055)
 
 **Was** Der Block „Warnungen direkt aufs Handy.“ steht jetzt unter der Karte „Schreiben und anrufen“ (vor „Familienorte in ganz Deutschland“) statt oben direkt unter der Familien-ID.

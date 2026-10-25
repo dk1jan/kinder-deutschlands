@@ -853,6 +853,31 @@ try {
 		check(w.status === 200 && w.body.includes('Abonniert'), 'Unwetterwarnungen: Mitglied abonniert Region');
 		w = await A.req('/warnungen');
 		check(w.body.includes('Kita') && w.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN'), 'Unwetterwarnungen: „Meine Regionen“ mit aktueller Warnung');
+		// F-056: Wetter bei Veranstaltungen – Hinweis am Termin, Entscheidung des Veranstalters, Warnung am Kartenpunkt
+		{
+			const soon = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(Date.now() + 2 * 3600_000)).replace(' ', 'T');
+			let r = await C.req('/veranstaltungen/neu', { form: { owner: 'ich', title: 'Smoke-Wetterfest', kind: 'fest', start: soon, region_code: fdf.code, visibility: 'mitglieder' } });
+			const wxEv = r.location.split('?')[0];
+			check(r.status === 303 && /^\/veranstaltungen\/[0-9a-f-]{36}$/.test(wxEv), `Wetter: Termin in Kürze angelegt (${r.status})`);
+			r = await C.req(wxEv);
+			check(r.status === 200 && r.body.includes('Wetterwarnung zur Terminzeit') && r.body.includes('Amtliche UNWETTERWARNUNG vor ORKANBÖEN') && r.body.includes('Der Veranstalter entscheidet'), 'Wetter: Terminseite zeigt die Warnung zur Terminzeit (F-056)');
+			check(r.body.includes('Wetter-Entscheidung für'), 'Wetter: Veranstalter sieht „Wetter-Entscheidung“');
+			const occDay = soon.slice(0, 10);
+			r = await C.req(`${wxEv}?/wetter`, { form: { am: occDay, status: 'drinnen', note: 'Treffpunkt Halle 2' } });
+			check(r.status === 200 && r.body.includes('Gespeichert'), `Wetter: Entscheidung „drinnen“ gespeichert (${r.status})`);
+			r = await X2.req(wxEv);
+			check(r.status === 303, 'Wetter: Termin „nur Mitglieder“ bleibt Gästen verborgen');
+			r = await C.req(wxEv);
+			check(r.body.includes('Nach drinnen verlegt') && r.body.includes('Treffpunkt Halle 2'), 'Wetter: Entscheidung steht am Termin');
+			r = await A.req(`${wxEv}?/wetter`, { form: { am: occDay, status: 'findet_statt' } });
+			check(r.status === 400 || r.status === 403 || r.status === 404, `Wetter: Fremde dürfen nicht entscheiden (${r.status})`);
+			const hier = await X2.req('/api/warnungen/hier?lon=8.85&lat=53.03');
+			const hj = JSON.parse(hier.body);
+			check(hier.status === 200 && hj.n >= 1 && hj.top?.id === 'smoke.dwd.1', 'Karte: Warnung am Kartenpunkt (F-056)');
+			const nix = JSON.parse((await X2.req('/api/warnungen/hier?lon=13.4&lat=48.1')).body);
+			check(nix.n === 0 && nix.top === null, 'Karte: keine Warnung an anderem Punkt');
+			check((await X2.req('/api/warnungen/hier?lon=0&lat=0')).status === 400, 'Karte: ungültiger Punkt abgelehnt');
+		}
 	}
 	{
 		// F-052: Feedback aus der Fußzeile

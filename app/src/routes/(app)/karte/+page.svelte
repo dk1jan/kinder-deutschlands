@@ -4,12 +4,34 @@
 	import NavChooser from '$lib/components/NavChooser.svelte';
 	import FamilyMap, { type MapFeature, type MapView, type ExtraPoint } from '$lib/components/FamilyMap.svelte';
 	import { LAYER_STYLE } from '$lib/map/markers';
-	import { KINDS, KIND_FILTERS, FILTER_FEATURES, FEATURES, distanceM, distanceText, type Kind } from '$lib/places';
+	import { KINDS, KIND_FILTERS, FILTER_FEATURES, FEATURES, DRINNEN_KEYS, distanceM, distanceText, type Kind } from '$lib/places';
 
 	let { data } = $props();
 
 	let mapRef: ReturnType<typeof FamilyMap> | undefined = $state();
 	let filters = $state<string[]>([]);
+	// F-056: Wetterwarnung (DWD, Stufe 2+) am Kartenmittelpunkt → „Lieber drinnen“
+	let wx = $state<{ n: number; top: { id: string; label: string; headline: string } | null } | null>(null);
+	let wxTimer: ReturnType<typeof setTimeout> | null = null;
+	let wxKey = '';
+	const drinnenOn = $derived(filters.length === DRINNEN_KEYS.length && DRINNEN_KEYS.every((k) => filters.includes(k)));
+	function checkWx(c: [number, number], zoom: number) {
+		if (wxTimer) clearTimeout(wxTimer);
+		if (zoom < 7) {
+			wx = null;
+			return;
+		}
+		wxTimer = setTimeout(async () => {
+			const key = `${c[0].toFixed(2)}:${c[1].toFixed(2)}`;
+			if (key === wxKey) return;
+			wxKey = key;
+			const r = await fetch(`/api/warnungen/hier?lon=${c[0].toFixed(2)}&lat=${c[1].toFixed(2)}`).catch(() => null);
+			wx = r?.ok ? await r.json() : null;
+		}, 800);
+	}
+	$effect(() => {
+		checkWx(data.center, data.zoom);
+	});
 	let feats = $state<string[]>([]);
 	// svelte-ignore state_referenced_locally
 	let selected = $state<MapFeature | null>(data.focus);
@@ -242,6 +264,7 @@
 
 	function onView(v: MapView) {
 		viewC = v.center;
+		checkWx(v.center, v.zoom);
 		if (layers.length) loadLayers();
 		if (urlTimer) clearTimeout(urlTimer);
 		urlTimer = setTimeout(() => {
@@ -347,6 +370,16 @@
 			{/if}
 		</div>
 
+		{#if wx && wx.n > 0 && wx.top}
+			<div class="wx" role="status">
+				<p><Icon name="hinweis" size={18} /><span><strong>{wx.top.label}</strong> hier: <a href="/warnungen/{encodeURIComponent(wx.top.id)}">{wx.top.headline}</a>{wx.n > 1 ? ` (+${wx.n - 1})` : ''}</span></p>
+				{#if drinnenOn}
+					<button type="button" class="btn small secondary" onclick={() => (filters = [])}>Alle Orte zeigen</button>
+				{:else}
+					<button type="button" class="btn small" onclick={() => (filters = [...DRINNEN_KEYS])}>Lieber drinnen</button>
+				{/if}
+			</div>
+		{/if}
 		<div class="chips" role="group" aria-label="Was suchst du?">
 			{#each KIND_FILTERS as f}
 				<button type="button" class="chip" aria-pressed={filters.includes(f.key)} onclick={() => (filters = toggle(filters, f.key))}>{f.label}</button>
@@ -647,6 +680,22 @@
 		border-radius: 50%;
 		flex: none;
 		box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.65);
+	}
+	.wx {
+		display: grid;
+		gap: var(--sp-2);
+		margin: 0 0 var(--sp-3);
+		padding: var(--sp-3);
+		border-radius: var(--radius-m);
+		background: var(--surface);
+		border-left: 5px solid #d63d31;
+		font-size: var(--fs-s);
+	}
+	.wx p {
+		display: flex;
+		gap: var(--sp-2);
+		margin: 0;
+		align-items: flex-start;
 	}
 	.chips {
 		display: flex;
