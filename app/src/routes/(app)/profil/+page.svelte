@@ -88,6 +88,10 @@
 				<strong>Benachrichtigungen</strong>
 				<span>Push auf diesem Gerät, Ruhezeiten, Lesebestätigungen</span>
 			</a>
+			<a href="/warnungen" class="tile">
+				<strong>Wetter und Warnungen</strong>
+				<span>Meine Regionen, Regen, Unwetter als Push</span>
+			</a>
 			<a href="/nachrichten/sicherheit" class="tile">
 				<strong>Chat-Verschlüsselung</strong>
 				<span>Verschlüsselung, Chat-Geräte</span>

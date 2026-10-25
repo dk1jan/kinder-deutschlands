@@ -19,8 +19,8 @@
 </script>
 
 <svelte:head>
-	<title>Warnungen – Kinder Deutschlands</title>
-	<meta name="description" content="Unwetterwarnungen des Deutschen Wetterdienstes für jeden Kreis in Deutschland – mit Karte, als Mitteilung und Push aufs Handy." />
+	<title>Wetter und Warnungen – Kinder Deutschlands</title>
+	<meta name="description" content="Wetter und Unwetterwarnungen des Deutschen Wetterdienstes für jeden Kreis in Deutschland – mit Regen in den nächsten Stunden, Karte, Mitteilung und Push aufs Handy." />
 </svelte:head>
 
 <section class="head">
@@ -29,7 +29,7 @@
 		<h1>Warnungen für deine Region.</h1>
 		<p class="lead">
 			Wir holen alle paar Minuten die Unwetterwarnungen des Deutschen Wetterdienstes ab – für jeden Kreis in Deutschland. Abonniere deine Gegend, dann
-			bekommst du neue Warnungen als Mitteilung und auf Wunsch als Push aufs Handy. Auch für Kita, Schule oder Oma.
+			bekommst du neue Warnungen als Mitteilung und auf Wunsch als Push aufs Handy. Auch für Kita, Schule oder Oma. Dazu der Regen der nächsten zwei Stunden und das Wetter bei Terminen.
 		</p>
 		<ul class="live" aria-label="Gerade aktiv in Deutschland">
 			<li class="l34"><strong>{severe.toLocaleString('de-DE')}</strong><span>{severe === 1 ? 'Unwetterwarnung' : 'Unwetterwarnungen'}{severe ? ` ${inK(kreiseSevere)}` : ''}</span></li>
@@ -58,6 +58,21 @@
 				<a href="/profil/benachrichtigungen">Benachrichtigungen einschaltest</a>. Auf dem iPhone legst du dafür Kinder Deutschlands auf den Home-Bildschirm.
 			</dd>
 		</dl>
+	</section>
+
+	<section aria-labelledby="regen-t">
+		<h2 id="regen-t">Regen in den nächsten 2 Stunden</h2>
+		{#if data.rain.length}
+			<ul class="rain">
+				{#each data.rain as r (r.kreis)}
+					<li><strong>{r.name}</strong> <span>{r.text ?? (r.known ? 'Kein Regen in den nächsten 2 Stunden erwartet.' : 'Regendaten gerade nicht verfügbar.')}</span></li>
+				{/each}
+			</ul>
+			<p class="muted small">{data.rainAttribution}</p>
+		{:else}
+			<p class="muted">Wähle unten eine Region, dann siehst du hier, ob es in den nächsten 2 Stunden regnet.</p>
+		{/if}
+		<p class="muted small">Bei Veranstaltungen zeigen wir Warnung und Regen zur Terminzeit selbst an. Mitkommende und Veranstalter bekommen dazu eine Mitteilung; der Push folgt deiner Einstellung „Erinnerungen“ unter <a href="/profil/benachrichtigungen">Benachrichtigungen</a>. Auf der <a href="/karte">Karte</a> hilft „Lieber drinnen“.</p>
 	</section>
 
 	<section aria-labelledby="karte-t">
@@ -152,6 +167,18 @@
 </div>
 
 <style>
+	.rain {
+		list-style: none;
+		padding: 0;
+		margin: 0 0 var(--sp-2);
+		display: grid;
+		gap: var(--sp-2);
+	}
+	.rain li {
+		background: var(--surface);
+		border-radius: var(--radius-m);
+		padding: var(--sp-3);
+	}
 	.explain {
 		background: var(--surface);
 		border-radius: var(--radius-m);

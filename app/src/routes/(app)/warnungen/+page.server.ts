@@ -5,8 +5,22 @@ import { requireMember } from '$lib/server/guard';
 import { activeFor, kreisFor, MAX_SUBSCRIPTIONS, overview, subscribe, subscriptions, unsubscribe, WarnError } from '$lib/server/warnings/store';
 import { warnState } from '$lib/server/warnings/jobs';
 import { tileState } from '$lib/server/import/tiles';
+import { regenAt, regenText, REGEN_ATTRIBUTION } from '$lib/server/regen';
 
-// Amtliche Wetterwarnungen (DWD): öffentlich ansehen je Kreis; Mitglieder abonnieren bis zu 5 Regionen (Mitteilung + Push nach Wahl).
+/** Regen in den nächsten 2 Stunden für bis zu 5 Kreise (Mitte des Kreises), je höchstens 3 Sekunden. */
+async function regenFor(sql: ReturnType<typeof db>, list: { code: string; name: string }[]) {
+	const rows = list.length ? await sql`select code, ST_Y(center) as lat, ST_X(center) as lon from regions where code = any(${list.map((k) => k.code)}) and center is not null` : [];
+	const pt = new Map(rows.map((r) => [r.code as string, r]));
+	return Promise.all(
+		list.slice(0, 5).map(async (k) => {
+			const r = pt.get(k.code);
+			const rain = r ? await Promise.race([regenAt(Number(r.lat), Number(r.lon)), new Promise<null>((res) => setTimeout(() => res(null), 3000))]).catch(() => null) : null;
+			return { kreis: k.code, name: k.name, known: !!rain, text: regenText(rain) };
+		})
+	);
+}
+
+// Wetter und Warnungen (DWD): öffentlich ansehen je Kreis; Mitglieder abonnieren bis zu 5 Regionen (Mitteilung + Push nach Wahl).
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const sql = db();
 	const member = !!locals.user && !!locals.session?.mfaVerified;
@@ -26,6 +40,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		if (home && subs.some((s) => s.kreis === home!.code)) home = null;
 		[{ n: pushDevices }] = await sql`select count(*)::int as n from push_subscriptions where user_id = ${uid}`;
 	}
+	// Regen: für die abonnierten Regionen, sonst für die angezeigte, sonst für die Wohnregion
+	const rainList = mine.length ? mine.map((m) => ({ code: m.kreis, name: m.name })) : shown ? [shown] : home ? [home] : [];
+	const rain = await regenFor(sql, rainList);
 	const lastOk = state.last_ok ? new Date(state.last_ok) : null;
 	return {
 		member,
@@ -37,6 +54,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		mine,
 		home,
 		pushDevices,
+		rain,
+		rainAttribution: REGEN_ATTRIBUTION,
 		max: MAX_SUBSCRIPTIONS,
 		tiles: !!tiles?.present
 	};

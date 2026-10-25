@@ -37,7 +37,7 @@ export const AREAS: Area[] = [
 	{ href: '/marktplatz', label: 'Marktplatz', text: 'Kinderwagen, Kleidung, Spielzeug', icon: 'flagge', color: '#2f7d4f', ink: '#ffffff', group: 'community', members: true },
 	{ href: '/einladungen', label: 'Einladungen', text: 'Kindergeburtstag mit Zu- und Absagen', icon: 'senden', color: '#ffc53d', ink: '#0f2238', group: 'community', members: true },
 	{ href: '/nachrichten/treffen/neu', label: 'Treffen per QR', text: 'Spontan treffen, Raum läuft ab', icon: 'qr', color: '#d63d31', ink: '#ffffff', group: 'community', members: true },
-	{ href: '/warnungen', label: 'Unwetterwarnungen', text: 'Amtlich vom DWD, als Push für deine Region', icon: 'warnung', color: '#d63d31', ink: '#ffffff', group: 'wissen' },
+	{ href: '/warnungen', label: 'Wetter und Warnungen', text: 'Regen, Unwetter vom DWD, Push für deine Region', icon: 'warnung', color: '#d63d31', ink: '#ffffff', group: 'wissen' },
 	{ href: '/hinweise', label: 'Hinweise & Fristen', text: 'Absagen, Sperrungen, Leistungen', icon: 'hinweis', color: '#f0c060', ink: '#0f2238', group: 'wissen' },
 	{ href: '/kompass', label: 'Lebenslagen-Kompass', text: 'Geburt, Kita, Trennung, Geld knapp', icon: 'entdecken', color: '#e6eef4', ink: '#0f2238', group: 'wissen' },
 	{ href: '/radar', label: 'Familienradar', text: 'Neues für deine Region', icon: 'glocke', color: '#0f2238', ink: '#ffc53d', group: 'wissen', members: true }

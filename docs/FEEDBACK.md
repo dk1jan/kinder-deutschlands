@@ -83,6 +83,8 @@ Abhängigkeit: Hintergrund-Ortung hängt an der Android-App (F-026, Entscheidung
 
 ## Erledigt / verworfen
 
+- **F-059** (25.10.) Wetter und Warnungen auf einer Seite, Kachel unter Mein Konto – erledigt, siehe CHANGELOG. Eigener Schalter für Wetter-Mitteilungen bei Terminen bewusst nicht gebaut (folgt „Erinnerungen“); auf Wunsch nachziehen.
+
 | ID | Ergebnis | Verweis |
 |---|---|---|
 | F-057 (Teil 1) | erledigt (Code, Unit-/DB-Tests, Rauchtest und Browsertest mit Radar-Nachbau, axe): Regen in den nächsten 2 Stunden – Terminseite „Regen erwartet“, Karte „Regen in der Nähe“ + „Lieber drinnen“, einmalige Mitteilung, wenn der Regen in der nächsten Stunde beginnt. Quelle DWD-Radar RV über Bright Sky (D-095). **Nicht geprüft:** echter Abruf bei Bright Sky und Mitteilung/Push auf dem Server | CHANGELOG 25.10. Regen |

@@ -92,7 +92,7 @@ try:
         pg.click('a[data-toggle="wissen"]')
         check(pg.url == url0 and pg.locator('#menu-wissen').is_visible(), '„Wissen“ klappt auf statt zu springen')
         lw = pg.locator('#menu-wissen strong').all_inner_texts()
-        check(lw == ['Unwetterwarnungen', 'Hinweise & Fristen', 'Lebenslagen-Kompass', 'Familienradar'], f'Wissen: Einträge {lw}')
+        check(lw == ['Wetter und Warnungen', 'Hinweise & Fristen', 'Lebenslagen-Kompass', 'Familienradar'], f'Wissen: Einträge {lw}')
         shot(pg, '4-menue-wissen.png')
         pg.mouse.click(640, 700)
         check(pg.locator('#menu-wissen').is_hidden(), 'Klick daneben schließt')

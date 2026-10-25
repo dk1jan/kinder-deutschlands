@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-25 · Wetter und Warnungen auf einer Seite (F-059)
+
+**Was**
+- `/warnungen` heißt jetzt „Wetter und Warnungen“: neuer Block „Regen in den nächsten 2 Stunden“ (für deine abonnierten Regionen, sonst die angesehene Region, sonst die Wohnregion; Mitte des Kreises, Quelle wie F-057), dazu Hinweis auf Wetter bei Terminen und „Lieber drinnen“ auf der Karte. Warnungen, Karte, Abos, Stufen unverändert.
+- Mein Konto: neue Kachel „Wetter und Warnungen“. Menü „Wissen“, Titel und Link in den Benachrichtigungen umbenannt.
+- Kein eigener Schalter für Wetter-Mitteilungen bei Terminen: der Push folgt „Erinnerungen“ (keine Migration).
+
+**Warum:** Jan 25.10. – alles zum Wetter an einem Ort, auch unter Mein Konto auffindbar.
+**Module:** M20, M12, M01 (Mein Konto). **DB-Migration:** nein.
+**Tests:** check/test/build, Smoke (neue Prüfungen), Menü-Prüfung angepasst.
+
 ## 2026-10-25 · Regen in den nächsten 2 Stunden (F-057 Teil 1, D-095)
 
 **Was**
