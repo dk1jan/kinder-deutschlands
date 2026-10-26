@@ -2,6 +2,12 @@
 
 Neueste Einträge oben. Format: Datum · was · warum · Module · DB-Migration.
 
+## 2026-10-26 · Doku: BBK-Antwort zu NINA/RSS (D-097, F-061)
+
+**Was:** Nur Doku. D-097 hält die schriftliche Antwort des BBK fest (Vereinbarung abgelehnt; RSS-Feed und NINA-Empfehlung als Text zulässig; api31 und Logos nicht). F-061 vorgemerkt: RSS-Einbindung plus NINA-Textempfehlung, wartet auf „go“. STATUS Offene Punkte 0 angepasst.
+**Warum:** Jan 26.10. – Anfrage beim BBK vom 25.10. beantwortet; Rechtsstand soll im Repo stehen, damit nichts versehentlich über api31 wieder eingebaut wird.
+**Module:** M20 (nur Doku). **DB-Migration:** nein. **Tests:** nicht nötig (kein Code).
+
 ## 2026-10-26 · 2FA-Schlüssel neu einrichten (F-060, D-096)
 
 **Was:** Unter Mein Konto → Sicherheit „2FA neu einrichten (z. B. für Bitwarden)“, auch für Verwaltungsrollen. Passwort und aktueller Code nötig (5 Versuche/15 Min), dann neuer QR-Code/Schlüssel; der alte gilt, bis der neue bestätigt ist. „Einrichten“ bei schon eingeschalteter 2FA wird abgelehnt (kein Überschreiben ohne Prüfung). Protokoll `mfa.rekey.started`.

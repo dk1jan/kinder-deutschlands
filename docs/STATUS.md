@@ -85,7 +85,7 @@ Statuswerte: **vorgesehen** · **umgesetzt** (Code da, noch nicht vollständig g
 
 ## Offene Punkte
 
-0. **Jan (D-093):** NINA ist wieder entfernt, eine Anfrage beim BBK ist nicht nötig. Nach dem Ausrollen prüfen: `/warnungen` ohne NINA/Bevölkerungsschutz und mit Karte, `/warnungen` zeigt einen Stand, Grundkarte ganz Deutschland lädt (Verwaltung → Daten → Kartenhintergrund), Anzahl Unterkünfte/Elterncafés auf der Startseite.
+0. **Jan (D-093, D-097):** NINA ist wieder entfernt. BBK hat am 26.10. geantwortet: keine Vereinbarung, aber RSS-Feed und NINA-Empfehlung (Text) sind zulässig – Einbindung als F-061 vorgemerkt, wartet auf dein „go". Nach dem Ausrollen prüfen: `/warnungen` ohne NINA/Bevölkerungsschutz und mit Karte, `/warnungen` zeigt einen Stand, Grundkarte ganz Deutschland lädt (Verwaltung → Daten → Kartenhintergrund), Anzahl Unterkünfte/Elterncafés auf der Startseite.
 1. **Jan:** Mailserver in Verwaltung → Einstellungen eintragen, dann Test-E-Mail. Bis dahin ist die Registrierung geschlossen – für den bundesweiten Start Pflicht.
 2. Nach dem Ausrollen: Verwaltung → Übersicht → „Chat-Server“ muss „In Ordnung“ zeigen. Dann mit zwei Konten testen: Kontakt verbinden → „Nachricht“ → Wiederherstellungsschlüssel aufbewahren.
 2a. Abschnitt 5 ist leer, bis Inhalte kommen (keine erfundenen Termine): erste Einrichtungen anmelden lassen (`/einrichtungen/antrag`) und unter Verwaltung → Einrichtungen prüfen; Redaktion kann Hinweise unter Verwaltung → Hinweise veröffentlichen. Weitere Terminquellen (z. B. familiennetz bremen) nur nach Lizenzklärung.

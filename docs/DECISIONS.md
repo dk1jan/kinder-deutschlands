@@ -330,3 +330,12 @@ Jan hat am selben Tag entschieden, NINA ganz von der Seite zu nehmen („Nina vo
 
 ## D-096 · 2FA neu einrichten nur mit Passwort und aktuellem Code (26.10.2026)
 Der 2FA-Schlüssel wird nach der Einrichtung nie wieder angezeigt. Wechsel der App (z. B. Bitwarden) geht über einen neuen Schlüssel: Passwort + aktueller Code, der alte gilt bis zur Bestätigung des neuen. So bleibt Verwaltungsrollen die Pflicht-2FA ohne Lücke erhalten und niemand kann sich mit einer gestohlenen Sitzung allein einen eigenen Schlüssel setzen.
+
+## D-097 · BBK-Antwort: nur RSS-Feed erlaubt, NINA nur als Textempfehlung (26.10.2026) – ergänzt D-093
+- **Anlass:** Jan hat das BBK (Warnmultiplikatoren@bbk.bund.de) am 25.10. angefragt (Multiplikatorenvereinbarung, RSS-Feed, NINA-Hinweis, Logo). Antwort des BBK, Referat L.2 Bundeswarnsysteme, vom 26.10.2026 (Mail liegt bei Jan).
+- **Multiplikatorenvereinbarung: abgelehnt.** Gründe laut BBK: kein Weckeffekt (Website muss aktiv beobachtet werden), kein neuer Übertragungsweg, keine zusätzliche Last auf Internet/Mobilfunk bei Störungen (Beispiel Ahrtal), kein erkennbarer Mehrwert. Logos (NINA/MoWaS) nur mit gültiger Vereinbarung – **also kein Logo**.
+- **Schnittstelle `warnung.bund.de/api31` und die JSON-Dateien:** keine offizielle freie Schnittstelle; Abruf technisch möglich, aber vom BBK **nicht dokumentiert und nicht autorisiert**, wird sich bei Updates ändern, ein Teil der Daten ist nicht urheberrechtlich frei. **Bleibt aus** (D-093 unverändert).
+- **Ausdrücklich zulässig laut BBK:** (1) Einbindung des **RSS-Feeds** von warnung.bund.de; (2) die **Warn-App NINA empfehlen** (als Text, ohne Logo).
+- **Auflagen/Regeln für eine spätere Einbindung:** nur RSS, serverseitig abgerufen und zwischengespeichert (nicht je Besucher); Meldungen unverändert mit Quellenangabe (BBK/warnung.bund.de); sichtbarer Zeitstempel „zuletzt abgerufen“; bei Ausfall oder Veralterung sichtbarer Hinweis statt alter Meldungen; gut sichtbarer Hinweis „keine amtliche Warnung – im Ernstfall gelten NINA, Cell Broadcast, Radio, Sirenen“. Das BBK nennt ausdrücklich die Gefahr verspäteter oder veralteter Warnungen und bittet, auf die direkt angebundenen Warnkanäle zu verweisen.
+- **Nicht geklärt:** Umfang der erlaubten Wiedergabe der RSS-Inhalte (nur Titel + Link oder auch Text) und urheberrechtlicher Status der RSS-Texte – vor dem Bau am Feed selbst prüfen; im Zweifel nur Titel, Gebiet, Zeit und Link.
+- **Status:** Entscheidung dokumentiert, **nichts gebaut**. Bau nur nach Jans „go“ (F-061).
