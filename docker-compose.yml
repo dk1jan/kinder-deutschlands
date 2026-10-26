@@ -1,0 +1,266 @@
+# Kinder Deutschlands – Stack für Portainer
+# VORLAGE im Branch main. GitHub Actions setzt ghcr.io/dk1jan/kinder-deutschlands-web:sha-3d160f2099f5 auf das frisch gebaute Image und
+# veröffentlicht das Ergebnis im Branch „deploy“. Portainer liest NUR den Branch „deploy“.
+# Geheimnisse kommen ausschließlich aus den Umgebungsvariablen des Portainer-Stacks:
+#   APP_URL, APP_SECRET, POSTGRES_PASSWORD  (Pflicht)
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM  (optional)
+
+name: kinder-deutschlands
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # Einmal beim Start: Volumes für die App beschreibbar machen (App läuft als Benutzer „node“, UID 1000).
+  # Sonst hängt es davon ab, welcher Container ein neues Volume zuerst einbindet.
+  init:
+    image: postgis/postgis:17-3.6-alpine
+    restart: "no"
+    network_mode: none
+    volumes:
+      - backups:/backups
+      - media:/media
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["chown 1000:1000 /backups /media && echo '[init] Volumes bereit'"]
+    logging: *logging
+
+  web:
+    image: ghcr.io/dk1jan/kinder-deutschlands-web:sha-3d160f2099f5
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    environment:
+      APP_URL: ${APP_URL:?APP_URL fehlt}
+      ORIGIN: ${APP_URL}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET fehlt}
+      DATABASE_URL: postgres://kd:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt}@db:5432/kd
+      BACKUP_DIR: /backups
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: "1"
+      BODY_SIZE_LIMIT: 25M
+      ALLOW_INDEXING: ${ALLOW_INDEXING:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_INSECURE_TLS: ${SMTP_INSECURE_TLS:-false}
+      TILES_DIR: /data/tiles
+      MEDIA_DIR: /data/media
+      # Chat (Abschnitt 4): interner Chat-Server, Konfiguration schreibt die App selbst
+      SYNAPSE_URL: http://synapse:8008
+      SYNAPSE_CONFIG_DIR: /synapse-config
+      SYNAPSE_CONFIG_PATH_IN_CONTAINER: /config
+      CHAT_INTERNAL_URL: http://web:3000
+      # Anrufe: TURN-Server (Host aus APP_URL). Abschalten mit TURN_ENABLED=false, öffentliche IP nur bei NAT nötig.
+      TURN_ENABLED: ${TURN_ENABLED:-true}
+      TURN_HOST: ${TURN_HOST:-}
+      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-}
+      # Gruppenanrufe (D-072): Medienserver LiveKit, Signalweg über die App (/livekit), Medien über 49210 UDP/TCP
+      LIVEKIT_ENABLED: ${LIVEKIT_ENABLED:-true}
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_NODE_IP: ${LIVEKIT_NODE_IP:-}
+      LIVEKIT_MAX_PARTICIPANTS: ${LIVEKIT_MAX_PARTICIPANTS:-25}
+      # Orte aus OpenStreetMap (F-022): auto = Deutschland-Auszug von Geofabrik (wöchentlich, ~4,5 GB im Kachel-Volume),
+      # Overpass nur als Rückfall; overpass = nur Overpass; datei = nur Auszug
+      OSM_SOURCE: ${OSM_SOURCE:-auto}
+      # Große Importe (Niedersachsen: ~15 000 Spielplätze mit Umriss) brauchen etwas Arbeitsspeicher
+      NODE_OPTIONS: --max-old-space-size=1536
+    ports:
+      # Nur lokal erreichbar – öffentlich ausschließlich über Plesk (nginx, TLS)
+      - "127.0.0.1:3120:3000"
+    volumes:
+      - backups:/backups
+      - tiles:/data/tiles
+      - media:/data/media
+      - synapse-config:/synapse-config
+    networks: [backend, frontend]
+    # 6 GB: osmium filtert den Deutschland-Auszug (F-022, braucht > 2 GB); Node selbst bleibt bei 1,5 GB (NODE_OPTIONS)
+    mem_limit: 6g
+    logging: *logging
+
+  db:
+    image: postgis/postgis:17-3.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kd
+      POSTGRES_USER: kd
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks: [backend]
+    shm_size: 256mb
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kd -d kd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  # Chat-Server (Matrix/Synapse) – nur im internen Netz, keine Föderation, kein eigener Port nach außen.
+  # Erreichbar für Browser ausschließlich über die App (/_matrix/client, /_matrix/media).
+  # Startet sich selbst neu, wenn die App eine geänderte Konfiguration schreibt (Prüfung alle 30 s).
+  synapse:
+    image: ghcr.io/element-hq/synapse:v1.162.0
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      SYNAPSE_CONFIG_PATH: /config/homeserver.yaml
+      PYTHONPATH: /config
+      TZ: Europe/Berlin
+    volumes:
+      - synapse-config:/config:ro
+      - synapse-data:/data
+    networks: [backend]
+    mem_limit: 1g
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /data/media_store && chown 991:991 /data /data/media_store
+        sum() { cat /config/homeserver.yaml /config/kd_rules.py /config/signing.key 2>/dev/null | md5sum; }
+        h=$$(sum)
+        /start.py & p=$$!
+        trap 'kill -TERM $$p; wait $$p; exit 0' TERM INT
+        while kill -0 $$p 2>/dev/null; do
+          sleep 30
+          if [ "$$(sum)" != "$$h" ]; then echo "[synapse] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
+        done
+        wait $$p
+    logging: *logging
+
+  # Anrufe (Abschnitt 7): TURN-Server (coturn) vermittelt Audio/Video, wenn Geräte sich nicht direkt erreichen.
+  # Sieht nur verschlüsselte Medienpakete. Konfiguration (inkl. Geheimnis) schreibt die App; Ports siehe DEPLOYMENT.md:
+  # 3479 UDP/TCP und 49160–49200 UDP (eigener Bereich neben Jitsi/MiroTalk, D-009/D-056). Host-Netz, damit die
+  # öffentliche Adresse stimmt und kein riesiger Portbereich durch Docker geleitet werden muss.
+  turn:
+    image: coturn/coturn:4.6.3
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - synapse-config:/cfg:ro
+    mem_limit: 256m
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while [ ! -f /cfg/turnserver.conf ]; do echo "[turn] warte auf Konfiguration"; sleep 10; done
+        sum() { md5sum /cfg/turnserver.conf; }
+        h=$$(sum)
+        turnserver -c /cfg/turnserver.conf & p=$$!
+        trap 'kill -TERM $$p; wait $$p; exit 0' TERM INT
+        while kill -0 $$p 2>/dev/null; do
+          sleep 30
+          if [ "$$(sum)" != "$$h" ]; then echo "[turn] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
+        done
+        wait $$p
+    logging: *logging
+
+  # Gruppenanrufe (D-072): Medienserver LiveKit (SFU). Leitet nur verschlüsselte Medienpakete weiter; Bild und Ton
+  # sind zusätzlich Ende-zu-Ende-verschlüsselt (Schlüssel nur in den Browsern). Kein Mitschnitt. Konfiguration
+  # (inkl. Schlüssel) schreibt die App. Nach außen nur 49210 UDP (Medien) und 49210 TCP (Ausweichweg); der
+  # Signalweg läuft über die App (/livekit/rtc), die Verwaltungs-Schnittstelle bleibt intern.
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - synapse-config:/cfg:ro
+    ports:
+      - "49210:49210/udp"
+      - "49210:49210/tcp"
+    networks: [frontend]
+    mem_limit: 512m
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while [ ! -f /cfg/livekit.yaml ]; do echo "[livekit] warte auf Konfiguration"; sleep 10; done
+        sum() { md5sum /cfg/livekit.yaml; }
+        h=$$(sum)
+        /livekit-server --config /cfg/livekit.yaml & p=$$!
+        trap 'kill -TERM $$p; wait $$p; exit 0' TERM INT
+        while kill -0 $$p 2>/dev/null; do
+          sleep 30
+          if [ "$$(sum)" != "$$h" ]; then echo "[livekit] Konfiguration geändert – Neustart"; kill -TERM $$p; wait $$p; exit 0; fi
+        done
+        wait $$p
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7880 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    logging: *logging
+
+  # Tägliche Sicherung (14 Tage). Schreibt last-backup.json für die Admin-Übersicht.
+  backup:
+    image: postgis/postgis:17-3.6-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Berlin
+    volumes:
+      - backups:/backups
+      - media:/media:ro
+      - synapse-data:/synapse:ro
+    networks: [backend]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "[backup] gestartet, erste Sicherung in 2 Minuten"
+        sleep 120
+        while true; do
+          ts=$$(date +%Y-%m-%dT%H-%M-%S)
+          f=/backups/daily-$$ts.dump
+          if pg_dump --format=custom --no-owner -h db -U kd -d kd -f "$$f"; then
+            size=$$(stat -c %s "$$f")
+            echo "{\"at\":\"$$(date -Iseconds)\",\"file\":\"daily-$$ts.dump\",\"ok\":true,\"size\":$$size}" > /backups/last-backup.json
+            find /backups -name 'daily-*.dump' -mtime +14 -delete
+            echo "[backup] ok: $$f ($$size Bytes)"
+            # Hochgeladene Bilder (Community, Ortsfotos): letzte 3 Stände
+            if [ -n "$$(ls -A /media 2>/dev/null)" ]; then
+              tar -czf "/backups/media-$$ts.tar.gz" -C /media . && ls -1t /backups/media-*.tar.gz | tail -n +4 | xargs -r rm -f
+            fi
+            # Chat-Server: Datenbank (verschlüsselte Nachrichten, Schlüsselsicherungen) 14 Tage, Medien (verschlüsselt) letzte 3 Stände
+            if psql -h db -U kd -d kd -tAc "select 1 from pg_database where datname = 'synapse'" | grep -q 1; then
+              pg_dump --format=custom --no-owner -h db -U kd -d synapse -f "/backups/chat-$$ts.dump" && echo "[backup] ok: chat-$$ts.dump" || echo "[backup] FEHLER Chat-Datenbank"
+              find /backups -name 'chat-*.dump' -mtime +14 -delete
+            fi
+            if [ -n "$$(ls -A /synapse/media_store 2>/dev/null)" ]; then
+              tar -czf "/backups/chatmedien-$$ts.tar.gz" -C /synapse media_store && ls -1t /backups/chatmedien-*.tar.gz | tail -n +4 | xargs -r rm -f
+            fi
+          else
+            echo "{\"at\":\"$$(date -Iseconds)\",\"ok\":false}" > /backups/last-backup.json
+            echo "[backup] FEHLER"
+          fi
+          sleep 86400
+        done
+    logging: *logging
+
+volumes:
+  db:
+  backups:
+  tiles:
+  media:
+  synapse-config:
+  synapse-data:
+
+networks:
+  backend:
+    internal: true
+  frontend:
