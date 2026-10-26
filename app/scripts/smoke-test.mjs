@@ -474,6 +474,26 @@ try {
 
 	// ---------- Abschnitt 2: Karte, Orte, Datenzentrale ----------
 	const sqlT = postgres(DB, { max: 1, onnotice: () => {} });
+	{
+		// 2FA neu einrichten (Admin, z. B. für Bitwarden): Passwort + aktueller Code nötig, alter Schlüssel gilt bis zur Bestätigung
+		let q = await req('/profil/sicherheit');
+		check(q.status === 200 && q.body.includes('2FA neu einrichten') && !q.body.includes('>Ausschalten<'), '2FA: „Neu einrichten“ für Admin sichtbar, Ausschalten nicht');
+		q = await req('/profil/sicherheit?/totpStart', { method: 'POST', form: {} });
+		check(q.status === 400, '2FA: Einrichten bei eingeschalteter 2FA abgelehnt');
+		await sqlT`update users set totp_last_step = null where email = 'admin@example.org'`;
+		q = await req('/profil/sicherheit?/totpNeu', { method: 'POST', form: { current: 'falsch', code: totp(secret, 1) } });
+		check(q.status === 400 && q.body.includes('Passwort'), '2FA neu: falsches Passwort abgelehnt');
+		q = await req('/profil/sicherheit?/totpNeu', { method: 'POST', form: { current: pw, code: '000000' } });
+		check(q.status === 400 && q.body.includes('Code'), '2FA neu: falscher Code abgelehnt');
+		q = await req('/profil/sicherheit?/totpNeu', { method: 'POST', form: { current: pw, code: totp(secret, 1) } });
+		q = await req('/profil/sicherheit');
+		const sec2 = /Ohne Kamera: <code>([A-Z2-7 ]+)<\/code>/.exec(q.body)?.[1]?.replace(/ /g, '');
+		check(!!sec2 && sec2 !== secret && q.body.includes('Neuen Schlüssel einschalten'), '2FA neu: neuer Schlüssel wird angezeigt');
+		q = await req('/profil/sicherheit?/totpBestaetigen', { method: 'POST', form: { code: totp(sec2) } });
+		check(q.status === 200 && q.body.includes('neue Schlüssel'), '2FA neu: neuer Schlüssel bestätigt');
+		const [cur] = await sqlT`select totp_last_step from users where email = 'admin@example.org'`;
+		check(!!cur, '2FA neu: Schritt gespeichert');
+	}
 	async function runAndWait(key) {
 		const before = (await sqlT`select coalesce(max(id), 0)::int as m from import_runs where source_key = ${key}`)[0].m;
 		const rr = await req('/admin/daten?/starten', { method: 'POST', form: { key } });

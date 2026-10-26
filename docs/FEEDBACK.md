@@ -83,6 +83,8 @@ Abhängigkeit: Hintergrund-Ortung hängt an der Android-App (F-026, Entscheidung
 
 ## Erledigt / verworfen
 
+- **F-060** (26.10.) 2FA-Schlüssel neu einrichten (Wechsel zu Bitwarden) – erledigt, D-096.
+
 - **F-059** (25.10.) Wetter und Warnungen auf einer Seite, Kachel unter Mein Konto – erledigt, siehe CHANGELOG. Dazu Push-Schalter „Wetter bei Terminen“ (Migration 0023).
 
 | ID | Ergebnis | Verweis |

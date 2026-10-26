@@ -327,3 +327,6 @@ Jan hat am selben Tag entschieden, NINA ganz von der Seite zu nehmen („Nina vo
 - **Wo:** Terminseite (Termine in den nächsten 2 Stunden, nicht bei „drinnen“), Karte (Satz „Regen in der Nähe“ ab Zoom 9, Knopf „Lieber drinnen“ auch ohne Warnung), einmalige Mitteilung vor dem Termin (Regen beginnt in der nächsten Stunde; teilt sich den Vermerk mit der Warn-Mitteilung: höchstens eine Wetter-Mitteilung je Person und Termin).
 - **Datenschutzerklärung** (Entwurf) um den Abschnitt „Regen und Wetter bei Terminen“ ergänzt; der Betreiber prüft sie wie bisher.
 
+
+## D-096 · 2FA neu einrichten nur mit Passwort und aktuellem Code (26.10.2026)
+Der 2FA-Schlüssel wird nach der Einrichtung nie wieder angezeigt. Wechsel der App (z. B. Bitwarden) geht über einen neuen Schlüssel: Passwort + aktueller Code, der alte gilt bis zur Bestätigung des neuen. So bleibt Verwaltungsrollen die Pflicht-2FA ohne Lücke erhalten und niemand kann sich mit einer gestohlenen Sitzung allein einen eigenen Schlüssel setzen.

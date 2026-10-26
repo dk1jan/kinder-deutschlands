@@ -65,7 +65,16 @@
 	<section class="block" aria-labelledby="tf">
 		<h2 id="tf">Zwei-Faktor-Anmeldung mit App</h2>
 		{#if form?.totpError}<Notice kind="error">{form.totpError}</Notice>{/if}
-		{#if data.totp}
+		{#if data.totpSetup}
+			<p>{data.totp ? 'Neuer Schlüssel: Trage ihn jetzt in deiner Authenticator-App oder in Bitwarden ein (QR scannen oder Schlüssel einfügen) und gib den neuen Code ein. Bis dahin gilt noch der alte.' : 'Scanne den Code mit einer Authenticator-App und gib den angezeigten Code ein.'}</p>
+			<div class="qr">{@html data.totpSetup.qr}</div>
+			<p class="muted">Ohne Kamera: <code>{data.totpSetup.secret}</code></p>
+			<form method="POST" action="?/totpBestaetigen" class="row">
+				<label class="visually-hidden" for="code">Code aus der App</label>
+				<input id="code" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required />
+				<button class="btn" type="submit">{data.totp ? 'Neuen Schlüssel einschalten' : 'Einschalten'}</button>
+			</form>
+		{:else if data.totp}
 			<p><strong>Eingeschaltet.</strong> Nach dem Passwort fragen wir einen Code aus deiner Authenticator-App ab.</p>
 			{#if data.totpRequired}
 				<p class="muted">Für Verwaltungsrollen ist sie Pflicht und lässt sich nicht ausschalten.</p>
@@ -76,15 +85,17 @@
 					<button class="btn secondary" type="submit">Ausschalten</button>
 				</form>
 			{/if}
-		{:else if data.totpSetup}
-			<p>Scanne den Code mit einer Authenticator-App und gib den angezeigten Code ein.</p>
-			<div class="qr">{@html data.totpSetup.qr}</div>
-			<p class="muted">Ohne Kamera: <code>{data.totpSetup.secret}</code></p>
-			<form method="POST" action="?/totpBestaetigen" class="row">
-				<label class="visually-hidden" for="code">Code aus der App</label>
-				<input id="code" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required />
-				<button class="btn" type="submit">Einschalten</button>
-			</form>
+			<details class="rekey">
+				<summary>2FA neu einrichten (z. B. für Bitwarden)</summary>
+				<p class="muted">Du bekommst einen neuen Schlüssel angezeigt. Zur Sicherheit brauchst du dein Passwort und den aktuellen Code. Der alte Schlüssel gilt, bis du den neuen bestätigt hast.</p>
+				<form method="POST" action="?/totpNeu" class="row">
+					<label class="visually-hidden" for="rk-pw">Passwort</label>
+					<input id="rk-pw" name="current" type="password" autocomplete="current-password" placeholder="Passwort" required />
+					<label class="visually-hidden" for="rk-code">Aktueller Code</label>
+					<input id="rk-code" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="Code" required />
+					<button class="btn secondary" type="submit">Neuen Schlüssel anzeigen</button>
+				</form>
+			</details>
 		{:else}
 			<p>Ausgeschaltet. Optional für mehr Schutz, falls du keine Passkeys nutzt.</p>
 			<form method="POST" action="?/totpStart"><button class="btn secondary" type="submit">Einrichten</button></form>

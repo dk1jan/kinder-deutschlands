@@ -33,7 +33,7 @@ export const load: PageServerLoad = async (event) => {
 	// Begonnene TOTP-Einrichtung
 	let totpSetup: { qr: string; secret: string } | null = null;
 	const raw = event.cookies.get(TOTP_COOKIE);
-	if (raw && !u.totp) {
+	if (raw) {
 		try {
 			const secret = decrypt(raw, key('totp-setup'));
 			totpSetup = { qr: await QRCode.toString(otpauthUri(secret, user.email), { type: 'svg', margin: 1 }), secret: secret.replace(/(.{4})/g, '$1 ').trim() };
@@ -121,7 +121,9 @@ export const actions: Actions = {
 		return { ok: 'Alle anderen Geräte wurden abgemeldet.' };
 	},
 	totpStart: async (event) => {
-		requireMember(event);
+		const user = requireMember(event);
+		const [cur] = await db()`select (totp_enabled_at is not null) as on from users where id = ${user.id}`;
+		if (cur?.on) return fail(400, { totpError: 'Die Zwei-Faktor-Anmeldung ist schon eingeschaltet. Zum Wechseln „Neu einrichten“ nutzen.' });
 		event.cookies.set(TOTP_COOKIE, encrypt(generateTotpSecret(), key('totp-setup')), {
 			path: '/profil/sicherheit',
 			httpOnly: true,
@@ -129,6 +131,23 @@ export const actions: Actions = {
 			sameSite: 'strict',
 			maxAge: 900
 		});
+		return {};
+	},
+	/** Neuen Schlüssel erzeugen (z. B. für Bitwarden): nur mit Passwort und aktuellem Code; der alte gilt, bis der neue bestätigt ist. */
+	totpNeu: async (event) => {
+		const user = requireMember(event);
+		const sql = db();
+		if (!rateLimit(`totpneu:${user.id}`, 5, 15 * 60_000)) return fail(429, { totpError: 'Zu viele Versuche. Bitte in 15 Minuten erneut.' });
+		const f = await event.request.formData();
+		const [u] = await sql`select password_hash, totp_secret_enc, totp_last_step from users where id = ${user.id}`;
+		if (!u?.totp_secret_enc) return fail(400, { totpError: 'Die Zwei-Faktor-Anmeldung ist nicht eingeschaltet.' });
+		if (!(await verifyPassword(String(f.get('current') ?? ''), u.password_hash))) return fail(400, { totpError: 'Das Passwort stimmt nicht.' });
+		const last = u.totp_last_step === null ? null : Number(u.totp_last_step);
+		const step = verifyTotp(decrypt(u.totp_secret_enc, key('totp')), String(f.get('code') ?? ''), last);
+		if (step === null) return fail(400, { totpError: 'Der aktuelle Code stimmt nicht oder wurde schon verwendet. Bitte warte auf einen neuen Code.' });
+		await sql`update users set totp_last_step = ${step} where id = ${user.id}`;
+		event.cookies.set(TOTP_COOKIE, encrypt(generateTotpSecret(), key('totp-setup')), { path: '/profil/sicherheit', httpOnly: true, secure: isHttps(), sameSite: 'strict', maxAge: 900 });
+		await audit(sql, { actorId: user.id, action: 'mfa.rekey.started' });
 		return {};
 	},
 	totpBestaetigen: async (event) => {
@@ -147,7 +166,7 @@ export const actions: Actions = {
 		await sql`update users set totp_secret_enc = ${encrypt(secret, key('totp'))}, totp_enabled_at = now(), totp_last_step = ${step} where id = ${user.id}`;
 		event.cookies.delete(TOTP_COOKIE, { path: '/profil/sicherheit' });
 		await audit(sql, { actorId: user.id, action: 'mfa.enabled' });
-		return { ok: 'Zwei-Faktor-Anmeldung ist eingeschaltet.' };
+		return { ok: 'Zwei-Faktor-Anmeldung ist eingeschaltet. Ab jetzt gilt der neue Schlüssel.' };
 	},
 	totpAus: async (event) => {
 		const user = requireMember(event);
